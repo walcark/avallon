@@ -1,0 +1,262 @@
+/* ---------------------------------------------------------------------------
+   Scientific Markdown page — Roboto, clean typography.
+   markdownify outputs bare HTML (no classes), so everything is styled by
+   element inside the .prose panel.
+--------------------------------------------------------------------------- */
+
+:root {
+    --ink:        #1f2328;
+    --muted:      #57606a;
+    --bg:         #e8ecf1;   /* page background (tinted) */
+    --surface:    #f7f8fa;   /* reading panel: slightly off-white, well contrasted */
+    --border:     #dfe3e8;
+    --code-bg:    #eef1f4;
+    --rule:       #c4ccd4;   /* table rules */
+
+    /* Harmonious heading palette (analogous blues -> teal) */
+    --h1: #0f2c4d;
+    --h2: #1d4ed8;
+    --h3: #0e7490;
+    --h4: #475569;
+
+    --accent:     #1d4ed8;
+    --measure:    44rem;     /* narrow reading column */
+    --measure-wide: 78rem;   /* full-width mode */
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+    margin: 0;
+    padding: 0 1.25rem 5rem;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 1.0625rem;
+    line-height: 1.7;
+
+    /* Ligatures + kerning for clean typography */
+    font-feature-settings: "liga" 1, "clig" 1, "kern" 1;
+    font-kerning: normal;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- Toolbar / width toggle -------------------------------------------- */
+.toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.75rem 0;
+    margin: 0 auto;
+    max-width: var(--measure-wide);
+}
+.width-toggle {
+    font-family: inherit;
+    font-size: 0.82rem;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.35em 0.9em;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+.width-toggle:hover { color: var(--accent); border-color: var(--accent); }
+.width-label { font-weight: 500; color: var(--ink); }
+
+/* --- Reading panel ------------------------------------------------------ */
+.prose {
+    max-width: var(--measure);
+    margin: 0 auto;
+    padding: 3rem 3.25rem 4rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06),
+                0 8px 24px rgba(16, 24, 40, 0.05);
+    transition: max-width 0.25s ease;
+}
+.prose.is-wide { max-width: var(--measure-wide); }
+
+.prose > :first-child { margin-top: 0; }
+.prose > :last-child { margin-bottom: 0; }
+
+/* --- Headings ----------------------------------------------------------- */
+.prose h1, .prose h2, .prose h3, .prose h4 {
+    line-height: 1.25;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    margin: 2.4em 0 0.6em;
+}
+.prose h1 { font-size: 2.25rem; margin-top: 0; color: var(--h1); }
+.prose h2 { font-size: 1.6rem;  color: var(--h2);
+            padding-bottom: 0.3em; border-bottom: 1px solid var(--border); }
+.prose h3 { font-size: 1.3rem;  color: var(--h3); }
+.prose h4 { font-size: 1.05rem; color: var(--h4); text-transform: uppercase;
+            letter-spacing: 0.04em; }
+
+/* TOC permalink anchors (toc extension) */
+.prose .headerlink {
+    color: var(--border);
+    text-decoration: none;
+    margin-left: 0.4em;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.prose h1:hover .headerlink,
+.prose h2:hover .headerlink,
+.prose h3:hover .headerlink { opacity: 1; color: var(--accent); }
+
+/* --- Text --------------------------------------------------------------- */
+.prose p { margin: 1.1em 0; }
+.prose a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease;
+}
+.prose a:hover { border-bottom-color: var(--accent); }
+.prose strong { font-weight: 700; }
+sub, sup { line-height: 0; }
+
+/* --- Lists -------------------------------------------------------------- */
+.prose ul, .prose ol { padding-left: 1.4em; margin: 1.1em 0; }
+.prose li { margin: 0.35em 0; }
+.prose li::marker { color: var(--muted); }
+
+.prose ul.task-list { list-style: none; padding-left: 0.3em; }
+.prose .task-list-item { display: flex; align-items: baseline; gap: 0.5em; }
+
+/* --- Inline code & code boxes ------------------------------------------ */
+.prose code,
+.prose pre,
+.prose .highlight { font-family: "Roboto Mono", ui-monospace, monospace; }
+
+.prose :not(pre) > code {
+    background: var(--code-bg);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-size: 0.875em;
+}
+
+/* Dedicated code box (pymdownx.highlight wraps in .highlight) */
+.prose .highlight {
+    margin: 1.5em 0;
+    background: #fbfcfd;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    overflow-x: auto;
+}
+.prose .highlight pre {
+    margin: 0;
+    padding: 1rem 1.25rem;
+    background: none;
+    line-height: 1.55;
+    font-size: 0.9rem;
+}
+
+/* --- Blockquote --------------------------------------------------------- */
+.prose blockquote {
+    margin: 1.5em 0;
+    padding: 0.2em 1.2em;
+    color: var(--muted);
+    border-left: 3px solid var(--border);
+}
+
+/* --- Admonitions (note / warning) -------------------------------------- */
+.prose .admonition {
+    margin: 1.6em 0;
+    padding: 0.8em 1.2em;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--muted);
+    border-radius: 8px;
+    background: #fbfcfd;
+}
+.prose .admonition-title {
+    margin: 0 0 0.4em;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+.prose .admonition > :last-child { margin-bottom: 0; }
+.prose .admonition.note { border-left-color: var(--h2); background: #f3f7ff; }
+.prose .admonition.note > .admonition-title { color: var(--h2); }
+.prose .admonition.warning { border-left-color: #b45309; background: #fff8ec; }
+.prose .admonition.warning > .admonition-title { color: #b45309; }
+
+/* --- Figures / plots ---------------------------------------------------- */
+.prose img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 1.8em auto 0.6em;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.5rem;
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+}
+/* alt text rendered as a centered caption when image stands alone */
+.prose p > img + em,
+.prose figcaption {
+    display: block;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.875rem;
+    margin-top: 0.4em;
+}
+
+/* --- Math (arithmatex generic -> MathJax) ------------------------------ */
+.prose .arithmatex { overflow-x: auto; overflow-y: hidden; }
+mjx-container[display="true"] { margin: 1.4em 0; }
+
+/* --- Tables: booktabs scientific style --------------------------------- */
+/* Horizontal rules only: top of table, under header, bottom of table.
+   No vertical lines, no inner row borders. */
+.prose table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.8em 0;
+    font-size: 0.95rem;
+    font-variant-numeric: tabular-nums;
+    border: none;
+}
+.prose thead th {
+    border-bottom: 1px solid var(--rule);       /* mid rule */
+    font-weight: 500;
+    text-align: left;
+}
+.prose table { border-top: 2px solid var(--ink); }     /* top rule */
+.prose tbody tr:last-child td {
+    border-bottom: 2px solid var(--ink);                /* bottom rule */
+}
+.prose th, .prose td {
+    padding: 0.55em 1em;
+    border-left: none;
+    border-right: none;
+}
+.prose tbody td { border-bottom: none; }
+
+/* --- Footnotes ---------------------------------------------------------- */
+.prose .footnote {
+    margin-top: 3em;
+    padding-top: 1em;
+    border-top: 1px solid var(--border);
+    font-size: 0.9rem;
+    color: var(--muted);
+}
+.prose .footnote hr { display: none; }
+
+/* --- Narrow screens ----------------------------------------------------- */
+@media (max-width: 640px) {
+    .prose { padding: 2rem 1.4rem 3rem; border-radius: 10px; }
+    .prose h1 { font-size: 1.9rem; }
+}

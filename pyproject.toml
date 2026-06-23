@@ -1,0 +1,37 @@
+[project]
+authors = [{name = "walcark", email = "kevin.walcarius@cnes.fr"}]
+dependencies = []
+name = "kevin-website"
+requires-python = ">= 3.11"
+version = "0.1.0"
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[tool.hatch.build.targets.wheel]
+# This layout has no single package named after the project: src/ is the
+# import root and holds several top-level packages (config, pages, ...).
+# Ship all of src/ and strip the prefix so they import by their bare name
+# (import config / import pages).
+only-include = ["src"]
+sources = ["src"]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[tool.pixi.pypi-dependencies]
+kevin_website = { path = ".", editable = true }
+django-markdownify = "*"
+
+[tool.pixi.tasks]
+manage = "python manage.py"
+makemigrations = "python manage.py makemigrations"
+migrate = "python manage.py migrate"
+runserver = "python manage.py runserver"
+
+[tool.pixi.dependencies]
+django = ">=6.0.6,<7"
+pygments = ">=2.20,<3"
+pymdown-extensions = ">=11,<12"

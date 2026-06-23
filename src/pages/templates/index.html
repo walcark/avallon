@@ -1,0 +1,61 @@
+{% load markdownify static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Markdown</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{% static 'pages/css/pygments.css' %}">
+    <link rel="stylesheet" href="{% static 'pages/css/style.css' %}">
+
+    <!-- MathJax: renders the \(...\) / \[...\] emitted by arithmatex -->
+    <script>
+      window.MathJax = {
+        tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+        options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+</head>
+<body>
+    <div class="toolbar">
+        <button type="button" class="width-toggle" data-width="narrow" title="Basculer la largeur">
+            Largeur&nbsp;: <span class="width-label">normale</span>
+        </button>
+    </div>
+
+    <main class="prose">
+        {{ markdowntext|markdownify }}
+    </main>
+
+    <script>
+      // Width toggle (narrow reading column <-> full width), persisted.
+      (function () {
+        const main = document.querySelector('.prose');
+        const btn = document.querySelector('.width-toggle');
+        const label = btn.querySelector('.width-label');
+        const KEY = 'prose-width';
+
+        function apply(mode) {
+          const wide = mode === 'wide';
+          main.classList.toggle('is-wide', wide);
+          btn.dataset.width = mode;
+          label.textContent = wide ? 'pleine' : 'normale';
+        }
+
+        apply(localStorage.getItem(KEY) || 'narrow');
+
+        btn.addEventListener('click', function () {
+          const next = btn.dataset.width === 'wide' ? 'narrow' : 'wide';
+          localStorage.setItem(KEY, next);
+          apply(next);
+        });
+      })();
+    </script>
+</body>
+</html>
