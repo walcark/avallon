@@ -12,7 +12,6 @@ without any src rewriting.
 from __future__ import annotations
 
 import html
-import json
 import re
 import subprocess
 from dataclasses import dataclass
@@ -117,15 +116,34 @@ def _highlight(text: str, query: str, width: int = 220) -> str:
     return ("… " if start > 0 else "") + highlighted + (" …" if end < len(text) else "")
 
 
-def _hit_for(index_md: Path, query: str, matched_line: str | None = None) -> SearchHit | None:
-    """Build a SearchHit for *index_md*. If *matched_line* is given (from rg),
-    the snippet is drawn from it; otherwise the whole file is searched."""
+# Rough Markdown -> plain text, so snippets read cleanly instead of showing
+# raw syntax. Code *content* is kept (only the ``` fences are dropped) so it
+# stays searchable; image/link targets collapse to their alt/link text.
+_MD_STRIP = [
+    (re.compile(r"^ *```.*$", re.MULTILINE), ""),    # code-fence lines
+    (re.compile(r"!\[([^\]]*)\]\([^)]*\)"), r"\1"),  # image  -> alt text
+    (re.compile(r"\[([^\]]*)\]\([^)]*\)"), r"\1"),   # link   -> link text
+    (re.compile(r"[`*_~>#|]+"), " "),                # residual inline/table syntax
+]
+
+
+def _plain_text(markdown: str) -> str:
+    text = markdown
+    for pattern, repl in _MD_STRIP:
+        text = pattern.sub(repl, text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _hit_for(index_md: Path, query: str) -> SearchHit | None:
+    """Build a SearchHit for *index_md*, or None if the query is not actually
+    present in the readable text. The snippet is always drawn from the Markdown
+    body turned into plain text (plus the searchable metadata), so it never
+    leaks raw syntax or frontmatter into the results."""
     post = frontmatter.load(index_md)
     page = _page_from(index_md, post)
-    if matched_line is not None:
-        return SearchHit(page=page, snippet=_highlight(matched_line, query))
-    # Python fallback path: search body + searchable metadata.
-    blob = "\n".join([post.content, page.title, page.summary, " ".join(page.tags)])
+    blob = "\n".join(
+        [_plain_text(post.content), page.title, page.summary, " ".join(page.tags)]
+    )
     if query.lower() not in blob.lower():
         return None
     return SearchHit(page=page, snippet=_highlight(blob, query))
@@ -149,7 +167,7 @@ def search(query: str) -> list[SearchHit]:
         return []
     try:
         proc = subprocess.run(
-            ["rg", "--json", "-i", "-F", "--", q, str(CONTENT_DIR), "--glob", "*.md"],
+            ["rg", "-l", "-i", "-F", "--", q, str(CONTENT_DIR), "--glob", "*.md"],
             capture_output=True, text=True, timeout=10,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
@@ -158,28 +176,18 @@ def search(query: str) -> list[SearchHit]:
     if proc.returncode >= 2:
         return _search_python(q)
 
-    # Keep the first matching line per file for the snippet.
-    first_line: dict[Path, str] = {}
-    for raw in proc.stdout.splitlines():
-        try:
-            evt = json.loads(raw)
-        except json.JSONDecodeError:
-            continue
-        if evt.get("type") != "match":
-            continue
-        path = Path(evt["data"]["path"]["text"])
-        if path not in first_line:
-            first_line[path] = evt["data"]["lines"]["text"]
-
+    # rg only shortlists candidate files; the snippet and the final match test
+    # are done in Python against the cleaned text (see _hit_for).
     hits = []
-    for path, line in first_line.items():
+    for line in proc.stdout.splitlines():
+        path = Path(line)
         try:
             rel = path.parent.relative_to(CONTENT_DIR)
         except ValueError:
             continue
         if len(rel.parts) != 3 or path.name != "index.md":
             continue  # ignore anything outside the <domaine>/<type>/<slug> shape
-        hit = _hit_for(path, q, matched_line=line)
+        hit = _hit_for(path, q)
         if hit is not None:
             hits.append(hit)
     hits.sort(key=lambda h: h.page.relpath)
