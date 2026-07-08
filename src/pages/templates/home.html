@@ -1,18 +1,12 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Accueil</title>
+{% extends "base.html" %}
 
-    <link rel="stylesheet" href="{% static 'pages/css/fonts.css' %}">
+{% block title %}Accueil{% endblock %}
+{% block topbar %}Accueil{% endblock %}
 
-    <link rel="stylesheet" href="{% static 'pages/css/style.css' %}">
-
+{% block head %}
     <style>
-      .home { max-width: var(--measure-wide); margin: 0 auto; padding-top: 1.5rem; }
-      .home h1 { color: var(--h1); }
+      .home { max-width: var(--measure-wide); margin: 0 auto; }
+      .home h1 { color: var(--h1); margin-top: 0.5rem; }
 
       .search { width: 100%; font: inherit; padding: 0.7rem 0.9rem;
                 border: 1px solid var(--border); border-radius: 0.6rem;
@@ -26,13 +20,16 @@
       .chip { font: inherit; font-size: 0.85rem; cursor: pointer;
               padding: 0.2rem 0.65rem; border-radius: 999px;
               border: 1px solid var(--border); background: var(--surface); color: var(--muted); }
+      .chip:hover { border-color: var(--accent); color: var(--ink); }
       .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 
       .count { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.75rem; }
 
       .cards { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.85rem; }
       .card { padding: 0.9rem 1.1rem; border: 1px solid var(--border);
-              border-radius: 0.7rem; background: var(--surface); }
+              border-radius: 0.7rem; background: var(--surface);
+              transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+      .card:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(16, 24, 40, 0.08); }
       .card.is-hidden { display: none; }
       .card-title { font-size: 1.1rem; font-weight: 700; text-decoration: none; color: var(--h2); }
       .card-title:hover { text-decoration: underline; }
@@ -44,11 +41,12 @@
       .tag { padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--code-bg); color: var(--muted); }
       .card-summary, .card-snippet { margin: 0.35rem 0 0; color: var(--ink); }
       .card-snippet { font-size: 0.92rem; color: var(--muted); }
-      .card-snippet mark { background: #fde68a; color: inherit; padding: 0 0.1em; border-radius: 0.2em; }
+      .card-snippet mark { background: var(--mark-bg); color: var(--mark-ink); padding: 0 0.1em; border-radius: 0.2em; }
       .empty { color: var(--muted); }
     </style>
-</head>
-<body>
+{% endblock %}
+
+{% block content %}
     <main class="home">
         <h1>Contenu</h1>
 
@@ -89,7 +87,9 @@
         <!-- JS-rendered full-text results (shown when the search box has text). -->
         <ul class="cards" id="results" hidden></ul>
     </main>
+{% endblock %}
 
+{% block scripts %}
     <script>
       (function () {
         const qInput = document.getElementById('q');
@@ -211,7 +211,7 @@
         });
 
         // Pre-select facets from the URL (?domaine=… / ?type=… / ?tag=…), so a
-        // breadcrumb link like /?domaine=travail lands on a filtered list.
+        // sidebar or breadcrumb link like /?domaine=travail lands pre-filtered.
         const params = new URLSearchParams(location.search);
         [['domaine', 'domain'], ['type', 'type'], ['tag', 'tag']].forEach(([param, kind]) => {
           params.getAll(param).forEach(val => {
@@ -225,5 +225,4 @@
         refresh();
       })();
     </script>
-</body>
-</html>
+{% endblock %}

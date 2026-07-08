@@ -71,15 +71,19 @@ options (`--domain`, `--type`, `--title`, `--tags`, `--summary`) pour scripter.
 - Le frontmatter est édité **au fil du texte** (seules les lignes de date
   bougent), donc les diffs restent propres.
 
-## Recherche et page d'accueil
+## Navigation, recherche et thème
 
+- **Shell commun** (`templates/base.html`) : une **sidebar gauche
+  rétractable** (bouton ☰) présente l'arbre `domaine ▸ type ▸ pages` (via des
+  `<details>` natifs, sans JS) ; la page courante y est mise en évidence. Une
+  topbar fine porte le titre de contexte et la bascule de **thème clair/sombre**
+  (persistée, sinon suit l'OS ; implémentée avec `light-dark()` en CSS).
 - **Accueil** (`/`) : toutes les pages, les plus récentes d'abord, avec des
   filtres à facettes **adaptatifs** — les types proposés suivent le domaine
   choisi, les tags suivent le couple domaine + type.
 - **Recherche plein-texte** (`/search/?q=`) : `ripgrep` multi-termes en **ET**
   (repli Python pur si `rg` absent), extraits surlignés tirés du texte lisible.
-- Les liens `/?domaine=…`, `/?type=…`, `/?tag=…` préactivent les filtres (le
-  fil d'Ariane des pages pointe dessus).
+- Les liens `/?domaine=…`, `/?type=…`, `/?tag=…` préactivent les filtres.
 
 ## Live reload (édition du Markdown)
 

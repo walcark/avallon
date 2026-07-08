@@ -136,6 +136,24 @@ def all_pages() -> list[Page]:
     return pages
 
 
+def nav_tree() -> list[dict[str, Any]]:
+    """Pages grouped domaine -> type -> pages, for the sidebar navigation.
+    Domaines and types are alphabetical; pages keep the recency order."""
+    grouped: dict[str, dict[str, list[Page]]] = {}
+    for page in all_pages():
+        grouped.setdefault(page.domain, {}).setdefault(page.type, []).append(page)
+    return [
+        {
+            "domain": domain,
+            "types": [
+                {"type": type_, "pages": pages}
+                for type_, pages in sorted(grouped[domain].items())
+            ],
+        }
+        for domain in sorted(grouped)
+    ]
+
+
 # --- Full-text search ------------------------------------------------------
 
 def _highlight(text: str, terms: list[str], width: int = 220) -> str:

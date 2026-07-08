@@ -1,0 +1,86 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Mes notes{% endblock %}</title>
+
+    <link rel="stylesheet" href="{% static 'pages/css/fonts.css' %}">
+    <link rel="stylesheet" href="{% static 'pages/css/style.css' %}">
+    {% block head %}{% endblock %}
+
+    <script>
+      // Apply the saved theme and sidebar state before first paint (no flash).
+      (function () {
+        try {
+          var t = localStorage.getItem('theme');
+          if (t) document.documentElement.style.colorScheme = t;
+          var nav = localStorage.getItem('nav');
+          if (nav === null) nav = window.innerWidth < 800 ? 'collapsed' : 'open';
+          if (nav === 'collapsed') document.documentElement.classList.add('nav-collapsed');
+        } catch (e) {}
+      })();
+    </script>
+</head>
+<body>
+    <aside class="sidebar">
+        <a class="brand" href="/">◆ Mes notes</a>
+        <nav class="tree" aria-label="Navigation du contenu">
+            {% for d in nav %}
+            <details class="tree-d"{% if not page or page.domain == d.domain %} open{% endif %}>
+                <summary>{{ d.domain }}</summary>
+                {% for t in d.types %}
+                <details class="tree-t"{% if page and page.domain == d.domain and page.type == t.type %} open{% endif %}>
+                    <summary>{{ t.type }}</summary>
+                    <ul>
+                        {% for p in t.pages %}
+                        <li><a href="{{ p.url }}"{% if page and page.relpath == p.relpath %} class="active" aria-current="page"{% endif %}>{{ p.title }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </details>
+                {% endfor %}
+            </details>
+            {% endfor %}
+        </nav>
+    </aside>
+
+    <div class="main">
+        <header class="topbar">
+            <button type="button" class="icon-btn" id="navToggle" aria-label="Afficher ou masquer le menu">☰</button>
+            <span class="topbar-title">{% block topbar %}{% endblock %}</span>
+            <button type="button" class="icon-btn" id="themeToggle" aria-label="Basculer le thème clair/sombre">🌓</button>
+        </header>
+
+        <div class="page">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <div class="scrim" id="scrim" aria-hidden="true"></div>
+
+    <script>
+      (function () {
+        var root = document.documentElement;
+        function setNav(collapsed) {
+          root.classList.toggle('nav-collapsed', collapsed);
+          try { localStorage.setItem('nav', collapsed ? 'collapsed' : 'open'); } catch (e) {}
+        }
+        document.getElementById('navToggle').addEventListener('click', function () {
+          setNav(!root.classList.contains('nav-collapsed'));
+        });
+        document.getElementById('scrim').addEventListener('click', function () { setNav(true); });
+
+        document.getElementById('themeToggle').addEventListener('click', function () {
+          var stored = localStorage.getItem('theme');
+          var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var showingDark = stored ? stored === 'dark' : systemDark;
+          var theme = showingDark ? 'light' : 'dark';
+          root.style.colorScheme = theme;
+          try { localStorage.setItem('theme', theme); } catch (e) {}
+        });
+      })();
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
