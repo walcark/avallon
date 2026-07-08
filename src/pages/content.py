@@ -99,21 +99,26 @@ def all_pages() -> list[Page]:
 
 # --- Full-text search ------------------------------------------------------
 
-def _highlight(text: str, query: str, width: int = 220) -> str:
-    """Return a safe-HTML excerpt of *text* around the first match of *query*,
-    with every (case-insensitive) occurrence wrapped in <mark>."""
+def _highlight(text: str, terms: list[str], width: int = 220) -> str:
+    """Return a safe-HTML excerpt of *text* centered on the first matched term,
+    with every (case-insensitive) occurrence of every term wrapped in <mark>."""
     low = text.lower()
-    i = low.find(query.lower())
-    if i == -1:
-        start, end = 0, min(len(text), width)
+    found = [i for i in (low.find(t.lower()) for t in terms) if i != -1]
+    if found:
+        start = max(0, min(found) - width // 3)
+        end = min(len(text), start + width)
     else:
-        start = max(0, i - width // 3)
-        end = min(len(text), i + len(query) + 2 * width // 3)
+        start, end = 0, min(len(text), width)
     excerpt = text[start:end].strip()
     escaped = html.escape(excerpt)
-    pattern = re.compile(re.escape(html.escape(query)), re.IGNORECASE)
-    highlighted = pattern.sub(lambda m: f"<mark>{m.group(0)}</mark>", escaped)
-    return ("… " if start > 0 else "") + highlighted + (" …" if end < len(text) else "")
+    # Longest first so overlapping terms mark the widest span at each position.
+    escaped_terms = sorted(
+        {re.escape(html.escape(t)) for t in terms if t}, key=len, reverse=True
+    )
+    if escaped_terms:
+        pattern = re.compile("|".join(escaped_terms), re.IGNORECASE)
+        escaped = pattern.sub(lambda m: f"<mark>{m.group(0)}</mark>", escaped)
+    return ("… " if start > 0 else "") + escaped + (" …" if end < len(text) else "")
 
 
 # Rough Markdown -> plain text, so snippets read cleanly instead of showing
@@ -134,26 +139,27 @@ def _plain_text(markdown: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def _hit_for(index_md: Path, query: str) -> SearchHit | None:
-    """Build a SearchHit for *index_md*, or None if the query is not actually
-    present in the readable text. The snippet is always drawn from the Markdown
-    body turned into plain text (plus the searchable metadata), so it never
-    leaks raw syntax or frontmatter into the results."""
+def _hit_for(index_md: Path, terms: list[str]) -> SearchHit | None:
+    """Build a SearchHit for *index_md*, or None unless *every* term is present
+    in the readable text (AND semantics). The snippet is always drawn from the
+    Markdown body turned into plain text (plus the searchable metadata), so it
+    never leaks raw syntax or frontmatter into the results."""
     post = frontmatter.load(index_md)
     page = _page_from(index_md, post)
     blob = "\n".join(
         [_plain_text(post.content), page.title, page.summary, " ".join(page.tags)]
     )
-    if query.lower() not in blob.lower():
+    low = blob.lower()
+    if not all(t.lower() in low for t in terms):
         return None
-    return SearchHit(page=page, snippet=_highlight(blob, query))
+    return SearchHit(page=page, snippet=_highlight(blob, terms))
 
 
-def _search_python(query: str) -> list[SearchHit]:
+def _search_python(terms: list[str]) -> list[SearchHit]:
     """Dependency-free fallback used when ripgrep is unavailable."""
     hits = []
     for index_md in sorted(CONTENT_DIR.glob(_PAGE_GLOB)):
-        hit = _hit_for(index_md, query)
+        hit = _hit_for(index_md, terms)
         if hit is not None:
             hits.append(hit)
     return hits
@@ -162,22 +168,23 @@ def _search_python(query: str) -> list[SearchHit]:
 def search(query: str) -> list[SearchHit]:
     """Full-text search over the content tree. Uses ripgrep for speed and
     falls back to a pure-Python scan if rg is missing or errors out."""
-    q = query.strip()
-    if not q:
+    terms = query.split()
+    if not terms:
         return []
+    # rg shortlists on the first term (any single term is a necessary condition
+    # for the AND); _hit_for then enforces that *all* terms are present and
+    # builds the snippet. Both run against the cleaned text.
     try:
         proc = subprocess.run(
-            ["rg", "-l", "-i", "-F", "--", q, str(CONTENT_DIR), "--glob", "*.md"],
+            ["rg", "-l", "-i", "-F", "--", terms[0], str(CONTENT_DIR), "--glob", "*.md"],
             capture_output=True, text=True, timeout=10,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
-        return _search_python(q)
+        return _search_python(terms)
     # rg exit codes: 0 = matches, 1 = no matches, >=2 = real error.
     if proc.returncode >= 2:
-        return _search_python(q)
+        return _search_python(terms)
 
-    # rg only shortlists candidate files; the snippet and the final match test
-    # are done in Python against the cleaned text (see _hit_for).
     hits = []
     for line in proc.stdout.splitlines():
         path = Path(line)
@@ -187,7 +194,7 @@ def search(query: str) -> list[SearchHit]:
             continue
         if len(rel.parts) != 3 or path.name != "index.md":
             continue  # ignore anything outside the <domaine>/<type>/<slug> shape
-        hit = _hit_for(path, q)
+        hit = _hit_for(path, terms)
         if hit is not None:
             hits.append(hit)
     hits.sort(key=lambda h: h.page.relpath)
