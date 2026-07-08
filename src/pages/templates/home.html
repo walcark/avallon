@@ -97,23 +97,59 @@
         const resultsEl = document.getElementById('results');
         const countEl = document.getElementById('count');
 
+        function parseTags(str) { return str ? str.split('||') : []; }
+
+        // Corpus snapshot from the server-rendered cards; used both to browse
+        // and to decide which facet chips are still relevant.
+        const PAGES = [...pagesEl.querySelectorAll('.card')].map(c => ({
+          domain: c.dataset.domain, type: c.dataset.type, tags: parseTags(c.dataset.tags),
+        }));
+
         // Active facet values, per facet kind. Empty set = no constraint.
         const active = { domain: new Set(), type: new Set(), tag: new Set() };
 
-        function parseTags(str) { return str ? str.split('||') : []; }
-
-        // Does an item (domain/type/tags) pass the current facet selection?
-        function matchFacets(domain, type, tags) {
-          if (active.domain.size && !active.domain.has(domain)) return false;
-          if (active.type.size && !active.type.has(type)) return false;
-          if (active.tag.size && !tags.some(t => active.tag.has(t))) return false;
+        function passDomainType(it) {
+          if (active.domain.size && !active.domain.has(it.domain)) return false;
+          if (active.type.size && !active.type.has(it.type)) return false;
+          return true;
+        }
+        function matchFacets(it) {
+          if (!passDomainType(it)) return false;
+          if (active.tag.size && !it.tags.some(t => active.tag.has(t))) return false;
           return true;
         }
 
-        function renderPages() {
+        // Keep only the facet chips still reachable under the current selection:
+        // types follow the chosen domain, tags follow domain+type. Any active
+        // value that just became unreachable is dropped, and an empty row hides.
+        function updateChips(dataset) {
+          const inDomain = dataset.filter(it => !active.domain.size || active.domain.has(it.domain));
+          toggleChips('type', new Set(inDomain.map(it => it.type)));
+          const inScope = dataset.filter(passDomainType);
+          toggleChips('tag', new Set(inScope.flatMap(it => it.tags)));
+        }
+        function toggleChips(kind, available) {
+          const group = document.querySelector(`.facet-group[data-facet="${kind}"]`);
+          let anyVisible = false;
+          group.querySelectorAll('.chip').forEach(chip => {
+            const ok = available.has(chip.dataset.value);
+            chip.hidden = !ok;
+            anyVisible = anyVisible || ok;
+            if (!ok && active[kind].has(chip.dataset.value)) {
+              active[kind].delete(chip.dataset.value);
+              chip.setAttribute('aria-pressed', 'false');
+            }
+          });
+          group.hidden = !anyVisible;
+        }
+
+        function showPages() {
+          updateChips(PAGES);
           let n = 0;
           pagesEl.querySelectorAll('.card').forEach(card => {
-            const ok = matchFacets(card.dataset.domain, card.dataset.type, parseTags(card.dataset.tags));
+            const ok = matchFacets({
+              domain: card.dataset.domain, type: card.dataset.type, tags: parseTags(card.dataset.tags),
+            });
             card.classList.toggle('is-hidden', !ok);
             if (ok) n++;
           });
@@ -122,9 +158,10 @@
           countEl.textContent = n + (n > 1 ? ' pages' : ' page');
         }
 
-        function renderResults(results) {
-          const kept = results.filter(r => matchFacets(r.domain, r.type, r.tags));
-          resultsEl.innerHTML = kept.map(r => `
+        function showResults(results) {
+          updateChips(results);
+          const kept = results.filter(matchFacets);
+          resultsEl.innerHTML = kept.length ? kept.map(r => `
             <li class="card">
               <a class="card-title" href="${r.url}">${escapeHtml(r.title)}</a>
               <div class="card-meta">
@@ -133,10 +170,7 @@
                 ${r.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}
               </div>
               <p class="card-snippet">${r.snippet}</p>
-            </li>`).join('');
-          if (!kept.length) {
-            resultsEl.innerHTML = '<li class="empty">Aucun résultat.</li>';
-          }
+            </li>`).join('') : '<li class="empty">Aucun résultat.</li>';
           pagesEl.hidden = true;
           resultsEl.hidden = false;
           countEl.textContent = kept.length + (kept.length > 1 ? ' résultats' : ' résultat');
@@ -152,13 +186,13 @@
         let timer = null, lastResults = null, lastQuery = null;
         function refresh() {
           const q = qInput.value.trim();
-          if (!q) { lastQuery = null; renderPages(); return; }
-          if (q === lastQuery) { renderResults(lastResults); return; }
+          if (!q) { lastQuery = null; showPages(); return; }
+          if (q === lastQuery) { showResults(lastResults); return; }
           clearTimeout(timer);
           timer = setTimeout(() => {
             fetch('/search/?q=' + encodeURIComponent(q))
               .then(r => r.json())
-              .then(data => { lastQuery = q; lastResults = data.results; renderResults(data.results); });
+              .then(data => { lastQuery = q; lastResults = data.results; showResults(data.results); });
           }, 180);
         }
 
@@ -188,7 +222,7 @@
           });
         });
 
-        renderPages();
+        refresh();
       })();
     </script>
 </body>
