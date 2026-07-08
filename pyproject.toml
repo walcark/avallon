@@ -39,6 +39,13 @@ serve = { cmd = "uvicorn config.asgi:application --reload --reload-include '*.ht
 stamp = "python scripts/stamp_dates.py --backfill"
 # Install the pre-commit hook that stamps `updated:` on staged content pages.
 setup-hooks = "git config core.hooksPath scripts/git-hooks"
+# Scaffold a new page (interactive: domaine/type from taxonomy.toml, free tags).
+new = "python scripts/new_page.py"
+# Extend the taxonomy vocabulary (edits taxonomy.toml and commits it).
+add-domain = "python scripts/taxonomy.py add-domain"
+add-type = "python scripts/taxonomy.py add-type"
+# Verify every existing page sits under a declared domaine/type.
+check-taxo = "python scripts/taxonomy.py check"
 
 [tool.pixi.dependencies]
 django = ">=6.0.6,<7"
