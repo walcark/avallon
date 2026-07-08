@@ -11,24 +11,171 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="{% static 'pages/css/style.css' %}">
+
+    <style>
+      .home { max-width: var(--measure-wide); margin: 0 auto; padding-top: 1.5rem; }
+      .home h1 { color: var(--h1); }
+
+      .search { width: 100%; font: inherit; padding: 0.7rem 0.9rem;
+                border: 1px solid var(--border); border-radius: 0.6rem;
+                background: var(--surface); color: var(--ink); }
+      .search:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+      .facets { display: flex; flex-direction: column; gap: 0.5rem; margin: 1rem 0 1.5rem; }
+      .facet-group { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem; }
+      .facet-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em;
+                     color: var(--muted); min-width: 5.5rem; }
+      .chip { font: inherit; font-size: 0.85rem; cursor: pointer;
+              padding: 0.2rem 0.65rem; border-radius: 999px;
+              border: 1px solid var(--border); background: var(--surface); color: var(--muted); }
+      .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+      .count { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.75rem; }
+
+      .cards { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.85rem; }
+      .card { padding: 0.9rem 1.1rem; border: 1px solid var(--border);
+              border-radius: 0.7rem; background: var(--surface); }
+      .card.is-hidden { display: none; }
+      .card-title { font-size: 1.1rem; font-weight: 700; text-decoration: none; color: var(--h2); }
+      .card-title:hover { text-decoration: underline; }
+      .card-meta { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center;
+                   margin: 0.35rem 0; font-size: 0.8rem; color: var(--muted); }
+      .card-path { font-family: "Roboto Mono", monospace; }
+      .tag { padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--code-bg); color: var(--muted); }
+      .card-summary, .card-snippet { margin: 0.35rem 0 0; color: var(--ink); }
+      .card-snippet { font-size: 0.92rem; color: var(--muted); }
+      .card-snippet mark { background: #fde68a; color: inherit; padding: 0 0.1em; border-radius: 0.2em; }
+      .empty { color: var(--muted); }
+    </style>
 </head>
 <body>
-    <main class="prose">
+    <main class="home">
         <h1>Contenu</h1>
 
-        {% if pages %}
-        <ul class="page-index">
+        <input type="search" class="search" id="q" placeholder="Rechercher dans le contenu…" autocomplete="off">
+
+        <div class="facets">
+            <div class="facet-group" data-facet="domain">
+                <span class="facet-label">Domaine</span>
+                {% for d in domains %}<button type="button" class="chip" aria-pressed="false" data-value="{{ d }}">{{ d }}</button>{% endfor %}
+            </div>
+            <div class="facet-group" data-facet="type">
+                <span class="facet-label">Type</span>
+                {% for t in types %}<button type="button" class="chip" aria-pressed="false" data-value="{{ t }}">{{ t }}</button>{% endfor %}
+            </div>
+            <div class="facet-group" data-facet="tag">
+                <span class="facet-label">Tags</span>
+                {% for t in tags %}<button type="button" class="chip" aria-pressed="false" data-value="{{ t }}">{{ t }}</button>{% endfor %}
+            </div>
+        </div>
+
+        <p class="count" id="count"></p>
+
+        <!-- Server-rendered full list (shown when the search box is empty). -->
+        <ul class="cards" id="pages">
             {% for p in pages %}
-            <li>
-                <a href="{{ p.url }}">{{ p.title }}</a>
-                <span class="meta">{{ p.domain }} / {{ p.type }}{% for t in p.tags %} · {{ t }}{% endfor %}</span>
-                {% if p.summary %}<p class="summary">{{ p.summary }}</p>{% endif %}
+            <li class="card" data-domain="{{ p.domain }}" data-type="{{ p.type }}" data-tags="{{ p.tags|join:'||' }}">
+                <a class="card-title" href="{{ p.url }}">{{ p.title }}</a>
+                <div class="card-meta">
+                    <span class="card-path">{{ p.domain }} / {{ p.type }}</span>
+                    {% for t in p.tags %}<span class="tag">{{ t }}</span>{% endfor %}
+                </div>
+                {% if p.summary %}<p class="card-summary">{{ p.summary }}</p>{% endif %}
             </li>
             {% endfor %}
         </ul>
-        {% else %}
-        <p>Aucune page pour l'instant.</p>
-        {% endif %}
+
+        <!-- JS-rendered full-text results (shown when the search box has text). -->
+        <ul class="cards" id="results" hidden></ul>
     </main>
+
+    <script>
+      (function () {
+        const qInput = document.getElementById('q');
+        const pagesEl = document.getElementById('pages');
+        const resultsEl = document.getElementById('results');
+        const countEl = document.getElementById('count');
+
+        // Active facet values, per facet kind. Empty set = no constraint.
+        const active = { domain: new Set(), type: new Set(), tag: new Set() };
+
+        function parseTags(str) { return str ? str.split('||') : []; }
+
+        // Does an item (domain/type/tags) pass the current facet selection?
+        function matchFacets(domain, type, tags) {
+          if (active.domain.size && !active.domain.has(domain)) return false;
+          if (active.type.size && !active.type.has(type)) return false;
+          if (active.tag.size && !tags.some(t => active.tag.has(t))) return false;
+          return true;
+        }
+
+        function renderPages() {
+          let n = 0;
+          pagesEl.querySelectorAll('.card').forEach(card => {
+            const ok = matchFacets(card.dataset.domain, card.dataset.type, parseTags(card.dataset.tags));
+            card.classList.toggle('is-hidden', !ok);
+            if (ok) n++;
+          });
+          pagesEl.hidden = false;
+          resultsEl.hidden = true;
+          countEl.textContent = n + (n > 1 ? ' pages' : ' page');
+        }
+
+        function renderResults(results) {
+          const kept = results.filter(r => matchFacets(r.domain, r.type, r.tags));
+          resultsEl.innerHTML = kept.map(r => `
+            <li class="card">
+              <a class="card-title" href="${r.url}">${escapeHtml(r.title)}</a>
+              <div class="card-meta">
+                <span class="card-path">${escapeHtml(r.domain)} / ${escapeHtml(r.type)}</span>
+                ${r.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}
+              </div>
+              <p class="card-snippet">${r.snippet}</p>
+            </li>`).join('');
+          if (!kept.length) {
+            resultsEl.innerHTML = '<li class="empty">Aucun résultat.</li>';
+          }
+          pagesEl.hidden = true;
+          resultsEl.hidden = false;
+          countEl.textContent = kept.length + (kept.length > 1 ? ' résultats' : ' résultat');
+        }
+
+        function escapeHtml(s) {
+          return s.replace(/[&<>"']/g, c => (
+            { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+          ));
+        }
+
+        // Full-text search: debounced call to /search/, cached per query.
+        let timer = null, lastResults = null, lastQuery = null;
+        function refresh() {
+          const q = qInput.value.trim();
+          if (!q) { lastQuery = null; renderPages(); return; }
+          if (q === lastQuery) { renderResults(lastResults); return; }
+          clearTimeout(timer);
+          timer = setTimeout(() => {
+            fetch('/search/?q=' + encodeURIComponent(q))
+              .then(r => r.json())
+              .then(data => { lastQuery = q; lastResults = data.results; renderResults(data.results); });
+          }, 180);
+        }
+
+        qInput.addEventListener('input', refresh);
+
+        document.querySelectorAll('.facet-group').forEach(group => {
+          const kind = group.dataset.facet;
+          group.addEventListener('click', e => {
+            const chip = e.target.closest('.chip');
+            if (!chip) return;
+            const on = chip.getAttribute('aria-pressed') === 'true';
+            chip.setAttribute('aria-pressed', String(!on));
+            active[kind][on ? 'delete' : 'add'](chip.dataset.value);
+            refresh();
+          });
+        });
+
+        renderPages();
+      })();
+    </script>
 </body>
 </html>

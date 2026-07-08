@@ -5,6 +5,7 @@ from django.http import (
     FileResponse,
     Http404,
     HttpResponsePermanentRedirect,
+    JsonResponse,
     StreamingHttpResponse,
 )
 from django.shortcuts import render
@@ -16,10 +17,41 @@ POLL_INTERVAL = 0.3
 
 
 def home(request):
-    """Central page: lists every page in the content tree.
+    """Central page: lists every page in the content tree and exposes the
+    facet values (domains, types, tags) used by the client-side filters. The
+    full-text search box calls the `search` endpoint below."""
+    pages = content.all_pages()
+    return render(
+        request,
+        "home.html",
+        {
+            "pages": pages,
+            "domains": sorted({p.domain for p in pages}),
+            "types": sorted({p.type for p in pages}),
+            "tags": sorted({t for p in pages for t in p.tags}),
+        },
+    )
 
-    Filtering (domain/type/tags) and full-text search come in phase 2."""
-    return render(request, "home.html", {"pages": content.all_pages()})
+
+def search(request):
+    """JSON full-text search over the content tree (`?q=<query>`). Facet
+    filtering is applied client-side on the returned results."""
+    hits = content.search(request.GET.get("q", ""))
+    return JsonResponse(
+        {
+            "results": [
+                {
+                    "url": h.page.url,
+                    "title": h.page.title,
+                    "domain": h.page.domain,
+                    "type": h.page.type,
+                    "tags": h.page.tags,
+                    "snippet": h.snippet,
+                }
+                for h in hits
+            ]
+        }
+    )
 
 
 def serve_content(request, relpath):
