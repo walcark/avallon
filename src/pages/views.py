@@ -46,6 +46,7 @@ def search(request):
                     "domain": h.page.domain,
                     "type": h.page.type,
                     "tags": h.page.tags,
+                    "date": h.page.display_date,
                     "snippet": h.snippet,
                 }
                 for h in hits

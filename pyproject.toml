@@ -35,6 +35,10 @@ runserver = "python manage.py runserver"
 # ASGI server: required for the live-reload SSE stream to actually stream
 # (the WSGI runserver buffers async responses instead of streaming them).
 serve = { cmd = "uvicorn config.asgi:application --reload --host 127.0.0.1 --port 8000", cwd = "src" }
+# Fill any missing date/updated in content frontmatter (from git dates / mtime).
+stamp = "python scripts/stamp_dates.py --backfill"
+# Install the pre-commit hook that stamps `updated:` on staged content pages.
+setup-hooks = "git config core.hooksPath scripts/git-hooks"
 
 [tool.pixi.dependencies]
 django = ">=6.0.6,<7"

@@ -29,6 +29,23 @@ CONTENT_DIR: Path = settings.CONTENT_DIR
 _PAGE_GLOB = "*/*/*/index.md"
 
 
+def _as_date_str(value: Any) -> str:
+    """Normalize a frontmatter date (datetime.date, str or None) to an ISO
+    'YYYY-MM-DD' string usable for sorting; '' when absent."""
+    if value is None:
+        return ""
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)
+
+
+def _fr_date(value: Any) -> str:
+    """Human 'JJ/MM/AAAA' from a frontmatter date, or '' if absent/unparsable."""
+    s = _as_date_str(value)
+    m = re.match(r"(\d{4})-(\d{2})-(\d{2})", s)
+    return f"{m.group(3)}/{m.group(2)}/{m.group(1)}" if m else s
+
+
 @dataclass(frozen=True)
 class Page:
     """Metadata for one Markdown page, derived from its path + frontmatter."""
@@ -38,13 +55,30 @@ class Page:
     type: str             # from the path: .../<type>/...
     slug: str             # the leaf directory name
     title: str
-    date: Any | None
+    date: Any | None      # creation date (frontmatter, set once)
+    updated: Any | None   # last-modified date (frontmatter, stamped on commit)
     tags: list[str]
     summary: str
 
     @property
     def url(self) -> str:
         return f"/{self.relpath}/"
+
+    @property
+    def display_date(self) -> str:
+        """Human date shown in listings: last-modified, falling back to creation."""
+        return _fr_date(self.updated or self.date)
+
+
+def _recency_key(page: Page) -> str:
+    """Sort key for 'most recent first': updated, falling back to creation."""
+    return _as_date_str(page.updated) or _as_date_str(page.date)
+
+
+def _sort_hits(hits: list["SearchHit"]) -> None:
+    """Order search hits like the home page: most recent first, then by title."""
+    hits.sort(key=lambda h: h.page.title)
+    hits.sort(key=lambda h: _recency_key(h.page), reverse=True)
 
 
 @dataclass(frozen=True)
@@ -83,6 +117,7 @@ def _page_from(index_md: Path, post: frontmatter.Post | None = None) -> Page:
         slug=parts[-1],
         title=str(post.get("title", parts[-1])),
         date=post.get("date"),
+        updated=post.get("updated"),
         tags=[str(t) for t in (post.get("tags") or [])],
         summary=str(post.get("summary", "")),
     )
@@ -93,8 +128,12 @@ def load_page(index_md: Path) -> Page:
 
 
 def all_pages() -> list[Page]:
-    """Every page in the tree: each content/<domaine>/<type>/<slug>/index.md."""
-    return [_page_from(f) for f in sorted(CONTENT_DIR.glob(_PAGE_GLOB))]
+    """Every page in the tree, most recently modified first (ties broken by
+    title). Each is a content/<domaine>/<type>/<slug>/index.md."""
+    pages = [_page_from(f) for f in CONTENT_DIR.glob(_PAGE_GLOB)]
+    pages.sort(key=lambda p: p.title)
+    pages.sort(key=_recency_key, reverse=True)
+    return pages
 
 
 # --- Full-text search ------------------------------------------------------
@@ -162,6 +201,7 @@ def _search_python(terms: list[str]) -> list[SearchHit]:
         hit = _hit_for(index_md, terms)
         if hit is not None:
             hits.append(hit)
+    _sort_hits(hits)
     return hits
 
 
@@ -197,5 +237,5 @@ def search(query: str) -> list[SearchHit]:
         hit = _hit_for(path, terms)
         if hit is not None:
             hits.append(hit)
-    hits.sort(key=lambda h: h.page.relpath)
+    _sort_hits(hits)
     return hits

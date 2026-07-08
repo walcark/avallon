@@ -39,6 +39,8 @@
       .card-meta { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center;
                    margin: 0.35rem 0; font-size: 0.8rem; color: var(--muted); }
       .card-path { font-family: "Roboto Mono", monospace; }
+      .card-date { font-family: "Roboto Mono", monospace; }
+      .card-date::before { content: "· "; }
       .tag { padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--code-bg); color: var(--muted); }
       .card-summary, .card-snippet { margin: 0.35rem 0 0; color: var(--ink); }
       .card-snippet { font-size: 0.92rem; color: var(--muted); }
@@ -76,6 +78,7 @@
                 <a class="card-title" href="{{ p.url }}">{{ p.title }}</a>
                 <div class="card-meta">
                     <span class="card-path">{{ p.domain }} / {{ p.type }}</span>
+                    {% if p.display_date %}<span class="card-date">{{ p.display_date }}</span>{% endif %}
                     {% for t in p.tags %}<span class="tag">{{ t }}</span>{% endfor %}
                 </div>
                 {% if p.summary %}<p class="card-summary">{{ p.summary }}</p>{% endif %}
@@ -126,6 +129,7 @@
               <a class="card-title" href="${r.url}">${escapeHtml(r.title)}</a>
               <div class="card-meta">
                 <span class="card-path">${escapeHtml(r.domain)} / ${escapeHtml(r.type)}</span>
+                ${r.date ? `<span class="card-date">${escapeHtml(r.date)}</span>` : ''}
                 ${r.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}
               </div>
               <p class="card-snippet">${r.snippet}</p>
