@@ -1,10 +1,10 @@
-{% load markdownify static %}
+{% load static %}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Markdown</title>
+    <title>{{ page.title }}</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,7 +30,7 @@
     </div>
 
     <main class="prose">
-        {{ markdowntext|markdownify }}
+        {{ content_html|safe }}
     </main>
 
     <script>
@@ -54,6 +54,24 @@
           const next = btn.dataset.width === 'wide' ? 'narrow' : 'wide';
           localStorage.setItem(KEY, next);
           apply(next);
+        });
+      })();
+    </script>
+
+    <script>
+      // Live reload: subscribe to the SSE stream and swap the rendered HTML
+      // into .prose in place whenever the .md file changes on disk. Replacing
+      // only innerHTML keeps the scroll position and the width-toggle state.
+      (function () {
+        const main = document.querySelector('.prose');
+        const es = new EventSource('/stream/?path=' + encodeURIComponent('{{ relpath }}'));
+
+        es.addEventListener('update', function (e) {
+          main.innerHTML = JSON.parse(e.data);
+          // Re-typeset math in the freshly injected fragment (if MathJax is up).
+          if (window.MathJax && window.MathJax.typesetPromise) {
+            window.MathJax.typesetPromise([main]);
+          }
         });
       })();
     </script>
