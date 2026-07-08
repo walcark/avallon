@@ -24,6 +24,15 @@
 </head>
 <body>
     <div class="toolbar">
+        <nav class="breadcrumb" aria-label="Fil d'Ariane">
+            <a href="/">Accueil</a>
+            <span class="sep">/</span>
+            <a href="/?domaine={{ page.domain|urlencode }}">{{ page.domain }}</a>
+            <span class="sep">/</span>
+            <a href="/?type={{ page.type|urlencode }}">{{ page.type }}</a>
+            <span class="sep">/</span>
+            <span class="current" aria-current="page">{{ page.title }}</span>
+        </nav>
         <button type="button" class="width-toggle" data-width="narrow" title="Basculer la largeur">
             Largeur&nbsp;: <span class="width-label">normale</span>
         </button>

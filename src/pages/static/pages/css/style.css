@@ -50,10 +50,34 @@ body {
     top: 0;
     z-index: 10;
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
     padding: 0.75rem 0;
     margin: 0 auto;
     max-width: var(--measure-wide);
+}
+
+/* Breadcrumb: Accueil / domaine / type / titre courant */
+.breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4em;
+    min-width: 0;
+    font-size: 0.82rem;
+    color: var(--muted);
+}
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.breadcrumb .sep { color: var(--rule); }
+.breadcrumb .current {
+    color: var(--ink);
+    font-weight: 500;
+    max-width: 40ch;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 .width-toggle {
     font-family: inherit;
