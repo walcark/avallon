@@ -60,7 +60,10 @@ def pick(prompt: str, options: list[str]) -> str:
     for i, opt in enumerate(options, 1):
         print(f"  {i}) {opt}")
     while True:
-        s = input("> ").strip()
+        try:
+            s = input("> ").strip()
+        except EOFError:
+            return ""  # no input available (non-interactive) -> caller cancels
         if s.isdigit() and 1 <= int(s) <= len(options):
             return options[int(s) - 1]
         if s in options:
@@ -73,7 +76,10 @@ def ask(prompt: str) -> str:
             ["gum", "input", "--header", prompt],
             text=True, capture_output=True,
         ).stdout.strip()
-    return input(f"{prompt} : ").strip()
+    try:
+        return input(f"{prompt} : ").strip()
+    except EOFError:
+        return ""
 
 
 def main() -> int:
@@ -91,9 +97,13 @@ def main() -> int:
                  "(pixi run add-domain …, pixi run add-type …).")
 
     domain = args.domain or pick("Domaine", taxo["domains"])
+    if not domain:
+        sys.exit("Annulé.")
     if domain not in taxo["domains"]:
         sys.exit(f"domaine non déclaré : {domain}  (pixi run add-domain {domain})")
     type_ = args.type or pick("Type", taxo["types"])
+    if not type_:
+        sys.exit("Annulé.")
     if type_ not in taxo["types"]:
         sys.exit(f"type non déclaré : {type_}  (pixi run add-type {type_})")
 

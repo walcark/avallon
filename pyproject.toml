@@ -51,3 +51,6 @@ check-taxo = "python scripts/taxonomy.py check"
 django = ">=6.0.6,<7"
 pygments = ">=2.20,<3"
 pymdown-extensions = ">=11,<12"
+# Fuzzy picker for `pixi run new` (domaine/type). Pinned here so the command
+# uses the project's own fzf, not one leaking from another env's PATH.
+fzf = "*"
