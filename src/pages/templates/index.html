@@ -6,21 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ page.title }}</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'pages/css/fonts.css' %}">
 
     <link rel="stylesheet" href="{% static 'pages/css/pygments.css' %}">
     <link rel="stylesheet" href="{% static 'pages/css/style.css' %}">
 
-    <!-- MathJax: renders the \(...\) / \[...\] emitted by arithmatex -->
+    <!-- MathJax (self-hosted SVG build): renders the \(...\) / \[...\] emitted
+         by arithmatex. SVG output embeds glyph paths, so no external font files
+         are fetched — the whole thing works offline. -->
     <script>
       window.MathJax = {
         tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
         options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
       };
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+    <script src="{% static 'pages/js/mathjax/tex-mml-svg.js' %}" async></script>
 </head>
 <body>
     <div class="toolbar">
