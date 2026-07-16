@@ -183,6 +183,8 @@ def _highlight(text: str, terms: list[str], width: int = 220) -> str:
 # stays searchable; image/link targets collapse to their alt/link text.
 _MD_STRIP = [
     (re.compile(r"^ *```.*$", re.MULTILINE), ""),    # code-fence lines
+    (re.compile(r"\[\[[^\]|]+\|([^\]]+)\]\]"), r"\1"),  # [[slug|label]] -> label
+    (re.compile(r"\[\[([^\]|]+)\]\]"), r"\1"),          # [[slug]]       -> slug
     (re.compile(r"!\[([^\]]*)\]\([^)]*\)"), r"\1"),  # image  -> alt text
     (re.compile(r"\[([^\]]*)\]\([^)]*\)"), r"\1"),   # link   -> link text
     (re.compile(r"[`*_~>#|]+"), " "),                # residual inline/table syntax

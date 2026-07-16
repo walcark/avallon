@@ -84,6 +84,8 @@ MARKDOWNIFY = {
             "pymdownx.caret",                  # ^superscript^ and <ins>
             "pymdownx.tilde",                  # ~subscript~ and ~~strike~~
             "pymdownx.smartsymbols",           # (c) (tm) --> etc.
+            # Local extension: [[slug]] cross-references between pages.
+            "pages.mdx.wikilinks",
         ],
         "MARKDOWN_EXTENSION_CONFIGS": {
             # generic=True emits \(...\) / \[...\] spans for MathJax to render

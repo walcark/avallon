@@ -104,6 +104,9 @@ options (`--domain`, `--type`, `--title`, `--tags`, `--summary`) pour scripter.
 - **Recherche plein-texte** (`/search/?q=`) : `ripgrep` multi-termes en **ET**
   (repli Python pur si `rg` absent), extraits surlignés tirés du texte lisible.
 - Les liens `/?domaine=…`, `/?type=…`, `/?tag=…` préactivent les filtres.
+- **Renvois entre pages** : `[[slug]]` (ou `[[domaine/type/slug]]`, ou
+  `[[slug|texte affiché]]`) dans le Markdown devient un vrai lien vers la page.
+  Une cible introuvable s'affiche signalée (barrée), pas silencieusement perdue.
 
 ## Live reload (édition du Markdown)
 

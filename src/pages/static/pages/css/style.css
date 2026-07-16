@@ -236,6 +236,15 @@ body {
     transition: border-color 0.15s ease;
 }
 .prose a:hover { border-bottom-color: var(--accent); }
+/* Internal cross-references ([[slug]]). Resolved links inherit the link color
+   with a subtle dotted underline; unresolved ones are flagged, not linked. */
+.prose a.wikilink { border-bottom: 1px dotted var(--accent); }
+.prose a.wikilink:hover { border-bottom-style: solid; }
+.prose .wikilink-missing {
+    color: var(--warn-ink);
+    border-bottom: 1px dashed var(--warn-ink);
+    cursor: help;
+}
 .prose strong { font-weight: 700; }
 sub, sup { line-height: 0; }
 
