@@ -10,14 +10,22 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import sys
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Root of the Markdown content tree (content/<domaine>/<type>/<slug>/index.md).
-# It lives at the repo root, one level above src/ (== BASE_DIR).
-CONTENT_DIR = BASE_DIR.parent / "content"
+# Root of the Markdown content tree (<domaine>/<type>/<slug>/index.md), plus
+# taxonomy.toml. Its location is user-configurable and lives *outside* this repo
+# by default (see scripts/content_config.py): env KW_CONTENT_DIR, else the
+# ~/.config/kevin-website/config.toml pointer, else the in-repo content/ (dev).
+_SCRIPTS = BASE_DIR.parent / "scripts"
+if str(_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS))
+from content_config import resolve_content_dir  # noqa: E402
+
+CONTENT_DIR = resolve_content_dir()
 
 
 # Quick-start development settings - unsuitable for production

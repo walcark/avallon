@@ -1,6 +1,0 @@
-# Vocabulaire autorisé pour les pages du site.
-# Édité par `pixi run add-domain <nom>` / `pixi run add-type <nom>`.
-# Chaque page vit dans content/<domaine>/<type>/<slug>/.
-
-domains = ["administratif", "dessin", "maison", "travail"]
-types = ["cr", "notes"]

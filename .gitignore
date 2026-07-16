@@ -1,3 +1,7 @@
 # pixi environments
 .pixi/*
 !.pixi/config.toml
+
+# Content lives in an external repo (pixi run content-init). Keep it out of
+# the app repo; the in-repo content/ is only the dev fallback.
+/content/

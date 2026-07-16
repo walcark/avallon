@@ -23,10 +23,10 @@ import sys
 import unicodedata
 from pathlib import Path
 
+import content_config as cc
 import taxonomy  # sibling module (scripts/ is on sys.path[0])
 
-ROOT = taxonomy.ROOT
-CONTENT = ROOT / "content"
+CONTENT = cc.resolve_content_dir()
 
 
 def slugify(text: str) -> str:
@@ -135,7 +135,7 @@ def main() -> int:
 
     target.mkdir(parents=True)
     (target / "index.md").write_text(body, encoding="utf-8")
-    print(f"Créé : {(target / 'index.md').relative_to(ROOT)}")
+    print(f"Créé : {target / 'index.md'}")
     print(f"URL  : /{target.relative_to(CONTENT)}/")
     return 0
 

@@ -26,8 +26,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-CONTENT = ROOT / "content"
+import content_config as cc
+
+# The (user-configurable) content dir; also the git repo the dates come from.
+CONTENT = cc.resolve_content_dir()
 TODAY = datetime.date.today().isoformat()
 
 
@@ -42,7 +44,7 @@ def _git_date(path: Path, added: bool) -> str | None:
     cmd += ["--", str(path)]
     try:
         out = subprocess.run(
-            cmd, cwd=ROOT, capture_output=True, text=True
+            cmd, cwd=CONTENT, capture_output=True, text=True
         ).stdout.strip()
     except OSError:
         return None
@@ -175,7 +177,7 @@ def main() -> int:
             )
         if changed:
             n += 1
-            print(f"  stamped {path.relative_to(ROOT)}")
+            print(f"  stamped {path.relative_to(CONTENT)}")
     print(f"{n} file(s) stamped.")
     return 0
 

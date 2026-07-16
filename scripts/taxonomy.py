@@ -20,8 +20,12 @@ import sys
 import tomllib
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-TAXO = ROOT / "taxonomy.toml"
+import content_config as cc
+
+# taxonomy.toml lives at the root of the (user-configurable) content dir, next
+# to the notes, so it travels with them and is versioned in the content repo.
+CONTENT = cc.resolve_content_dir()
+TAXO = cc.taxonomy_path(CONTENT)
 _SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _KEY = {"domain": "domains", "type": "types"}
 _FR = {"domain": "domaine", "type": "type"}
@@ -63,12 +67,14 @@ def add(kind: str, name: str, *, commit: bool = True) -> bool:
     data[key].append(name)
     TAXO.write_text(_dump(data), encoding="utf-8")
     print(f"{_FR[kind]} « {name} » ajouté à {TAXO.name}.")
-    if commit:
-        subprocess.run(["git", "add", "--", str(TAXO)], cwd=ROOT, check=True)
+    # Only commit when the content dir is its own git repo (the external case);
+    # in the in-repo dev fallback it's gitignored, so committing would fail.
+    if commit and cc.is_git_root(CONTENT):
+        subprocess.run(["git", "add", "--", str(TAXO)], cwd=CONTENT, check=True)
         subprocess.run(
             ["git", "commit", "-m", f"taxo: ajoute le {_FR[kind]} « {name} »",
              "--", str(TAXO)],
-            cwd=ROOT, check=True,
+            cwd=CONTENT, check=True,
         )
     return True
 
@@ -77,10 +83,10 @@ def check() -> int:
     """Verify every existing page sits under a declared domain and type."""
     data = load()
     bad = []
-    for idx in sorted((ROOT / "content").glob("*/*/*/index.md")):
+    for idx in sorted(CONTENT.glob("*/*/*/index.md")):
         domain, type_ = idx.parts[-4], idx.parts[-3]
         if domain not in data["domains"] or type_ not in data["types"]:
-            bad.append((idx.relative_to(ROOT), domain, type_))
+            bad.append((idx.relative_to(CONTENT), domain, type_))
     for rel, domain, type_ in bad:
         dd = "" if domain in data["domains"] else " ✗inconnu"
         tt = "" if type_ in data["types"] else " ✗inconnu"

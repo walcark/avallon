@@ -37,8 +37,10 @@ runserver = "python manage.py runserver"
 serve = { cmd = "uvicorn config.asgi:application --reload --reload-include '*.html' --reload-include '*.css' --host 127.0.0.1 --port 8000", cwd = "src" }
 # Fill any missing date/updated in content frontmatter (from git dates / mtime).
 stamp = "python scripts/stamp_dates.py --backfill"
-# Install the pre-commit hook that stamps `updated:` on staged content pages.
-setup-hooks = "git config core.hooksPath scripts/git-hooks"
+# Content location (notes + taxonomy.toml), stored in ~/.config/kevin-website/.
+content-where = "python scripts/content_repo.py where"        # print active dir
+content-init = "python scripts/content_repo.py init"          # create/adopt <path>
+content-set = "python scripts/content_repo.py set"            # activate <path>
 # Scaffold a new page (interactive: domaine/type from taxonomy.toml, free tags).
 new = "python scripts/new_page.py"
 # Extend the taxonomy vocabulary (edits taxonomy.toml and commits it).

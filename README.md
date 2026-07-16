@@ -29,10 +29,34 @@ summary: Une phrase de résumé affichée sur la page d'accueil.
 ---
 ```
 
+## Emplacement du contenu (dépôt externe)
+
+Le contenu (arbre Markdown **et** `taxonomy.toml`) vit dans un **dépôt séparé**,
+hors de ce repo applicatif — comme les données de `pytodo`. L'emplacement actif
+est stocké dans un fichier local non versionné
+(`~/.config/kevin-website/config.toml`, `content_dir = "…"`).
+
+```
+pixi run content-init <chemin>   # crée/adopte le dépôt de contenu, l'active,
+                                 # (propose de migrer le contenu in-repo),
+                                 # y installe le hook de dates + commit initial
+pixi run content-set  <chemin>   # active un dépôt de contenu existant
+pixi run content-where           # affiche le dépôt actif et sa provenance
+```
+
+Résolution de l'emplacement (le premier qui répond gagne) :
+
+1. la variable d'environnement **`KW_CONTENT_DIR`** (override, utile en test/CI) ;
+2. **`content_dir`** dans `~/.config/kevin-website/config.toml` ;
+3. le dossier **`content/`** de ce repo (repli de dev, pour qu'un clone tourne
+   sans configuration).
+
+Après un changement d'emplacement, **redémarre le serveur** (`pixi run serve`).
+
 ## Taxonomie déclarée
 
-`taxonomy.toml` (à la racine) est la **source de vérité** des domaines et types
-autorisés. On l'étend avec :
+`taxonomy.toml` (à la racine du dépôt de contenu) est la **source de vérité** des
+domaines et types autorisés. On l'étend avec :
 
 ```
 pixi run add-domain maison      # ajoute un domaine + commit taxonomy.toml
@@ -58,14 +82,10 @@ options (`--domain`, `--type`, `--title`, `--tags`, `--summary`) pour scripter.
 ## Dates de modification
 
 - `date` = création, `updated` = dernière modification.
-- Un **hook `pre-commit`** tamponne `updated` (et remplit `date` si absent) sur
-  chaque page `content/**/index.md` stagée, puis la ré-ajoute au commit.
-  À installer une fois par clone :
-
-  ```
-  pixi run setup-hooks          # git config core.hooksPath scripts/git-hooks
-  ```
-
+- Un **hook `pre-commit`** (installé dans le **dépôt de contenu** par
+  `content-init` / `content-set`) tamponne `updated` (et remplit `date` si
+  absent) sur chaque page `**/index.md` stagée, puis la ré-ajoute au commit. Le
+  hook n'appelle que la bibliothèque standard, donc il tourne sans l'env pixi.
 - `pixi run stamp` remplit les dates manquantes de toutes les notes (depuis
   l'historique git, repli sur le `mtime`).
 - Le frontmatter est édité **au fil du texte** (seules les lignes de date
@@ -110,7 +130,9 @@ Les polices (Roboto) et **MathJax** (build SVG) sont **auto-hébergées** sous
 | `pixi run add-type <nom>` | Ajoute un type à la taxonomie (+ commit) |
 | `pixi run check-taxo` | Vérifie la conformité des pages à la taxonomie |
 | `pixi run stamp` | Remplit les `date`/`updated` manquants |
-| `pixi run setup-hooks` | Installe le hook de tampon des dates |
+| `pixi run content-init <chemin>` | Crée/adopte et active le dépôt de contenu externe |
+| `pixi run content-set <chemin>` | Active un dépôt de contenu existant |
+| `pixi run content-where` | Affiche le dépôt de contenu actif |
 
 ## Lancer
 
