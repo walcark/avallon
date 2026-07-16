@@ -115,17 +115,20 @@
         }
         function matchFacets(it) {
           if (!passDomainType(it)) return false;
-          if (active.tag.size && !it.tags.some(t => active.tag.has(t))) return false;
+          // Tags combine with AND: a card must carry every selected tag.
+          if (active.tag.size && ![...active.tag].every(t => it.tags.includes(t))) return false;
           return true;
         }
 
         // Keep only the facet chips still reachable under the current selection:
-        // types follow the chosen domain, tags follow domain+type. Any active
-        // value that just became unreachable is dropped, and an empty row hides.
+        // types follow the chosen domain, tags follow domain+type *and* the
+        // tags already picked (so only co-selectable tags remain, matching the
+        // AND semantics). Any active value that just became unreachable is
+        // dropped, and an empty row hides.
         function updateChips(dataset) {
           const inDomain = dataset.filter(it => !active.domain.size || active.domain.has(it.domain));
           toggleChips('type', new Set(inDomain.map(it => it.type)));
-          const inScope = dataset.filter(passDomainType);
+          const inScope = dataset.filter(matchFacets);
           toggleChips('tag', new Set(inScope.flatMap(it => it.tags)));
         }
         function toggleChips(kind, available) {
