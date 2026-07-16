@@ -19,6 +19,7 @@
           var nav = localStorage.getItem('nav');
           if (nav === null) nav = window.innerWidth < 800 ? 'collapsed' : 'open';
           if (nav === 'collapsed') document.documentElement.classList.add('nav-collapsed');
+          if (localStorage.getItem('reading') === 'wide') document.documentElement.classList.add('reading-wide');
         } catch (e) {}
       })();
     </script>
@@ -49,6 +50,7 @@
         <header class="topbar">
             <button type="button" class="icon-btn" id="navToggle" aria-label="Afficher ou masquer le menu">☰</button>
             <span class="topbar-title">{% block topbar %}{% endblock %}</span>
+            {% block topbar_actions %}{% endblock %}
             <button type="button" class="icon-btn" id="themeToggle" aria-label="Basculer le thème clair/sombre">🌓</button>
         </header>
 
@@ -70,6 +72,19 @@
           setNav(!root.classList.contains('nav-collapsed'));
         });
         document.getElementById('scrim').addEventListener('click', function () { setNav(true); });
+
+        var widthToggle = document.getElementById('widthToggle');
+        if (widthToggle) {
+          var syncWidth = function () {
+            widthToggle.setAttribute('aria-pressed', String(root.classList.contains('reading-wide')));
+          };
+          syncWidth();
+          widthToggle.addEventListener('click', function () {
+            var wide = root.classList.toggle('reading-wide');
+            try { localStorage.setItem('reading', wide ? 'wide' : 'narrow'); } catch (e) {}
+            syncWidth();
+          });
+        }
 
         document.getElementById('themeToggle').addEventListener('click', function () {
           var stored = localStorage.getItem('theme');

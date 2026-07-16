@@ -197,6 +197,18 @@ body {
     border-radius: 14px;
     box-shadow: 0 1px 3px var(--shadow-sm), 0 8px 24px var(--shadow-lg);
 }
+/* Reading-width toggle: narrow measure (default, comfortable line length) vs
+   extended, where the panel fills the content area. Persisted in localStorage. */
+:root.reading-wide .prose {
+    max-width: none;
+}
+/* The toggle button shows the "expand" glyph in narrow mode and "collapse" in
+   extended mode; the swap is driven by the same root class, no JS needed. */
+#widthToggle { display: inline-flex; align-items: center; }
+#widthToggle svg { display: block; width: 1.15rem; height: 1.15rem; }
+#widthToggle .i-collapse,
+:root.reading-wide #widthToggle .i-expand { display: none; }
+:root.reading-wide #widthToggle .i-collapse { display: block; }
 
 .prose > :first-child { margin-top: 0; }
 .prose > :last-child { margin-bottom: 0; }
