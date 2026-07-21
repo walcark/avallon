@@ -14,6 +14,7 @@ from __future__ import annotations
 import html
 import re
 import subprocess
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -156,26 +157,75 @@ def nav_tree() -> list[dict[str, Any]]:
 
 # --- Full-text search ------------------------------------------------------
 
+def _fold(text: str) -> tuple[str, list[int]]:
+    """Lowercase *text* and strip its diacritics, so a query typed without
+    accents still matches ("systeme" finds "système").
+
+    Returns the folded text together with a map from each folded character back
+    to the index of the character it came from in *text*. Folding can change the
+    length (one source character may fold to zero or several), so highlighting
+    needs that map to place its <mark> tags on the original string.
+    """
+    folded: list[str] = []
+    origin: list[int] = []
+    for i, char in enumerate(text):
+        decomposed = unicodedata.normalize("NFD", char)
+        base = "".join(c for c in decomposed if not unicodedata.combining(c))
+        piece = base.lower()
+        folded.append(piece)
+        origin.extend([i] * len(piece))
+    return "".join(folded), origin
+
+
+def _fold_text(text: str) -> str:
+    """The folded form of *text*, without the index map."""
+    return _fold(text)[0]
+
+
+def _term_pattern(terms: list[str]) -> re.Pattern[str] | None:
+    """Compile the folded *terms* into one alternation, longest first so that
+    overlapping terms mark the widest span at each position."""
+    folded = sorted({_fold_text(t) for t in terms if t.strip()}, key=len, reverse=True)
+    if not folded:
+        return None
+    return re.compile("|".join(re.escape(t) for t in folded))
+
+
 def _highlight(text: str, terms: list[str], width: int = 220) -> str:
     """Return a safe-HTML excerpt of *text* centered on the first matched term,
-    with every (case-insensitive) occurrence of every term wrapped in <mark>."""
-    low = text.lower()
-    found = [i for i in (low.find(t.lower()) for t in terms) if i != -1]
-    if found:
-        start = max(0, min(found) - width // 3)
-        end = min(len(text), start + width)
+    with every occurrence of every term wrapped in <mark>. Matching ignores case
+    and accents; the excerpt itself keeps the original spelling."""
+    pattern = _term_pattern(terms)
+    folded, origin = _fold(text)
+
+    # Matches are found on the folded text, then mapped back to spans of the
+    # original so the excerpt reads normally.
+    spans: list[tuple[int, int]] = []
+    if pattern is not None:
+        for m in pattern.finditer(folded):
+            if m.start() >= len(origin):
+                continue
+            spans.append((origin[m.start()], origin[m.end() - 1] + 1))
+
+    if spans:
+        start = max(0, spans[0][0] - width // 3)
     else:
-        start, end = 0, min(len(text), width)
-    excerpt = text[start:end].strip()
-    escaped = html.escape(excerpt)
-    # Longest first so overlapping terms mark the widest span at each position.
-    escaped_terms = sorted(
-        {re.escape(html.escape(t)) for t in terms if t}, key=len, reverse=True
-    )
-    if escaped_terms:
-        pattern = re.compile("|".join(escaped_terms), re.IGNORECASE)
-        escaped = pattern.sub(lambda m: f"<mark>{m.group(0)}</mark>", escaped)
-    return ("… " if start > 0 else "") + escaped + (" …" if end < len(text) else "")
+        start = 0
+    end = min(len(text), start + width)
+
+    out: list[str] = []
+    cursor = start
+    for s, e in spans:
+        if e <= start or s >= end:
+            continue
+        s, e = max(s, start), min(e, end)
+        out.append(html.escape(text[cursor:s]))
+        out.append(f"<mark>{html.escape(text[s:e])}</mark>")
+        cursor = e
+    out.append(html.escape(text[cursor:end]))
+
+    body = "".join(out).strip()
+    return ("… " if start > 0 else "") + body + (" …" if end < len(text) else "")
 
 
 # Rough Markdown -> plain text, so snippets read cleanly instead of showing
@@ -208,8 +258,8 @@ def _hit_for(index_md: Path, terms: list[str]) -> SearchHit | None:
     blob = "\n".join(
         [_plain_text(post.content), page.title, page.summary, " ".join(page.tags)]
     )
-    low = blob.lower()
-    if not all(t.lower() in low for t in terms):
+    folded = _fold_text(blob)
+    if not all(_fold_text(t) in folded for t in terms):
         return None
     return SearchHit(page=page, snippet=_highlight(blob, terms))
 
@@ -225,6 +275,24 @@ def _search_python(terms: list[str]) -> list[SearchHit]:
     return hits
 
 
+# Accented spellings each unaccented letter must also match, so the ripgrep
+# shortlist stays accent-insensitive like the Python check that follows it.
+_ACCENTS = {
+    "a": "àáâãäå", "c": "ç", "e": "èéêë", "i": "ìíîï", "n": "ñ",
+    "o": "òóôõö", "u": "ùúûü", "y": "ýÿ",
+}
+
+
+def _rg_pattern(term: str) -> str:
+    """Turn a folded *term* into a regex where every letter also matches its
+    accented forms, e.g. "systeme" -> "s[yýÿ]st[eèéêë]m[eèéêë]"."""
+    out = []
+    for char in term:
+        variants = _ACCENTS.get(char)
+        out.append(f"[{char}{variants}]" if variants else re.escape(char))
+    return "".join(out)
+
+
 def search(query: str) -> list[SearchHit]:
     """Full-text search over the content tree. Uses ripgrep for speed and
     falls back to a pure-Python scan if rg is missing or errors out."""
@@ -233,10 +301,13 @@ def search(query: str) -> list[SearchHit]:
         return []
     # rg shortlists on the first term (any single term is a necessary condition
     # for the AND); _hit_for then enforces that *all* terms are present and
-    # builds the snippet. Both run against the cleaned text.
+    # builds the snippet. Both run against the cleaned, accent-folded text.
     try:
         proc = subprocess.run(
-            ["rg", "-l", "-i", "-F", "--", terms[0], str(CONTENT_DIR), "--glob", "*.md"],
+            [
+                "rg", "-l", "-i", "--",
+                _rg_pattern(_fold_text(terms[0])), str(CONTENT_DIR), "--glob", "*.md",
+            ],
             capture_output=True, text=True, timeout=10,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
