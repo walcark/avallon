@@ -103,7 +103,13 @@ MARKDOWNIFY = {
         "MARKDOWN_EXTENSION_CONFIGS": {
             # generic=True emits \(...\) / \[...\] spans for MathJax to render
             "pymdownx.arithmatex": {"generic": True},
-            "pymdownx.highlight": {"css_class": "highlight", "guess_lang": False},
+            # auto_title labels each code box with its lexer name ("Python"),
+            # rendered server-side so the language survives with the HTML.
+            "pymdownx.highlight": {
+                "css_class": "highlight",
+                "guess_lang": False,
+                "auto_title": True,
+            },
             "pymdownx.tasklist": {"custom_checkbox": True},
             "toc": {"permalink": "#"},
         },

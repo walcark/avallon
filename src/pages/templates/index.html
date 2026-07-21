@@ -36,21 +36,160 @@
 {% endblock %}
 
 {% block content %}
+    <!-- Built client-side from the rendered headings, so it also survives the
+         live-reload swap below. Hidden by CSS when the window is too narrow. -->
+    <nav class="toc" id="toc" aria-label="Sommaire" hidden>
+        <p class="toc-label">Sommaire</p>
+        <ul></ul>
+    </nav>
+
     <main class="prose">
-        {{ content_html|safe }}
+        <header class="page-head">
+            <p class="page-crumbs">
+                <a href="/?domaine={{ page.domain|urlencode }}">{{ page.domain }}</a>
+                <span aria-hidden="true">/</span>
+                <a href="/?domaine={{ page.domain|urlencode }}&amp;type={{ page.type|urlencode }}">{{ page.type }}</a>
+                {% if page.is_private %}<span class="badge-private" title="Cette page n'est visible qu'en local">privé</span>{% endif %}
+            </p>
+            <h1>{{ page.title }}</h1>
+            {% if page.summary %}<p class="page-summary">{{ page.summary }}</p>{% endif %}
+            <p class="page-meta">
+                {% if page.display_date %}<span>{{ page.display_date }}</span>{% endif %}
+                <span>{{ reading_minutes }} min de lecture</span>
+                {% for t in page.tags %}<a class="tag" href="/?tag={{ t|urlencode }}">{{ t }}</a>{% endfor %}
+            </p>
+        </header>
+
+        <div class="page-body">{{ content_html|safe }}</div>
+
+        {% if backlinks %}
+        <aside class="backlinks">
+            <h2>Cité par</h2>
+            <ul>
+                {% for b in backlinks %}
+                <li><a href="{{ b.url }}">{{ b.title }}</a>
+                    <span class="backlink-path">{{ b.domain }} / {{ b.type }}</span></li>
+                {% endfor %}
+            </ul>
+        </aside>
+        {% endif %}
     </main>
 {% endblock %}
 
 {% block scripts %}
     <script>
-      // Live reload: subscribe to the SSE stream and swap the rendered HTML
-      // into .prose in place whenever the .md file changes on disk. Replacing
-      // only innerHTML keeps the scroll position and the sidebar/theme state.
       (function () {
-        const main = document.querySelector('.prose');
+        const main = document.querySelector('.page-body');
+        const toc = document.getElementById('toc');
+
+        // --- Table of contents ---------------------------------------------
+        // Built from the rendered headings rather than from python-markdown's
+        // toc extension: the ids are already there, and rebuilding on the fly
+        // keeps the sommaire correct after a live-reload swap.
+        let spy = null;
+        function buildToc() {
+          const list = toc.querySelector('ul');
+          // h1 is included because some pages use it for their sections; the
+          // page title is outside .page-body, so it can never be picked up.
+          const heads = [...main.querySelectorAll('h1[id], h2[id], h3[id]')];
+          if (spy) { spy.disconnect(); spy = null; }
+          list.innerHTML = '';
+          // A single section is not an outline; don't clutter the page with it.
+          if (heads.length < 2) { toc.hidden = true; return; }
+
+          const links = new Map();
+          heads.forEach(function (h) {
+            const li = document.createElement('li');
+            li.className = 'toc-' + h.tagName.toLowerCase();
+            const a = document.createElement('a');
+            a.href = '#' + h.id;
+            // The toc extension appends a "¶" permalink inside the heading;
+            // textContent would drag it into the sommaire.
+            a.textContent = (h.firstChild && h.firstChild.textContent || h.textContent).trim();
+            li.append(a);
+            list.append(li);
+            links.set(h.id, a);
+          });
+          toc.hidden = false;
+
+          // Scroll-spy: highlight the heading nearest the top of the viewport.
+          const seen = new Set();
+          spy = new IntersectionObserver(function (entries) {
+            entries.forEach(function (e) {
+              if (e.isIntersecting) seen.add(e.target.id); else seen.delete(e.target.id);
+            });
+            let current = null;
+            for (const h of heads) if (seen.has(h.id)) { current = h.id; break; }
+            links.forEach(function (a, id) { a.classList.toggle('is-current', id === current); });
+          }, { rootMargin: '-10% 0px -70% 0px' });
+          heads.forEach(function (h) { spy.observe(h); });
+        }
+
+        // --- Copy button on every code box ---------------------------------
+        // The language label comes from the server (pymdownx auto_title); a
+        // fence with no language gets an empty bar here so all boxes match.
+        function addCopyButtons(root) {
+          root.querySelectorAll('.highlight').forEach(function (box) {
+            if (box.querySelector('.copy-btn')) return;
+            let bar = box.querySelector('.filename');
+            if (!bar) {
+              bar = document.createElement('span');
+              bar.className = 'filename';
+              box.prepend(bar);
+            }
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'copy-btn';
+            btn.textContent = 'Copier';
+            btn.addEventListener('click', function () {
+              const code = box.querySelector('pre');
+              copy(code ? code.innerText : '').then(function (ok) {
+                btn.textContent = ok ? 'Copié' : 'Échec';
+                btn.dataset.copied = '';
+                setTimeout(function () {
+                  btn.textContent = 'Copier';
+                  delete btn.dataset.copied;
+                }, 1600);
+              });
+            });
+            bar.append(btn);
+          });
+        }
+
+        // navigator.clipboard needs a secure context: available on localhost,
+        // but not if the site is ever served over plain http. Fall back to the
+        // old selection trick there rather than failing silently.
+        function copy(text) {
+          if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text).then(
+              function () { return true; }, function () { return false; });
+          }
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.append(ta);
+          ta.select();
+          let ok = false;
+          try { ok = document.execCommand('copy'); } catch (e) {}
+          ta.remove();
+          return Promise.resolve(ok);
+        }
+
+        function enhance() {
+          addCopyButtons(main);
+          buildToc();
+        }
+        enhance();
+
+        // --- Live reload ----------------------------------------------------
+        // Swap the rendered body in place whenever the .md changes on disk.
+        // Only .page-body is replaced, so the header and the backlinks survive;
+        // everything JS added inside it is rebuilt by enhance().
         const es = new EventSource('/stream/?path=' + encodeURIComponent('{{ relpath }}'));
         es.addEventListener('update', function (e) {
           main.innerHTML = JSON.parse(e.data);
+          enhance();
           if (window.MathJax && window.MathJax.typesetPromise) {
             window.MathJax.typesetPromise([main]);
           }

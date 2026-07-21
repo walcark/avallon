@@ -74,6 +74,8 @@ def serve_content(request, relpath):
                 "page": page,
                 "content_html": content.render_markdown(index_md),
                 "relpath": page.relpath,
+                "reading_minutes": content.reading_minutes(index_md),
+                "backlinks": content.backlinks(page),
             },
         )
 

@@ -24,7 +24,13 @@ from django.conf import settings
 from django.http import Http404
 from markdownify.templatetags.markdownify import markdownify
 
+from .mdx.wikilinks import WIKILINK_RE
+
 CONTENT_DIR: Path = settings.CONTENT_DIR
+
+# Same pattern the Markdown extension uses, so backlinks and rendered links
+# can never disagree about what counts as a reference.
+_WIKILINK = re.compile(WIKILINK_RE)
 
 # Glob matching every page: content/<domaine>/<type>/<slug>/index.md.
 _PAGE_GLOB = "*/*/*/index.md"
@@ -104,11 +110,24 @@ def safe_resolve(relpath: str) -> Path:
     return target
 
 
+# A leading `# Title` line: the template renders the frontmatter title as the
+# page heading, so repeating it in the body would show it twice. Most pages
+# already start at `##`; this makes the two conventions render alike.
+_LEADING_H1 = re.compile(r"\A\s*#[^#\n][^\n]*\n")
+
+
 def render_markdown(index_md: Path) -> str:
     """Render an index.md (frontmatter stripped) to HTML, using the same filter
     the template uses so streamed updates match the initial render."""
     post = frontmatter.load(index_md)
-    return str(markdownify(post.content))
+    return str(markdownify(_LEADING_H1.sub("", post.content, count=1)))
+
+
+def reading_minutes(index_md: Path) -> int:
+    """Rough reading time in minutes, at 200 words per minute, floored at 1."""
+    post = frontmatter.load(index_md)
+    words = len(_plain_text(post.content).split())
+    return max(1, round(words / 200))
 
 
 def _page_from(index_md: Path, post: frontmatter.Post | None = None) -> Page:
@@ -151,6 +170,28 @@ def all_pages() -> list[Page]:
     pages.sort(key=lambda p: p.title)
     pages.sort(key=_recency_key, reverse=True)
     return pages
+
+
+def backlinks(target: Page) -> list[Page]:
+    """Visible pages whose body cites *target* with a [[wikilink]].
+
+    Wikilinks are one-way in the Markdown; this walks the tree to invert them,
+    so a page can show what refers to it. Matching follows the same rule as the
+    extension itself: the reference is either the slug or the full relpath.
+    """
+    found: list[Page] = []
+    for index_md in CONTENT_DIR.glob(_PAGE_GLOB):
+        post = frontmatter.load(index_md)
+        source = _page_from(index_md, post)
+        if source.relpath == target.relpath or not is_visible(source):
+            continue
+        for match in _WIKILINK.finditer(post.content):
+            ref = match.group(1).strip()
+            if ref in (target.slug, target.relpath):
+                found.append(source)
+                break
+    found.sort(key=lambda p: p.title)
+    return found
 
 
 def nav_tree() -> list[dict[str, Any]]:

@@ -222,6 +222,131 @@ body {
 
 .prose > :first-child { margin-top: 0; }
 .prose > :last-child { margin-bottom: 0; }
+.page-body > :first-child { margin-top: 0; }
+
+/* --- Article header ------------------------------------------------------ */
+/* The h1 comes from the frontmatter title, not from the body: pages disagree
+   on whether they open with `#` or `##`, and this makes them all render alike. */
+.page-head {
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.4rem;
+    border-bottom: 1px solid var(--border);
+}
+.page-head h1 { margin: 0.2em 0 0; }
+.page-summary {
+    margin: 0.7em 0 0;
+    color: var(--muted);
+    font-size: 1.05rem;
+}
+.page-crumbs, .page-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+.page-meta { margin-top: 1rem; }
+.page-crumbs a { color: var(--muted); text-decoration: none; }
+.page-crumbs a:hover { color: var(--accent); text-decoration: underline; }
+.page-head .tag {
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    background: var(--code-bg);
+    color: var(--muted);
+    text-decoration: none;
+}
+.page-head .tag:hover { background: var(--accent); color: #fff; }
+/* Local-only page: a standing reminder that this one will not be published. */
+.badge-private {
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    background: var(--warn-bg);
+    color: var(--warn-ink);
+    border: 1px solid currentColor;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* --- Backlinks ----------------------------------------------------------- */
+/* Wikilinks are one-way in the Markdown; this is the inverted index, so a page
+   shows what refers to it instead of being a dead end. */
+.backlinks {
+    margin-top: 4rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-ui);
+}
+.backlinks h2 {
+    margin: 0 0 0.8rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.backlinks ul { list-style: none; margin: 0; padding: 0; }
+.backlinks li { margin: 0.4rem 0; font-size: 0.95rem; }
+.backlinks a { color: var(--accent); text-decoration: none; }
+.backlinks a:hover { text-decoration: underline; }
+.backlink-path { margin-left: 0.5rem; font-size: 0.8rem; color: var(--muted); }
+
+/* --- Table of contents --------------------------------------------------- */
+/* The sommaire gets a real grid column rather than floating over the page:
+   position:fixed reserves no space, so it could only avoid the text by way of
+   hand-guessed breakpoints, and any mistake there put it on top of the words.
+   As a column it physically cannot overlap, whatever the reading width. */
+.page { display: grid; grid-template-columns: minmax(0, 1fr); }
+.page > .prose { grid-column: 1; grid-row: 1; }
+
+@media (min-width: 1200px) {
+    /* Only when there *is* a sommaire: JS hides it on pages with fewer than
+       two headings, and the layout follows automatically. */
+    .page:has(.toc:not([hidden])) {
+        grid-template-columns: minmax(0, 1fr) 13rem;
+        column-gap: 2.5rem;
+        align-items: start;
+    }
+}
+@media (max-width: 1199px) { .toc { display: none; } }
+
+.toc {
+    grid-column: 2;
+    grid-row: 1;
+    position: sticky;
+    top: 4.5rem;
+    max-height: calc(100vh - 7rem);
+    overflow-y: auto;
+    font-family: var(--font-ui);
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+.toc-label {
+    margin: 0 0 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.toc ul { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--border); }
+.toc li { margin: 0; }
+.toc a {
+    display: block;
+    padding: 0.25rem 0.6rem;
+    margin-left: -1px;
+    border-left: 2px solid transparent;
+    color: var(--muted);
+    text-decoration: none;
+}
+.toc-h1 a, .toc-h2 a { padding-left: 0.6rem; }
+.toc-h3 a { padding-left: 1.4rem; font-size: 0.95em; }
+.toc a:hover { color: var(--ink); }
+.toc a.is-current { color: var(--accent); border-left-color: var(--accent); }
 
 /* --- Headings ----------------------------------------------------------- */
 /* All in the body ink. Levels are told apart by size and by how much air sits
@@ -331,6 +456,38 @@ sub, sup { line-height: 0; }
     font-size: 0.85rem;
     overflow-x: auto;
 }
+
+/* Header bar: language name (emitted server-side by pymdownx auto_title) on
+   the left, copy button on the right. The bar is added by JS for fences that
+   declare no language, so every box looks the same. */
+.prose .highlight .filename {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.35rem 0.6rem 0.35rem 1.15rem;
+    background: var(--code-bg);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-ui);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.copy-btn {
+    font: inherit;
+    text-transform: inherit;
+    letter-spacing: inherit;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 0.15rem 0.5rem;
+    cursor: pointer;
+}
+.copy-btn:hover { color: var(--ink); border-color: var(--border); }
+.copy-btn[data-copied] { color: var(--accent); }
 
 /* --- Blockquote --------------------------------------------------------- */
 /* Set in italic and slightly indented, with a hairline rather than a slab. */
