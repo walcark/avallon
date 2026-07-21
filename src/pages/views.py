@@ -78,6 +78,11 @@ def serve_content(request, relpath):
         )
 
     if target.is_file():
+        # An asset sits next to the index.md that uses it, so it inherits that
+        # page's visibility: serving figures from a hidden page would leak it.
+        sibling = target.parent / "index.md"
+        if sibling.is_file():
+            content.load_page(sibling)  # raises Http404 when private
         return FileResponse(open(target, "rb"))
 
     raise Http404("Page introuvable")
@@ -92,6 +97,7 @@ async def markdown_stream(request):
     index_md = target / "index.md"
     if not index_md.is_file():
         raise Http404("Page introuvable")
+    content.load_page(index_md)  # refuse to stream a page that is not visible
 
     async def event_stream():
         # When the client disconnects, the ASGI server closes this generator

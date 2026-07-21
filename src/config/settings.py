@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -27,6 +28,15 @@ from content_config import resolve_content_dir  # noqa: E402
 
 CONTENT_DIR = resolve_content_dir()
 
+# Pages carrying `visibility: private` in their frontmatter are personal notes
+# that must never leave this machine. When SHOW_PRIVATE is false they vanish
+# from the listings, the navigation, the search *and* their own URL (404), so
+# publishing the site cannot leak them by a direct link.
+#
+# Default: shown locally, hidden anywhere else. Set KW_SHOW_PRIVATE=1/0 to
+# force it either way (deployments should leave it unset, or set it to 0).
+_show_private = os.environ.get("KW_SHOW_PRIVATE")
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -36,6 +46,9 @@ SECRET_KEY = "django-insecure-REDACTED"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+
+# Resolved after DEBUG, which is the fallback when the env var is unset.
+SHOW_PRIVATE = DEBUG if _show_private is None else _show_private not in ("0", "", "false")
 
 ALLOWED_HOSTS = []
 

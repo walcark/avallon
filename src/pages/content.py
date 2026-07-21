@@ -60,10 +60,15 @@ class Page:
     updated: Any | None   # last-modified date (frontmatter, stamped on commit)
     tags: list[str]
     summary: str
+    visibility: str       # "public" (default) or "private"
 
     @property
     def url(self) -> str:
         return f"/{self.relpath}/"
+
+    @property
+    def is_private(self) -> bool:
+        return self.visibility == "private"
 
     @property
     def display_date(self) -> str:
@@ -121,17 +126,28 @@ def _page_from(index_md: Path, post: frontmatter.Post | None = None) -> Page:
         updated=post.get("updated"),
         tags=[str(t) for t in (post.get("tags") or [])],
         summary=str(post.get("summary", "")),
+        visibility=str(post.get("visibility", "public")).strip().lower(),
     )
 
 
+def is_visible(page: Page) -> bool:
+    """Whether *page* may be shown at all. Private pages are readable only when
+    settings.SHOW_PRIVATE is on (local use); elsewhere they do not exist."""
+    return settings.SHOW_PRIVATE or not page.is_private
+
+
 def load_page(index_md: Path) -> Page:
-    return _page_from(index_md)
+    page = _page_from(index_md)
+    if not is_visible(page):
+        raise Http404("Page introuvable")
+    return page
 
 
 def all_pages() -> list[Page]:
-    """Every page in the tree, most recently modified first (ties broken by
-    title). Each is a content/<domaine>/<type>/<slug>/index.md."""
+    """Every *visible* page in the tree, most recently modified first (ties
+    broken by title). Each is a content/<domaine>/<type>/<slug>/index.md."""
     pages = [_page_from(f) for f in CONTENT_DIR.glob(_PAGE_GLOB)]
+    pages = [p for p in pages if is_visible(p)]
     pages.sort(key=lambda p: p.title)
     pages.sort(key=_recency_key, reverse=True)
     return pages
@@ -255,6 +271,8 @@ def _hit_for(index_md: Path, terms: list[str]) -> SearchHit | None:
     never leaks raw syntax or frontmatter into the results."""
     post = frontmatter.load(index_md)
     page = _page_from(index_md, post)
+    if not is_visible(page):
+        return None
     blob = "\n".join(
         [_plain_text(post.content), page.title, page.summary, " ".join(page.tags)]
     )
