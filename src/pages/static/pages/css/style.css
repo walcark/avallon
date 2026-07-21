@@ -401,8 +401,14 @@ mjx-container[display="true"] { margin: 1.4em 0; }
 /* --- Tables: booktabs scientific style --------------------------------- */
 /* Horizontal rules only: top of table, under header, bottom of table.
    No vertical lines, no inner row borders. */
+/* `display: block` so a table too wide for the measure scrolls on its own
+   instead of pushing the whole page sideways (markdown emits a bare <table>,
+   so there is no wrapper element to put the overflow on). */
 .prose table {
-    width: 100%;
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    overflow-x: auto;
     border-collapse: collapse;
     margin: 1.9em 0;
     /* Data reads better in the UI face: tighter, and it lines up in columns. */
