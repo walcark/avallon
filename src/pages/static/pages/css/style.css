@@ -194,7 +194,85 @@ body {
     :root:not(.nav-collapsed) .scrim { opacity: 1; visibility: visible; }
 }
 
-/* --- Reading panel ------------------------------------------------------ */
+/* --- Command palette (Ctrl+K) ------------------------------------------- */
+.palette {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    justify-content: center;
+    padding: 12vh 1rem 1rem;
+    background: rgba(0, 0, 0, 0.4);
+}
+.palette[hidden] { display: none; }
+.palette-box {
+    display: flex;
+    flex-direction: column;
+    width: min(34rem, 100%);
+    max-height: 60vh;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 12px 48px var(--shadow-lg);
+}
+.palette-box input {
+    font: inherit;
+    font-size: 1rem;
+    padding: 0.9rem 1rem;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    color: var(--ink);
+}
+.palette-box input:focus { outline: none; }
+.palette-list {
+    list-style: none;
+    margin: 0;
+    padding: 0.35rem;
+    overflow-y: auto;
+}
+.palette-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.5rem 0.7rem;
+    border-radius: 7px;
+    cursor: pointer;
+}
+.palette-item.is-active { background: var(--accent); color: #fff; }
+.palette-kind {
+    flex: none;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+}
+.palette-item.is-active .palette-kind { color: #fff; opacity: 0.75; }
+.palette-empty { padding: 0.7rem; color: var(--muted); }
+.palette-hint {
+    display: flex;
+    gap: 1rem;
+    margin: 0;
+    padding: 0.5rem 0.85rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.72rem;
+    color: var(--muted);
+}
+.palette-hint kbd {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    padding: 0.05em 0.3em;
+    margin-right: 0.15em;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--code-bg);
+}
+
+/* --- Reading column ----------------------------------------------------- */
+/* Set on the page background, with no card, border or shadow: the text is the
+   object, not a widget sitting on a surface. */
 .prose {
     max-width: var(--measure);
     margin: 0 auto;

@@ -61,6 +61,21 @@
 
     <div class="scrim" id="scrim" aria-hidden="true"></div>
 
+    <!-- Command palette (Ctrl+K). Its page list is read from the sidebar tree
+         above, so it can never drift out of sync with the navigation. -->
+    <div class="palette" id="palette" hidden>
+        <div class="palette-box" role="dialog" aria-modal="true" aria-label="Palette de commandes">
+            <input type="text" id="paletteInput" autocomplete="off" spellcheck="false"
+                   placeholder="Aller à une page, rechercher, exécuter…">
+            <ul class="palette-list" id="paletteList" role="listbox"></ul>
+            <p class="palette-hint">
+                <span><kbd>↑</kbd><kbd>↓</kbd> naviguer</span>
+                <span><kbd>↵</kbd> ouvrir</span>
+                <span><kbd>Esc</kbd> fermer</span>
+            </p>
+        </div>
+    </div>
+
     <script>
       (function () {
         var root = document.documentElement;
@@ -74,25 +89,163 @@
         document.getElementById('scrim').addEventListener('click', function () { setNav(true); });
 
         var widthToggle = document.getElementById('widthToggle');
-        if (widthToggle) {
-          var syncWidth = function () {
+        function syncWidth() {
+          if (widthToggle) {
             widthToggle.setAttribute('aria-pressed', String(root.classList.contains('reading-wide')));
-          };
-          syncWidth();
-          widthToggle.addEventListener('click', function () {
-            var wide = root.classList.toggle('reading-wide');
-            try { localStorage.setItem('reading', wide ? 'wide' : 'narrow'); } catch (e) {}
-            syncWidth();
-          });
+          }
         }
+        function toggleWidth() {
+          var wide = root.classList.toggle('reading-wide');
+          try { localStorage.setItem('reading', wide ? 'wide' : 'narrow'); } catch (e) {}
+          syncWidth();
+        }
+        // The button only exists on content pages; the palette command below
+        // is wired unconditionally, so guard the listener, not the function.
+        if (widthToggle) { syncWidth(); widthToggle.addEventListener('click', toggleWidth); }
 
-        document.getElementById('themeToggle').addEventListener('click', function () {
+        function toggleTheme() {
           var stored = localStorage.getItem('theme');
           var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
           var showingDark = stored ? stored === 'dark' : systemDark;
           var theme = showingDark ? 'light' : 'dark';
           root.style.colorScheme = theme;
           try { localStorage.setItem('theme', theme); } catch (e) {}
+        }
+        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+        // --- Command palette (Ctrl+K) ---------------------------------------
+        var palette = document.getElementById('palette');
+        var input = document.getElementById('paletteInput');
+        var list = document.getElementById('paletteList');
+
+        // Accent-insensitive matching, mirroring the server-side search: typing
+        // "systeme" has to find "système" here too.
+        function fold(s) {
+          return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        }
+
+        // The sidebar is the single source of truth for what pages exist.
+        var PAGES = [...document.querySelectorAll('.tree li a')].map(function (a) {
+          return { title: a.textContent.trim(), url: a.getAttribute('href') };
+        });
+        var ACTIONS = [
+          { title: 'Basculer le thème clair/sombre', run: toggleTheme },
+          { title: 'Basculer la largeur de lecture', run: toggleWidth },
+          { title: 'Afficher ou masquer le menu', run: function () {
+              setNav(!root.classList.contains('nav-collapsed')); } },
+          { title: 'Accueil', url: '/' }
+        ];
+
+        var items = [], cursor = 0, timer = null, token = 0;
+
+        function render() {
+          list.innerHTML = '';
+          if (!items.length) {
+            var li = document.createElement('li');
+            li.className = 'palette-empty';
+            li.textContent = 'Aucun résultat.';
+            list.append(li);
+            return;
+          }
+          items.forEach(function (it, i) {
+            var li = document.createElement('li');
+            li.setAttribute('role', 'option');
+            li.className = 'palette-item' + (i === cursor ? ' is-active' : '');
+            var label = document.createElement('span');
+            label.textContent = it.title;
+            li.append(label);
+            if (it.hint) {
+              var hint = document.createElement('span');
+              hint.className = 'palette-kind';
+              hint.textContent = it.hint;
+              li.append(hint);
+            }
+            li.addEventListener('mousemove', function () {
+              if (cursor !== i) { cursor = i; render(); }
+            });
+            li.addEventListener('click', function () { run(it); });
+            list.append(li);
+          });
+        }
+
+        function refresh() {
+          var q = fold(input.value.trim());
+          var found = [];
+          if (!q) {
+            found = PAGES.slice(0, 8).map(function (p) {
+              return { title: p.title, url: p.url, hint: 'page' }; });
+          } else {
+            PAGES.forEach(function (p) {
+              if (fold(p.title).includes(q)) found.push({ title: p.title, url: p.url, hint: 'page' });
+            });
+            ACTIONS.forEach(function (a) {
+              if (fold(a.title).includes(q)) found.push(Object.assign({ hint: 'action' }, a));
+            });
+          }
+          items = found;
+          cursor = 0;
+          render();
+
+          // Titles match instantly above; the full text needs the server. The
+          // token guards against a slow response overwriting a newer query.
+          clearTimeout(timer);
+          if (input.value.trim().length < 3) return;
+          var mine = ++token;
+          timer = setTimeout(function () {
+            var query = input.value.trim();
+            fetch('/search/?q=' + encodeURIComponent(query))
+              .then(function (r) { return r.json(); })
+              .then(function (data) {
+                if (mine !== token || palette.hidden) return;
+                var known = new Set(items.map(function (i) { return i.url; }));
+                data.results.forEach(function (r) {
+                  if (!known.has(r.url)) {
+                    items.push({ title: r.title, url: r.url, hint: 'texte' });
+                  }
+                });
+                render();
+              })
+              .catch(function () {});
+          }, 180);
+        }
+
+        function run(it) {
+          close();
+          if (it.url) window.location.href = it.url;
+          else if (it.run) it.run();
+        }
+        function open() {
+          palette.hidden = false;
+          input.value = '';
+          refresh();
+          input.focus();
+        }
+        function close() { palette.hidden = true; }
+
+        input.addEventListener('input', refresh);
+        palette.addEventListener('click', function (e) { if (e.target === palette) close(); });
+        input.addEventListener('keydown', function (e) {
+          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (!items.length) return;
+            cursor = (cursor + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+            render();
+            var active = list.querySelector('.is-active');
+            if (active) active.scrollIntoView({ block: 'nearest' });
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (items[cursor]) run(items[cursor]);
+          } else if (e.key === 'Escape') {
+            close();
+          }
+        });
+        document.addEventListener('keydown', function (e) {
+          if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+            e.preventDefault();
+            palette.hidden ? open() : close();
+          } else if (e.key === 'Escape' && !palette.hidden) {
+            close();
+          }
         });
       })();
     </script>
