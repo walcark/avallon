@@ -1,7 +1,11 @@
 /* ---------------------------------------------------------------------------
-   Scientific Markdown page — Roboto, clean typography.
-   markdownify outputs bare HTML (no classes), so everything is styled by
-   element inside the .prose panel.
+   Markdown reading site. Two typographic registers: a sans-serif UI (sidebar,
+   topbar, index cards) and a serif reading column (.prose), which markdownify
+   fills with bare HTML, so everything inside it is styled by element.
+
+   Color discipline: headings are NOT tinted. Hierarchy comes from size, weight
+   and vertical space; the single accent hue is reserved for links, so a colored
+   word in a paragraph always means "clickable".
 --------------------------------------------------------------------------- */
 
 :root {
@@ -9,33 +13,36 @@
        value below; with no explicit choice it follows the OS preference. */
     color-scheme: light dark;
 
-    --ink:        light-dark(#1f2328, #e6e9ee);
-    --muted:      light-dark(#57606a, #9aa4b2);
-    --bg:         light-dark(#e8ecf1, #0d1117);   /* page background */
-    --surface:    light-dark(#f7f8fa, #161b22);   /* reading panel / cards */
-    --border:     light-dark(#dfe3e8, #2a323c);
-    --code-bg:    light-dark(#eef1f4, #1c232c);
-    --rule:       light-dark(#c4ccd4, #3a444f);   /* table rules */
+    /* Warm neutrals rather than blue-grays: easier on the eyes over a long
+       read, and it keeps the page from looking like a dashboard. */
+    --ink:        light-dark(#23211e, #e9e5de);
+    --muted:      light-dark(#6b645b, #a49c91);
+    --bg:         light-dark(#faf8f5, #1a1917);   /* page background */
+    --surface:    light-dark(#ffffff, #221f1d);   /* index cards */
+    --border:     light-dark(#e6e1d8, #34302b);
+    --code-bg:    light-dark(#f1ede5, #26231f);
+    --rule:       light-dark(#cec7ba, #474139);   /* table rules */
 
-    --sidebar-bg: light-dark(#eaeef3, #0b0f14);
-    --topbar-bg:  light-dark(rgba(247, 248, 250, 0.85), rgba(22, 27, 34, 0.85));
-    --panel-2:    light-dark(#fbfcfd, #131a22);   /* soft inner panels */
-    --note-bg:    light-dark(#f3f7ff, #13233f);
-    --warn-bg:    light-dark(#fff8ec, #2a2210);
-    --warn-ink:   light-dark(#b45309, #f0b429);
-    --mark-bg:    light-dark(#fde68a, #b9932f);
-    --mark-ink:   light-dark(#3a2f00, #1a1500);
-    --shadow-sm:  light-dark(rgba(16, 24, 40, 0.06), rgba(0, 0, 0, 0.40));
-    --shadow-lg:  light-dark(rgba(16, 24, 40, 0.05), rgba(0, 0, 0, 0.50));
+    --sidebar-bg: light-dark(#f3f0e9, #141312);
+    --topbar-bg:  light-dark(rgba(250, 248, 245, 0.85), rgba(26, 25, 23, 0.85));
+    --panel-2:    light-dark(#f6f3ed, #201e1b);   /* soft inner panels */
+    --code-panel: light-dark(#f6f3ec, #1d1b19);   /* code box */
+    --note-bg:    light-dark(#f0f4f8, #1a222b);
+    --warn-bg:    light-dark(#fdf6e9, #2a2416);
+    --warn-ink:   light-dark(#a3620d, #e0aa4e);
+    --mark-bg:    light-dark(#fbeaa8, #6b5a24);
+    --mark-ink:   light-dark(#3a2f00, #f3ecd8);
+    --shadow-sm:  light-dark(rgba(60, 50, 35, 0.07), rgba(0, 0, 0, 0.40));
+    --shadow-lg:  light-dark(rgba(60, 50, 35, 0.06), rgba(0, 0, 0, 0.50));
 
-    /* Harmonious heading palette (analogous blues -> teal) */
-    --h1: light-dark(#0f2c4d, #cfe0ff);
-    --h2: light-dark(#1d4ed8, #7aa2ff);
-    --h3: light-dark(#0e7490, #4cc4d6);
-    --h4: light-dark(#475569, #9aa4b2);
+    /* Muted ink-blue: readable as a link, never shouty. */
+    --accent:       light-dark(#2a5d8f, #86b3dc);
 
-    --accent:       light-dark(#1d4ed8, #4d8bff);
-    --measure:      44rem;   /* reading column */
+    --font-ui:    "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-prose: "Source Serif 4", Charter, Georgia, "Times New Roman", serif;
+    --font-mono:  "Roboto Mono", ui-monospace, monospace;
+
+    --measure:      38rem;   /* reading column, ~68 characters */
     --measure-wide: 78rem;   /* home / wide content */
     --sidebar-w:    16rem;
 }
@@ -47,9 +54,9 @@ body {
     margin: 0;
     background: var(--bg);
     color: var(--ink);
-    font-family: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
-    font-size: 1.0625rem;
-    line-height: 1.7;
+    font-family: var(--font-ui);
+    font-size: 1rem;
+    line-height: 1.6;
 
     /* Ligatures + kerning for clean typography */
     font-feature-settings: "liga" 1, "clig" 1, "kern" 1;
@@ -85,7 +92,7 @@ body {
     font-size: 1.05rem;
     font-weight: 700;
     letter-spacing: -0.01em;
-    color: var(--h1);
+    color: var(--ink);
     text-decoration: none;
 }
 
@@ -191,16 +198,19 @@ body {
 .prose {
     max-width: var(--measure);
     margin: 0 auto;
-    padding: 2.5rem clamp(1.25rem, 4vw, 3.25rem) 4rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    box-shadow: 0 1px 3px var(--shadow-sm), 0 8px 24px var(--shadow-lg);
+    padding: 1.5rem 0 6rem;
+
+    font-family: var(--font-prose);
+    font-size: 1.125rem;
+    line-height: 1.75;
+    /* Source Serif 4 carries an optical-size axis: let the browser pick the
+       cut, so body text keeps open shapes and headings tighten up. */
+    font-optical-sizing: auto;
 }
 /* Reading-width toggle: narrow measure (default, comfortable line length) vs
    extended, where the panel fills the content area. Persisted in localStorage. */
 :root.reading-wide .prose {
-    max-width: none;
+    max-width: var(--measure-wide);
 }
 /* The toggle button shows the "expand" glyph in narrow mode and "collapse" in
    extended mode; the swap is driven by the same root class, no JS needed. */
@@ -214,18 +224,30 @@ body {
 .prose > :last-child { margin-bottom: 0; }
 
 /* --- Headings ----------------------------------------------------------- */
+/* All in the body ink. Levels are told apart by size and by how much air sits
+   above them, which survives skim-reading better than four different hues. */
 .prose h1, .prose h2, .prose h3, .prose h4 {
-    line-height: 1.25;
-    font-weight: 700;
-    letter-spacing: -0.015em;
-    margin: 2.4em 0 0.6em;
+    color: var(--ink);
+    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: -0.011em;
+    /* Asymmetric margins bind a heading to the text it introduces. */
+    margin: 2.2em 0 0.5em;
+    text-wrap: balance;
 }
-.prose h1 { font-size: 2.25rem; margin-top: 0; color: var(--h1); }
-.prose h2 { font-size: 1.6rem;  color: var(--h2);
-            padding-bottom: 0.3em; border-bottom: 1px solid var(--border); }
-.prose h3 { font-size: 1.3rem;  color: var(--h3); }
-.prose h4 { font-size: 1.05rem; color: var(--h4); text-transform: uppercase;
-            letter-spacing: 0.04em; }
+.prose h1 {
+    font-size: 2.125rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0;
+}
+.prose h2 { font-size: 1.5rem; }
+.prose h3 { font-size: 1.2rem; }
+.prose h4 { font-size: 1.0625rem; font-style: italic; font-weight: 600; }
+/* Anchors land below the sticky topbar instead of under it. */
+.prose :is(h1, h2, h3, h4)[id] { scroll-margin-top: 4.5rem; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
 /* TOC permalink anchors (toc extension) */
 .prose .headerlink {
@@ -240,24 +262,30 @@ body {
 .prose h3:hover .headerlink { opacity: 1; color: var(--accent); }
 
 /* --- Text --------------------------------------------------------------- */
-.prose p { margin: 1.1em 0; }
+.prose p { margin: 1.15em 0; }
+/* Links stay underlined rather than lighting up on hover only: in a serif
+   paragraph an underline is the calmer signal, and it survives color-blindness.
+   The offset and thin stroke keep it from crowding the descenders. */
 .prose a {
     color: var(--accent);
-    text-decoration: none;
-    border-bottom: 1px solid transparent;
-    transition: border-color 0.15s ease;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.18em;
+    text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    transition: text-decoration-color 0.15s ease;
 }
-.prose a:hover { border-bottom-color: var(--accent); }
-/* Internal cross-references ([[slug]]). Resolved links inherit the link color
-   with a subtle dotted underline; unresolved ones are flagged, not linked. */
-.prose a.wikilink { border-bottom: 1px dotted var(--accent); }
-.prose a.wikilink:hover { border-bottom-style: solid; }
+.prose a:hover { text-decoration-color: var(--accent); }
+/* Internal cross-references ([[slug]]): dotted, so a link that stays inside the
+   site reads differently from one that leaves it. Unresolved ones are flagged
+   rather than linked. */
+.prose a.wikilink { text-decoration-style: dotted; }
 .prose .wikilink-missing {
     color: var(--warn-ink);
     border-bottom: 1px dashed var(--warn-ink);
     cursor: help;
 }
 .prose strong { font-weight: 700; }
+.prose em { font-style: italic; }
 sub, sup { line-height: 0; }
 
 /* --- Lists -------------------------------------------------------------- */
@@ -271,82 +299,99 @@ sub, sup { line-height: 0; }
 /* --- Inline code & code boxes ------------------------------------------ */
 .prose code,
 .prose pre,
-.prose .highlight { font-family: "Roboto Mono", ui-monospace, monospace; }
+.prose .highlight { font-family: var(--font-mono); }
 
 .prose :not(pre) > code {
     background: var(--code-bg);
-    padding: 0.15em 0.4em;
+    padding: 0.1em 0.35em;
     border-radius: 4px;
-    font-size: 0.875em;
+    /* Roboto Mono runs large next to a serif; 0.85em matches the x-heights. */
+    font-size: 0.85em;
 }
 
-/* Dedicated code box (pymdownx.highlight wraps in .highlight) */
+/* Dedicated code box (pymdownx.highlight wraps in .highlight). Background is
+   theme-aware; the syntax token colors come from pygments.css (also light-dark).
+   It breaks out of the reading measure a touch, so a code line has room without
+   the paragraphs having to widen. */
 .prose .highlight {
-    margin: 1.5em 0;
-    background: #fbfcfd;
+    position: relative;
+    margin: 1.6em -1rem;
+    background: var(--code-panel);
     border: 1px solid var(--border);
-    border-left: 3px solid var(--accent);
     border-radius: 8px;
-    overflow-x: auto;
+    /* The scroll sits on the <pre>, not here, so the header bar below stays
+       put when a long line is scrolled sideways. */
+    overflow: hidden;
 }
 .prose .highlight pre {
     margin: 0;
-    padding: 1rem 1.25rem;
+    padding: 1rem 1.15rem;
     background: none;
-    line-height: 1.55;
-    font-size: 0.9rem;
+    line-height: 1.6;
+    font-size: 0.85rem;
+    overflow-x: auto;
 }
 
 /* --- Blockquote --------------------------------------------------------- */
+/* Set in italic and slightly indented, with a hairline rather than a slab. */
 .prose blockquote {
-    margin: 1.5em 0;
-    padding: 0.2em 1.2em;
+    margin: 1.6em 0;
+    padding: 0 0 0 1.4em;
+    font-style: italic;
     color: var(--muted);
-    border-left: 3px solid var(--border);
+    border-left: 2px solid var(--rule);
 }
+.prose blockquote em { font-style: normal; }
 
 /* --- Admonitions (note / warning) -------------------------------------- */
 .prose .admonition {
-    margin: 1.6em 0;
-    padding: 0.8em 1.2em;
+    margin: 1.7em -1rem;
+    padding: 0.9em 1.2em;
     border: 1px solid var(--border);
-    border-left: 4px solid var(--muted);
+    border-left: 3px solid var(--rule);
     border-radius: 8px;
     background: var(--panel-2);
+    font-size: 0.95em;
 }
+/* The label is chrome, not prose: it goes in the UI face. */
 .prose .admonition-title {
+    font-family: var(--font-ui);
     margin: 0 0 0.4em;
     font-weight: 700;
-    font-size: 0.85rem;
-    letter-spacing: 0.03em;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
+    color: var(--muted);
 }
 .prose .admonition > :last-child { margin-bottom: 0; }
-.prose .admonition.note { border-left-color: var(--h2); background: var(--note-bg); }
-.prose .admonition.note > .admonition-title { color: var(--h2); }
+.prose .admonition.note { border-left-color: var(--accent); background: var(--note-bg); }
+.prose .admonition.note > .admonition-title { color: var(--accent); }
 .prose .admonition.warning { border-left-color: var(--warn-ink); background: var(--warn-bg); }
 .prose .admonition.warning > .admonition-title { color: var(--warn-ink); }
 
 /* --- Figures / plots ---------------------------------------------------- */
+/* Plots are usually exported with a transparent or white background, so the
+   white plate stays in dark mode too: inverting it would wreck the curves. */
 .prose img {
     display: block;
     max-width: 100%;
     height: auto;
-    margin: 1.8em auto 0.6em;
+    margin: 1.9em auto 0.6em;
     background: #fff;
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: 8px;
     padding: 0.5rem;
-    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
 }
 /* alt text rendered as a centered caption when image stands alone */
 .prose p > img + em,
 .prose figcaption {
     display: block;
     text-align: center;
+    font-family: var(--font-ui);
+    font-style: normal;
     color: var(--muted);
-    font-size: 0.875rem;
-    margin-top: 0.4em;
+    font-size: 0.85rem;
+    margin-top: 0.5em;
 }
 
 /* --- Math (arithmatex generic -> MathJax) ------------------------------ */
@@ -359,19 +404,21 @@ mjx-container[display="true"] { margin: 1.4em 0; }
 .prose table {
     width: 100%;
     border-collapse: collapse;
-    margin: 1.8em 0;
-    font-size: 0.95rem;
+    margin: 1.9em 0;
+    /* Data reads better in the UI face: tighter, and it lines up in columns. */
+    font-family: var(--font-ui);
+    font-size: 0.9rem;
     font-variant-numeric: tabular-nums;
     border: none;
 }
 .prose thead th {
     border-bottom: 1px solid var(--rule);       /* mid rule */
-    font-weight: 500;
+    font-weight: 600;
     text-align: left;
 }
-.prose table { border-top: 2px solid var(--ink); }     /* top rule */
+.prose table { border-top: 1.5px solid var(--ink); }   /* top rule */
 .prose tbody tr:last-child td {
-    border-bottom: 2px solid var(--ink);                /* bottom rule */
+    border-bottom: 1.5px solid var(--ink);              /* bottom rule */
 }
 .prose th, .prose td {
     padding: 0.55em 1em;
@@ -382,16 +429,20 @@ mjx-container[display="true"] { margin: 1.4em 0; }
 
 /* --- Footnotes ---------------------------------------------------------- */
 .prose .footnote {
-    margin-top: 3em;
+    margin-top: 3.5em;
     padding-top: 1em;
     border-top: 1px solid var(--border);
-    font-size: 0.9rem;
+    font-size: 0.9375rem;
     color: var(--muted);
 }
 .prose .footnote hr { display: none; }
 
 /* --- Narrow screens ----------------------------------------------------- */
 @media (max-width: 640px) {
-    .prose { padding: 2rem 1.4rem 3rem; border-radius: 10px; }
-    .prose h1 { font-size: 1.9rem; }
+    .prose { font-size: 1.0625rem; padding-bottom: 4rem; }
+    .prose h1 { font-size: 1.75rem; }
+    .prose h2 { font-size: 1.35rem; }
+    /* No room left to break out of the measure: pull the boxes back in line. */
+    .prose .highlight,
+    .prose .admonition { margin-left: 0; margin-right: 0; }
 }
