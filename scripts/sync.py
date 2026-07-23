@@ -139,6 +139,24 @@ def unpushed_count(content_dir: Path) -> int:
         return 0
 
 
+def has_commits(content_dir: Path) -> bool:
+    """Return whether the repo has at least one commit."""
+    return run_git(["rev-parse", "--verify", "HEAD"], cwd=content_dir).returncode == 0
+
+
+def has_pending(content_dir: Path) -> bool:
+    """Return whether commits exist locally that the remote does not have.
+
+    A repo whose origin was added *after* its first commit has no upstream and
+    therefore no computable ahead-count, yet everything in it is pending. Left
+    to ``unpushed_count`` alone that reads as zero, and a sync with nothing new
+    to commit would never push: the very first push would never happen.
+    """
+    if not has_commits(content_dir):
+        return False
+    return not has_upstream(content_dir) or unpushed_count(content_dir) > 0
+
+
 # --------------------------------------------------------------------------- #
 # Commit batching                                                             #
 # --------------------------------------------------------------------------- #
@@ -454,7 +472,10 @@ def sync(
             result.warnings.append(f"commit échoué : {err}")
 
     # -- push ---------------------------------------------------------------
-    if origin and not result.conflict_files and (result.committed or push_if_unchanged):
+    pending = origin and has_pending(content_dir)
+    if origin and not result.conflict_files and (
+        result.committed or push_if_unchanged or pending
+    ):
         # Pushing an open batch would freeze it, since a pushed commit must
         # never be rewritten. Hold it: the flush after the window sends it.
         if window > 0 and _open_batch(content_dir, window) is not None:
