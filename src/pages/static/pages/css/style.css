@@ -96,49 +96,115 @@ body {
     text-decoration: none;
 }
 
-/* Navigation tree — native <details>, no JS */
-.tree { padding: 0 0.5rem 2rem; font-size: 0.9rem; }
-.tree details { margin: 0.1rem 0; }
+/* Navigation tree: native <details>, no JS.
+   Three levels have to be told apart at a glance. Indentation alone cannot do
+   it in a 16rem column, so each level differs on several channels at once:
+   the domain is a titled section separated by a rule, the type is a quiet
+   label with no marker of its own, and the pages hang off a vertical rail. */
+.tree { padding: 0.25rem 0.6rem 2rem; font-size: 0.875rem; }
 .tree summary {
     list-style: none;
     cursor: pointer;
-    padding: 0.28rem 0.5rem;
     border-radius: 7px;
     color: var(--ink);
     user-select: none;
 }
 .tree summary::-webkit-details-marker { display: none; }
-.tree summary::before {
-    content: "▸";
-    display: inline-block;
-    width: 1em;
-    margin-right: 0.15em;
+
+/* --- Level 1: the domain, a section of the sidebar --- */
+
+/* The separator is what was missing: with eight pages open, the next domain
+   used to start 0.1rem below the last page, so nothing said a new section
+   had begun. */
+.tree-d + .tree-d {
+    margin-top: 0.45rem;
+    padding-top: 0.45rem;
+    border-top: 1px solid var(--border);
+}
+.tree-d > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.38rem 0.5rem;
+    font-weight: 650;
+    letter-spacing: 0.005em;
+}
+.tree-d > summary::before {
+    content: "";
+    /* A triangle drawn in CSS rather than a "▸" glyph: it keeps its exact
+       size and vertical alignment across fonts, which the character did not. */
+    width: 0;
+    height: 0;
+    border-left: 4.5px solid currentColor;
+    border-top: 3.5px solid transparent;
+    border-bottom: 3.5px solid transparent;
     color: var(--muted);
+    flex: none;
     transition: transform 0.15s ease;
 }
-.tree details[open] > summary::before { transform: rotate(90deg); }
-.tree summary:hover { background: var(--code-bg); }
-.tree-d > summary { font-weight: 600; }
-.tree-t { margin-left: 0.55rem; }
-.tree-t > summary {
+.tree-d[open] > summary::before { transform: rotate(90deg); }
+.tree-d > summary:hover { background: var(--code-bg); }
+.tree-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+/* The page count survives the domain being folded shut, which is the moment
+   the sidebar otherwise says nothing about what is inside. */
+.tree-count {
+    flex: none;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--muted);
+    background: var(--code-bg);
+    border-radius: 999px;
+    padding: 0.05rem 0.4rem;
+}
+
+/* --- Level 2: the type, a label rather than a peer of the domain --- */
+
+/* A plain label, not a control: giving the type the same triangle as the
+   domain was the main reason the two levels read as one, and once the marker
+   was gone a folded type looked exactly like an empty one. */
+.tree-t { margin: 0.15rem 0 0; }
+.tree-type {
+    margin: 0;
+    padding: 0.2rem 0.5rem 0.2rem 0.85rem;
     color: var(--muted);
     text-transform: uppercase;
-    font-size: 0.74rem;
-    letter-spacing: 0.04em;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
 }
-.tree ul { list-style: none; margin: 0; padding: 0 0 0.35rem 1.75rem; }
+
+/* --- Level 3: the pages, hanging off a rail --- */
+
+.tree ul {
+    list-style: none;
+    margin: 0 0 0.3rem 1.1rem;
+    padding: 0;
+    border-left: 1.5px solid var(--border);
+}
 .tree li a {
     display: block;
-    padding: 0.26rem 0.5rem;
-    border-radius: 7px;
-    color: var(--ink);
+    padding: 0.28rem 0.5rem 0.28rem 0.7rem;
+    /* Pulled onto the rail so the active marker replaces it rather than
+       sitting beside it. */
+    margin-left: -1.5px;
+    border-left: 1.5px solid transparent;
+    border-radius: 0 7px 7px 0;
+    color: var(--muted);
     text-decoration: none;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.tree li a:hover { background: var(--code-bg); }
-.tree li a.active { background: var(--accent); color: #fff; }
+.tree li a:hover { background: var(--code-bg); color: var(--ink); }
+/* A marker on the rail plus a tint, instead of the former solid accent block:
+   at this size a filled bar was the loudest thing on the page, louder than
+   the article title it pointed to. */
+.tree li a.active {
+    color: var(--ink);
+    font-weight: 600;
+    border-left-color: var(--accent);
+    background: light-dark(rgba(42, 93, 143, 0.10), rgba(134, 179, 220, 0.14));
+}
 
 /* Slim top bar inside the content area (menu + theme toggles) */
 .topbar {

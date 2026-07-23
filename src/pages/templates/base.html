@@ -29,17 +29,22 @@
         <a class="brand" href="/">◆ Mes notes</a>
         <nav class="tree" aria-label="Navigation du contenu">
             {% for d in nav %}
-            <details class="tree-d"{% if not page or page.domain == d.domain %} open{% endif %}>
-                <summary>{{ d.domain }}</summary>
+            <!-- Folded by default; only the domain holding the current page is
+                 opened, so arriving on a page still shows where you are. -->
+            <details class="tree-d"{% if page and page.domain == d.domain %} open{% endif %}>
+                <summary><span class="tree-name">{{ d.label }}</span><span class="tree-count">{{ d.count }}</span></summary>
                 {% for t in d.types %}
-                <details class="tree-t"{% if page and page.domain == d.domain and page.type == t.type %} open{% endif %}>
-                    <summary>{{ t.type }}</summary>
+                <!-- Not a <details>: the domain above already folds everything
+                     away, and a collapsed type was indistinguishable from an
+                     empty one once it lost its disclosure marker. -->
+                <div class="tree-t">
+                    <p class="tree-type">{{ t.label }}</p>
                     <ul>
                         {% for p in t.pages %}
                         <li><a href="{{ p.url }}"{% if page and page.relpath == p.relpath %} class="active" aria-current="page"{% endif %}>{{ p.title }}</a></li>
                         {% endfor %}
                     </ul>
-                </details>
+                </div>
                 {% endfor %}
             </details>
             {% endfor %}

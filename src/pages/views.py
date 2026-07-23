@@ -46,8 +46,12 @@ def search(request):
                 {
                     "url": h.page.url,
                     "title": h.page.title,
+                    # Both forms travel: the bare names drive the facet filters
+                    # client-side, the labels are what gets displayed.
                     "domain": h.page.domain,
                     "type": h.page.type,
+                    "domain_label": h.page.domain_label,
+                    "type_label": h.page.type_label,
                     "tags": h.page.tags,
                     "date": h.page.display_date,
                     "snippet": h.snippet,

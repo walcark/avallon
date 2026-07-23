@@ -16,6 +16,7 @@ import os
 import re
 import subprocess
 import tempfile
+import tomllib
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
@@ -83,6 +84,14 @@ class Page:
         """Human date shown in listings: last-modified, falling back to creation."""
         return _fr_date(self.updated or self.date)
 
+    @property
+    def domain_label(self) -> str:
+        return label_for(self.domain)
+
+    @property
+    def type_label(self) -> str:
+        return label_for(self.type)
+
 
 def _recency_key(page: Page) -> str:
     """Sort key for 'most recent first': updated, falling back to creation."""
@@ -101,6 +110,52 @@ class SearchHit:
 
     page: Page
     snippet: str          # safe HTML, matched terms wrapped in <mark>
+
+
+# --------------------------------------------------------------------------- #
+# Display names                                                               #
+# --------------------------------------------------------------------------- #
+
+# Directory names double as URL segments, so they stay lowercase and
+# unaccented. `[labels]` in taxonomy.toml maps them to what a reader sees
+# ("sante" -> "santé", "cr" -> "compte rendu"), leaving the paths untouched.
+_labels_cache: tuple[float, dict[str, str]] | None = None
+
+
+def labels() -> dict[str, str]:
+    """Display names declared in taxonomy.toml, keyed by directory name.
+
+    Cached against the file's mtime: it is read on nearly every request, and
+    it changes about twice a year.
+    """
+    global _labels_cache
+    path = CONTENT_DIR / "taxonomy.toml"
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        return {}
+    if _labels_cache is None or _labels_cache[0] != mtime:
+        try:
+            data = tomllib.loads(path.read_text(encoding="utf-8"))
+        except (OSError, tomllib.TOMLDecodeError):
+            data = {}
+        raw = data.get("labels")
+        table = (
+            {str(k): str(v) for k, v in raw.items()}
+            if isinstance(raw, dict)
+            else {}
+        )
+        _labels_cache = (mtime, table)
+    return _labels_cache[1]
+
+
+def label_for(name: str) -> str:
+    """Display name for a domain or type, falling back to the name itself.
+
+    Undeclared is the normal case: only the few names whose directory form
+    reads badly need an entry.
+    """
+    return labels().get(name, name)
 
 
 def safe_resolve(relpath: str) -> Path:
@@ -281,8 +336,12 @@ def nav_tree() -> list[dict[str, Any]]:
     return [
         {
             "domain": domain,
+            "label": label_for(domain),
+            # Page count, shown next to a collapsed domain: it is the one thing
+            # the sidebar cannot say once the domain is folded shut.
+            "count": sum(len(pages) for pages in grouped[domain].values()),
             "types": [
-                {"type": type_, "pages": pages}
+                {"type": type_, "label": label_for(type_), "pages": pages}
                 for type_, pages in sorted(grouped[domain].items())
             ],
         }

@@ -18,7 +18,7 @@
     <script src="{% static 'pages/js/mathjax/tex-mml-svg.js' %}" async></script>
 {% endblock %}
 
-{% block topbar %}{{ page.domain }} / {{ page.type }}{% endblock %}
+{% block topbar %}{{ page.domain_label }} / {{ page.type_label }}{% endblock %}
 
 {% block topbar_actions %}
     <button type="button" class="icon-btn" id="editToggle" aria-pressed="false"
@@ -59,9 +59,9 @@
     <main class="prose">
         <header class="page-head">
             <p class="page-crumbs">
-                <a href="/?domaine={{ page.domain|urlencode }}">{{ page.domain }}</a>
+                <a href="/?domaine={{ page.domain|urlencode }}">{{ page.domain_label }}</a>
                 <span aria-hidden="true">/</span>
-                <a href="/?domaine={{ page.domain|urlencode }}&amp;type={{ page.type|urlencode }}">{{ page.type }}</a>
+                <a href="/?domaine={{ page.domain|urlencode }}&amp;type={{ page.type|urlencode }}">{{ page.type_label }}</a>
                 {% if page.is_private %}<span class="badge-private" title="Cette page n'est visible qu'en local">privé</span>{% endif %}
             </p>
             <h1>{{ page.title }}</h1>
@@ -94,7 +94,7 @@
             <ul>
                 {% for b in backlinks %}
                 <li><a href="{{ b.url }}">{{ b.title }}</a>
-                    <span class="backlink-path">{{ b.domain }} / {{ b.type }}</span></li>
+                    <span class="backlink-path">{{ b.domain_label }} / {{ b.type_label }}</span></li>
                 {% endfor %}
             </ul>
         </aside>

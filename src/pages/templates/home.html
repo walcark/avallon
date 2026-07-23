@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load taxonomy %}
 
 {% block title %}Accueil{% endblock %}
 {% block topbar %}Accueil{% endblock %}
@@ -55,11 +56,11 @@
         <div class="facets">
             <div class="facet-group" data-facet="domain">
                 <span class="facet-label">Domaine</span>
-                {% for d in domains %}<button type="button" class="chip" aria-pressed="false" data-value="{{ d }}">{{ d }}</button>{% endfor %}
+                {% for d in domains %}<button type="button" class="chip" aria-pressed="false" data-value="{{ d }}">{{ d|label }}</button>{% endfor %}
             </div>
             <div class="facet-group" data-facet="type">
                 <span class="facet-label">Type</span>
-                {% for t in types %}<button type="button" class="chip" aria-pressed="false" data-value="{{ t }}">{{ t }}</button>{% endfor %}
+                {% for t in types %}<button type="button" class="chip" aria-pressed="false" data-value="{{ t }}">{{ t|label }}</button>{% endfor %}
             </div>
             <div class="facet-group" data-facet="tag">
                 <span class="facet-label">Tags</span>
@@ -75,7 +76,7 @@
             <li class="card" data-domain="{{ p.domain }}" data-type="{{ p.type }}" data-tags="{{ p.tags|join:'||' }}">
                 <a class="card-title" href="{{ p.url }}">{{ p.title }}</a>
                 <div class="card-meta">
-                    <span class="card-path">{{ p.domain }} / {{ p.type }}</span>
+                    <span class="card-path">{{ p.domain_label }} / {{ p.type_label }}</span>
                     {% if p.display_date %}<span class="card-date">{{ p.display_date }}</span>{% endif %}
                     {% for t in p.tags %}<span class="tag">{{ t }}</span>{% endfor %}
                 </div>
@@ -168,7 +169,7 @@
             <li class="card">
               <a class="card-title" href="${r.url}">${escapeHtml(r.title)}</a>
               <div class="card-meta">
-                <span class="card-path">${escapeHtml(r.domain)} / ${escapeHtml(r.type)}</span>
+                <span class="card-path">${escapeHtml(r.domain_label || r.domain)} / ${escapeHtml(r.type_label || r.type)}</span>
                 ${r.date ? `<span class="card-date">${escapeHtml(r.date)}</span>` : ''}
                 ${r.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}
               </div>
