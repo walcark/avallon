@@ -32,7 +32,7 @@ summary: Une phrase de résumé affichée sur la page d'accueil.
 ## Emplacement du contenu (dépôt externe)
 
 Le contenu (arbre Markdown **et** `taxonomy.toml`) vit dans un **dépôt séparé**,
-hors de ce repo applicatif — comme les données de `pytodo`. L'emplacement actif
+hors de ce repo applicatif, comme les données de `pytodo`. L'emplacement actif
 est stocké dans un fichier local non versionné
 (`~/.config/mysite/config.toml`, `content_dir = "…"`).
 
@@ -138,7 +138,7 @@ options (`--domain`, `--type`, `--title`, `--tags`, `--summary`) pour scripter.
   topbar fine porte le titre de contexte et la bascule de **thème clair/sombre**
   (persistée, sinon suit l'OS ; implémentée avec `light-dark()` en CSS).
 - **Accueil** (`/`) : toutes les pages, les plus récentes d'abord, avec des
-  filtres à facettes **adaptatifs** — les types proposés suivent le domaine
+  filtres à facettes **adaptatifs** : les types proposés suivent le domaine
   choisi, les tags suivent le couple domaine + type.
 - **Recherche plein-texte** (`/search/?q=`) : `ripgrep` multi-termes en **ET**
   (repli Python pur si `rg` absent), extraits surlignés tirés du texte lisible.

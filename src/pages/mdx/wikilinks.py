@@ -25,8 +25,8 @@ WIKILINK_RE = r"\[\[\s*([^\]|]+?)\s*(?:\|\s*([^\]]+?)\s*)?\]\]"
 def _resolve(target: str):
     """Return the Page whose slug or relpath equals *target*, else None."""
     # Imported lazily: the extension is loaded while Django builds the markdown
-    # pipeline, and `content` pulls in settings/Http404 — importing it at module
-    # top would risk an import cycle. Resolving here also means the page map is
+    # pipeline, and `content` pulls in settings/Http404, so importing it at
+    # module top would risk an import cycle. Resolving here also means the map is
     # always current (matters for live-reload).
     from .. import content
 

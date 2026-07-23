@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Where the content lives — a user-configurable, non-versioned pointer.
+"""Where the content lives: a user-configurable, non-versioned pointer.
 
 Mirrors pytodo. A *local* config file (``~/.config/mysite/config.toml``,
 honoring ``$XDG_CONFIG_HOME``) stores ``content_dir``: the path of the external

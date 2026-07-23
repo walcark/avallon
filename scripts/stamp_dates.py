@@ -7,7 +7,7 @@ Two date fields are maintained:
     updated  last-modified date, refreshed on every commit
 
 The frontmatter is edited *textually* (only the two date lines are touched),
-so the rest of the file — key order, inline lists, comments — stays byte for
+so the rest of the file (key order, inline lists, comments) stays byte for
 byte identical and diffs stay clean. This script uses the standard library
 only, so the git pre-commit hook can run it without the project environment.
 

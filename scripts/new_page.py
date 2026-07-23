@@ -5,7 +5,7 @@
 
 Domaine and type are chosen among the declared taxonomy (taxonomy.toml); tags
 are free text. The interactive picker uses gum, then fzf, then a plain numbered
-menu — whichever is available — so it works without extra tooling. Every field
+menu (whichever is available), so it works without extra tooling. Every field
 can also be passed as a flag, which makes the command scriptable and testable:
 
     python scripts/new_page.py --domain travail --type notes \\
