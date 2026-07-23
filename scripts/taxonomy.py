@@ -3,7 +3,7 @@
 
 taxonomy.toml is the single source of truth for the <domaine>/<type>
 directories a page may live in. new_page.py only offers values declared here,
-and `add-domain` / `add-type` extend it — committing the change — so pages are
+and `add-domain` / `add-type` extend it (committing the change), so pages are
 never created under an undeclared domain or type.
 
     taxonomy.py add-domain <nom>
@@ -41,18 +41,30 @@ def load() -> dict[str, list[str]]:
     }
 
 
-def _dump(data: dict[str, list[str]]) -> str:
-    def arr(key: str) -> str:
-        items = ", ".join(f'"{v}"' for v in sorted(set(data.get(key, []))))
-        return f"{key} = [{items}]\n"
+# The `domains = [...]` / `types = [...]` line, edited in place.
+_ARRAY = re.compile(
+    r"^(?P<head>(?P<key>domains|types)\s*=\s*\[)(?P<items>[^\]]*)\]",
+    re.MULTILINE,
+)
 
-    return (
-        "# Vocabulaire autorisé pour les pages du site.\n"
-        "# Édité par `pixi run add-domain <nom>` / `pixi run add-type <nom>`.\n"
-        "# Chaque page vit dans content/<domaine>/<type>/<slug>/.\n\n"
-        + arr("domains")
-        + arr("types")
+
+def _insert(text: str, key: str, name: str) -> str:
+    """Return *text* with *name* added to its ``key = [...]`` array.
+
+    The array line is rewritten and nothing else is touched. Regenerating the
+    whole file from a template, as this used to do, silently dropped every
+    other part of it: the comments explaining how to choose a domain or a
+    type, and the ``[labels]`` table holding the display names.
+    """
+    match = next(
+        (m for m in _ARRAY.finditer(text) if m.group("key") == key), None
     )
+    if match is None:
+        return text.rstrip("\n") + f'\n{key} = ["{name}"]\n'
+    items = [v.strip() for v in match.group("items").split(",") if v.strip()]
+    values = sorted({*(v.strip('"') for v in items), name})
+    line = match.group("head") + ", ".join(f'"{v}"' for v in values) + "]"
+    return text[: match.start()] + line + text[match.end():]
 
 
 def add(kind: str, name: str, *, commit: bool = True) -> bool:
@@ -64,8 +76,10 @@ def add(kind: str, name: str, *, commit: bool = True) -> bool:
     if name in data[key]:
         print(f"{_FR[kind]} « {name} » déjà présent.")
         return False
-    data[key].append(name)
-    TAXO.write_text(_dump(data), encoding="utf-8")
+    TAXO.write_text(
+        _insert(TAXO.read_text(encoding="utf-8") if TAXO.exists() else "", key, name),
+        encoding="utf-8",
+    )
     print(f"{_FR[kind]} « {name} » ajouté à {TAXO.name}.")
     # Only commit when the content dir is its own git repo (the external case);
     # in the in-repo dev fallback it's gitignored, so committing would fail.
