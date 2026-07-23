@@ -19,8 +19,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Root of the Markdown content tree (<domaine>/<type>/<slug>/index.md), plus
 # taxonomy.toml. Its location is user-configurable and lives *outside* this repo
-# by default (see scripts/content_config.py): env KW_CONTENT_DIR, else the
-# ~/.config/kevin-website/config.toml pointer, else the in-repo content/ (dev).
+# by default (see scripts/content_config.py): env MYSITE_CONTENT_DIR, else the
+# ~/.config/mysite/config.toml pointer, else the in-repo content/ (dev).
 _SCRIPTS = BASE_DIR.parent / "scripts"
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
@@ -33,9 +33,9 @@ CONTENT_DIR = resolve_content_dir()
 # from the listings, the navigation, the search *and* their own URL (404), so
 # publishing the site cannot leak them by a direct link.
 #
-# Default: shown locally, hidden anywhere else. Set KW_SHOW_PRIVATE=1/0 to
+# Default: shown locally, hidden anywhere else. Set MYSITE_SHOW_PRIVATE=1/0 to
 # force it either way (deployments should leave it unset, or set it to 0).
-_show_private = os.environ.get("KW_SHOW_PRIVATE")
+_show_private = os.environ.get("MYSITE_SHOW_PRIVATE")
 
 
 # Quick-start development settings - unsuitable for production

@@ -1,7 +1,7 @@
 [project]
 authors = [{name = "walcark", email = "kevin.walcarius@cnes.fr"}]
 dependencies = []
-name = "kevin-website"
+name = "mysite"
 requires-python = ">= 3.11"
 version = "0.1.0"
 
@@ -22,7 +22,7 @@ channels = ["conda-forge"]
 platforms = ["linux-64"]
 
 [tool.pixi.pypi-dependencies]
-kevin_website = { path = ".", editable = true }
+mysite = { path = ".", editable = true }
 django-markdownify = "*"
 python-frontmatter = "*"
 uvicorn = { version = "*", extras = ["standard"] }
@@ -37,7 +37,7 @@ runserver = "python manage.py runserver"
 serve = { cmd = "uvicorn config.asgi:application --reload --reload-include '*.html' --reload-include '*.css' --host 127.0.0.1 --port 8000", cwd = "src" }
 # Fill any missing date/updated in content frontmatter (from git dates / mtime).
 stamp = "python scripts/stamp_dates.py --backfill"
-# Content location (notes + taxonomy.toml), stored in ~/.config/kevin-website/.
+# Content location (notes + taxonomy.toml), stored in ~/.config/mysite/.
 content-where = "python scripts/content_repo.py where"        # print active dir
 content-init = "python scripts/content_repo.py init"          # create/adopt <path>
 content-set = "python scripts/content_repo.py set"            # activate <path>

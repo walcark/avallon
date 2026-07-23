@@ -26,7 +26,7 @@ STAMP_SCRIPT = cc._REPO_ROOT / "scripts" / "stamp_dates.py"
 
 _HOOK = """#!/usr/bin/env sh
 # Auto-stamp `updated:` (fill `date:` if missing) on staged content pages, then
-# re-stage them. Installed by kevin-website (`pixi run content-init`).
+# re-stage them. Installed by mysite (`pixi run content-init`).
 staged=$(git diff --cached --name-only --diff-filter=ACM | grep -E 'index\\.md$' || true)
 [ -z "$staged" ] && exit 0
 if ! command -v python3 >/dev/null 2>&1; then

@@ -1,4 +1,4 @@
-# kevin-website
+# mysite
 
 Site personnel de notes en **Markdown** : chaque page est un fichier Markdown
 rendu en HTML, rangé dans une arborescence qui encode à la fois l'URL et la
@@ -34,7 +34,7 @@ summary: Une phrase de résumé affichée sur la page d'accueil.
 Le contenu (arbre Markdown **et** `taxonomy.toml`) vit dans un **dépôt séparé**,
 hors de ce repo applicatif — comme les données de `pytodo`. L'emplacement actif
 est stocké dans un fichier local non versionné
-(`~/.config/kevin-website/config.toml`, `content_dir = "…"`).
+(`~/.config/mysite/config.toml`, `content_dir = "…"`).
 
 ```
 pixi run content-init <chemin>   # crée/adopte le dépôt de contenu, l'active,
@@ -46,8 +46,8 @@ pixi run content-where           # affiche le dépôt actif et sa provenance
 
 Résolution de l'emplacement (le premier qui répond gagne) :
 
-1. la variable d'environnement **`KW_CONTENT_DIR`** (override, utile en test/CI) ;
-2. **`content_dir`** dans `~/.config/kevin-website/config.toml` ;
+1. la variable d'environnement **`MYSITE_CONTENT_DIR`** (override, utile en test/CI) ;
+2. **`content_dir`** dans `~/.config/mysite/config.toml` ;
 3. le dossier **`content/`** de ce repo (repli de dev, pour qu'un clone tourne
    sans configuration).
 

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Where the content lives — a user-configurable, non-versioned pointer.
 
-Mirrors pytodo. A *local* config file (``~/.config/kevin-website/config.toml``,
+Mirrors pytodo. A *local* config file (``~/.config/mysite/config.toml``,
 honoring ``$XDG_CONFIG_HOME``) stores ``content_dir``: the path of the external
 content repo that holds the Markdown tree **and** ``taxonomy.toml``. It is read
 by both Django (to serve the site) and the scripts (to scaffold/stamp pages).
 
 Resolution order (first hit wins):
 
-    1. ``$KW_CONTENT_DIR``            env override — handy for tests / CI
+    1. ``$MYSITE_CONTENT_DIR``        env override, handy for tests / CI
     2. ``content_dir`` in the config  the configured external repo
     3. the in-repo ``content/``       dev fallback, so a fresh clone still runs
 
@@ -21,8 +21,8 @@ import os
 import tomllib
 from pathlib import Path
 
-APP_NAME = "kevin-website"
-ENV_VAR = "KW_CONTENT_DIR"
+APP_NAME = "mysite"
+ENV_VAR = "MYSITE_CONTENT_DIR"
 
 # scripts/ -> repo root -> repo/content (the dev fallback location).
 _REPO_ROOT = Path(__file__).resolve().parent.parent
