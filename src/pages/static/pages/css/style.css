@@ -687,3 +687,80 @@ mjx-container[display="true"] { margin: 1.4em 0; }
     .prose .highlight,
     .prose .admonition { margin-left: 0; margin-right: 0; }
 }
+
+/* --------------------------------------------------------------------------
+   Markdown editor
+   -------------------------------------------------------------------------- */
+
+/* The pencil becomes an eye once editing: the button always shows what the
+   next click gives you, not what you are looking at. */
+#editToggle .i-eye { display: none; }
+#editToggle[aria-pressed="true"] .i-edit { display: none; }
+#editToggle[aria-pressed="true"] .i-eye { display: block; }
+#editToggle svg { width: 1.05rem; height: 1.05rem; display: block; }
+
+/* Editing wants room, so take the wide measure whatever the reading toggle
+   says. The sommaire column is not fought over here: the editor sets the
+   toc's `hidden` attribute, which is what the grid rule above already keys
+   on, so the column collapses on its own. */
+.page.is-editing > .prose { max-width: var(--measure-wide); }
+
+.editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+.editor textarea {
+    width: 100%;
+    /* Tall enough that the common case needs no scrolling inside the box,
+       while still leaving the toolbar reachable without hunting for it. */
+    min-height: min(70vh, 40rem);
+    resize: vertical;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--code-panel);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    tab-size: 4;
+}
+.editor textarea:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+/* Sticky: the textarea is taller than the viewport on any real note, and a
+   save button you have to scroll to find is a save button you stop using. */
+.editor-bar {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    background: var(--bg);
+}
+
+.btn {
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+    padding: 0.45rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+}
+.btn:hover { background: var(--code-bg); }
+
+.editor-status {
+    font-family: var(--font-ui);
+    font-size: 0.82rem;
+    color: var(--muted);
+}
+.editor-status[data-kind="ok"]    { color: var(--accent); }
+.editor-status[data-kind="error"] { color: light-dark(#a3341f, #e79080); }

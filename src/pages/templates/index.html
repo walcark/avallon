@@ -21,6 +21,19 @@
 {% block topbar %}{{ page.domain }} / {{ page.type }}{% endblock %}
 
 {% block topbar_actions %}
+    <button type="button" class="icon-btn" id="editToggle" aria-pressed="false"
+            aria-label="Éditer le Markdown de cette page" title="Éditer (Ctrl+E)">
+        <svg class="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 20h9"/>
+            <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+        </svg>
+        <svg class="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/>
+            <circle cx="12" cy="12" r="3"/>
+        </svg>
+    </button>
     <button type="button" class="icon-btn" id="widthToggle" aria-pressed="false"
             aria-label="Basculer la largeur de lecture (restreint / étendu)"
             title="Largeur de lecture">
@@ -62,6 +75,19 @@
 
         <div class="page-body">{{ content_html|safe }}</div>
 
+        <!-- Raw Markdown editor. The source is fetched on first open rather
+             than embedded here, so reading a page never carries the cost of
+             shipping the file twice. -->
+        <div class="editor" id="editor" hidden>
+            {% csrf_token %}
+            <textarea id="editorText" spellcheck="false" wrap="soft"
+                      aria-label="Source Markdown de la page"></textarea>
+            <div class="editor-bar">
+                <button type="button" class="btn" id="editorSave">Enregistrer</button>
+                <span class="editor-status" id="editorStatus" role="status"></span>
+            </div>
+        </div>
+
         {% if backlinks %}
         <aside class="backlinks">
             <h2>Cité par</h2>
@@ -81,6 +107,11 @@
       (function () {
         const main = document.querySelector('.page-body');
         const toc = document.getElementById('toc');
+        // Shared with the editor below. A plain flag rather than reading the
+        // editor's state: the live-reload stream pushes a render as soon as it
+        // connects, which re-runs the enhancers, and they must not undo the
+        // editing layout.
+        let editing = false;
 
         // --- Table of contents ---------------------------------------------
         // Built from the rendered headings rather than from python-markdown's
@@ -94,6 +125,9 @@
           const heads = [...main.querySelectorAll('h1[id], h2[id], h3[id]')];
           if (spy) { spy.disconnect(); spy = null; }
           list.innerHTML = '';
+          // While editing there is no rendering to navigate, and showing the
+          // toc would also reopen its grid column under the editor.
+          if (editing) { toc.hidden = true; return; }
           // A single section is not an outline; don't clutter the page with it.
           if (heads.length < 2) { toc.hidden = true; return; }
 
@@ -182,17 +216,160 @@
         }
         enhance();
 
+        // --- Markdown editor -------------------------------------------------
+        // Toggles between the rendered page and its raw source. The mtime read
+        // when the source is fetched travels back on save: the server compares
+        // it and refuses rather than overwrite an edit made meanwhile in a
+        // local text editor.
+        const RELPATH = '{{ relpath }}';
+        const editor = document.getElementById('editor');
+        const editToggle = document.getElementById('editToggle');
+        const textarea = document.getElementById('editorText');
+        const statusEl = document.getElementById('editorStatus');
+        const backlinks = document.querySelector('.backlinks');
+        let mtime = null, loaded = false, dirty = false, savedAt = 0;
+
+        function csrf() {
+          const el = editor.querySelector('[name=csrfmiddlewaretoken]');
+          return el ? el.value : '';
+        }
+
+        function say(message, kind) {
+          statusEl.textContent = message;
+          statusEl.dataset.kind = kind || '';
+        }
+
+        function setEditing(on) {
+          editor.hidden = !on;
+          main.hidden = on;
+          if (backlinks) backlinks.hidden = on;
+          // Editing wants room, and the sommaire describes a rendering that is
+          // no longer on screen. Hiding the toc through its `hidden` attribute
+          // rather than with CSS is what collapses its grid column too: the
+          // layout keys on that attribute, so there is nothing to override.
+          editing = on;
+          document.querySelector('.page').classList.toggle('is-editing', on);
+          buildToc();
+          editToggle.setAttribute('aria-pressed', String(on));
+          if (on) textarea.focus();
+        }
+
+        function openEditor() {
+          setEditing(true);
+          if (loaded) return;
+          say('Chargement…');
+          fetch('/source/?path=' + encodeURIComponent(RELPATH))
+            .then(function (r) {
+              if (!r.ok) throw new Error(r.status);
+              return r.json();
+            })
+            .then(function (d) {
+              textarea.value = d.text;
+              mtime = d.mtime;
+              loaded = true;
+              dirty = false;
+              say('');
+            })
+            .catch(function () {
+              say('Impossible de charger la source.', 'error');
+            });
+        }
+
+        function closeEditor() {
+          if (dirty && !window.confirm('Modifications non enregistrées. Fermer ?')) {
+            return;
+          }
+          setEditing(false);
+        }
+
+        function save() {
+          if (!loaded) return;
+          say('Enregistrement…');
+          fetch('/save/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+            body: JSON.stringify({ path: RELPATH, text: textarea.value, mtime: mtime })
+          })
+            .then(function (r) {
+              return r.json().then(function (d) { return { ok: r.ok, status: r.status, d: d }; });
+            })
+            .then(function (res) {
+              if (!res.ok) {
+                say(res.d.error || 'Échec de l’enregistrement.', 'error');
+                return;
+              }
+              // The pre-commit hook stamps `updated:` into the frontmatter, so
+              // what is on disk now differs from what was typed. Take the
+              // server's version back, keeping the caret where it was.
+              const caret = textarea.selectionStart;
+              if (textarea.value !== res.d.text) {
+                textarea.value = res.d.text;
+                textarea.setSelectionRange(caret, caret);
+              }
+              mtime = res.d.mtime;
+              dirty = false;
+              savedAt = Date.now();
+              say(res.d.committed ? 'Enregistré et commité' : 'Enregistré (non versionné)', 'ok');
+              // The title lives in the frontmatter but is rendered outside the
+              // body the live reload swaps, so only a reload can refresh it.
+              if (res.d.title !== document.title) window.location.reload();
+            })
+            .catch(function () {
+              say('Échec de l’enregistrement (réseau).', 'error');
+            });
+        }
+
+        // `#edit` in the URL opens the editor straight away, so a page can be
+        // linked to in its editable form.
+        if (window.location.hash === '#edit') openEditor();
+
+        textarea.addEventListener('input', function () {
+          dirty = true;
+          say('Modifié');
+        });
+        editToggle.addEventListener('click', function () {
+          editor.hidden ? openEditor() : closeEditor();
+        });
+        document.getElementById('editorSave').addEventListener('click', save);
+        document.addEventListener('keydown', function (e) {
+          if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
+            e.preventDefault();
+            editor.hidden ? openEditor() : closeEditor();
+          } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && !editor.hidden) {
+            e.preventDefault();
+            save();
+          } else if (e.key === 'Escape' && !editor.hidden) {
+            closeEditor();
+          }
+        });
+        window.addEventListener('beforeunload', function (e) {
+          if (dirty) { e.preventDefault(); e.returnValue = ''; }
+        });
+
         // --- Live reload ----------------------------------------------------
         // Swap the rendered body in place whenever the .md changes on disk.
         // Only .page-body is replaced, so the header and the backlinks survive;
         // everything JS added inside it is rebuilt by enhance().
-        const es = new EventSource('/stream/?path=' + encodeURIComponent('{{ relpath }}'));
+        // The stream pushes a first render as soon as it connects, which is the
+        // page we are already looking at, not a change. Counting it as one made
+        // `#edit` open onto a "the file changed" warning about nothing.
+        let firstPush = true;
+        const es = new EventSource('/stream/?path=' + encodeURIComponent(RELPATH));
         es.addEventListener('update', function (e) {
           main.innerHTML = JSON.parse(e.data);
           enhance();
           if (window.MathJax && window.MathJax.typesetPromise) {
             window.MathJax.typesetPromise([main]);
           }
+          // A change landing while the editor is open means someone else wrote
+          // the file, and the mtime we hold is now stale (the next save would
+          // be refused). Our own save fires this too, hence the short grace
+          // window rather than a warning on every keystroke saved.
+          if (!firstPush && !editor.hidden && Date.now() - savedAt > 2000) {
+            say('Le fichier a changé sur le disque. Recharge avant d’enregistrer.',
+                'error');
+          }
+          firstPush = false;
         });
       })();
     </script>

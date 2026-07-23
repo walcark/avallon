@@ -162,6 +162,38 @@ rechargement complet et sans perdre la position de défilement.
 Les polices (Roboto) et **MathJax** (build SVG) sont **auto-hébergées** sous
 `static/` : le rendu fonctionne hors-ligne, sans CDN.
 
+## Édition dans le navigateur
+
+Sur une page, le bouton crayon de la topbar (ou `Ctrl+E`) bascule entre le rendu
+et la source Markdown éditable, frontmatter compris. `Ctrl+S` enregistre, `Échap`
+referme. L'URL `…/#edit` ouvre directement en mode édition.
+
+Chaque enregistrement écrit le fichier **puis le commite** dans le dépôt de
+contenu (message `edit <domaine>/<type>/<slug>`), avec le groupage de 15 minutes
+décrit plus haut, et lance le push en tâche de fond. Le commit est ce qui rend
+l'édition web sûre : sans lui, une sauvegarde écraserait le fichier sans recours.
+
+Trois refus délibérés :
+
+- **frontmatter invalide** : la sauvegarde est refusée (400) plutôt que d'écrire
+  un fichier qui casserait la page ;
+- **fichier modifié entre-temps** : le `mtime` lu à l'ouverture repart au
+  serveur, qui refuse (409) si le fichier a bougé sur le disque depuis. Sans ça,
+  éditer la même note dans le navigateur et dans son éditeur local ferait gagner
+  le dernier à écrire, en silence ;
+- **page privée** : quand `SHOW_PRIVATE` est faux, la page est introuvable pour
+  l'éditeur comme pour la lecture (404 sur les deux routes).
+
+L'écriture est atomique (fichier temporaire puis `os.replace`), sinon le flux de
+live reload, qui relit le fichier toutes les 0,3 s, pourrait le lire à moitié
+écrit.
+
+> **Aucune authentification.** N'importe qui atteignant le site peut écrire.
+> C'est acceptable en local ; ça ne l'est pas dès que le site est exposé, même
+> derrière un VPN. Le point de contrôle unique est `may_edit()` dans
+> `pages/views.py` : toutes les écritures y passent, donc poser un
+> `login_required` s'y fait en une ligne.
+
 ## Commandes
 
 | Commande | Rôle |

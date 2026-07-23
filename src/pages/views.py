@@ -1,6 +1,8 @@
 import asyncio
 import json
 
+import sync
+from django.conf import settings
 from django.http import (
     FileResponse,
     Http404,
@@ -9,6 +11,7 @@ from django.http import (
     StreamingHttpResponse,
 )
 from django.shortcuts import render
+from django.views.decorators.http import require_POST
 
 from . import content
 
@@ -88,6 +91,117 @@ def serve_content(request, relpath):
         return FileResponse(open(target, "rb"))
 
     raise Http404("Page introuvable")
+
+
+def may_edit(request) -> bool:
+    """Whether *request* is allowed to write to the content tree.
+
+    Editing is currently open: the site has no authentication (see the README).
+    Every write funnels through this one predicate, so putting the editor
+    behind a login later is a change here rather than an audit of the views.
+    """
+    return True
+
+
+def _editable_page(relpath: str):
+    """Resolve *relpath* to an editable page, or raise Http404.
+
+    Reuses the reader's checks on purpose: ``safe_resolve`` refuses paths that
+    escape the content tree, and ``load_page`` refuses a page hidden by
+    ``SHOW_PRIVATE``, so the editor cannot reach what the site will not serve.
+    """
+    index_md = content.safe_resolve(relpath) / "index.md"
+    if not index_md.is_file():
+        raise Http404("Page introuvable")
+    content.load_page(index_md)
+    return index_md
+
+
+def _commit_page(relpath: str) -> bool:
+    """Commit the saved page, then push in the background. Returns whether a
+    commit was made.
+
+    The commit is synchronous because it is local and instant, and because
+    answering 200 before the write is recorded would be a lie. The push is
+    detached: it is the slow, failure-prone half, and a save must not wait on
+    the network.
+    """
+    content_dir = settings.CONTENT_DIR
+    if not sync.is_repo_root(content_dir):
+        return False  # not its own repo (dev fallback): saving stays unversioned
+    committed, _ = sync.commit_scoped(
+        content_dir, f"edit {relpath}", window=sync.sync_window()
+    )
+    if committed:
+        sync.spawn_flush(content_dir)
+    return committed
+
+
+def page_source(request):
+    """Return a page's raw Markdown (`?path=<relpath>`), for the editor.
+
+    The ``mtime`` travels with the text and must come back on save: it is what
+    lets the server tell an ordinary write from one that would silently
+    overwrite an edit made meanwhile in a local text editor.
+    """
+    if not may_edit(request):
+        raise Http404("Édition indisponible")
+    index_md = _editable_page(request.GET.get("path", ""))
+    return JsonResponse(
+        {"text": content.read_source(index_md), "mtime": content.page_mtime(index_md)}
+    )
+
+
+@require_POST
+def save_page(request):
+    """Write a page's Markdown back to disk, then commit it.
+
+    Answers 409 when the file moved under the editor and 400 when the
+    frontmatter would no longer parse, rather than saving something that
+    breaks the page.
+    """
+    if not may_edit(request):
+        raise Http404("Édition indisponible")
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Requête illisible."}, status=400)
+
+    relpath = str(payload.get("path", ""))
+    index_md = _editable_page(relpath)
+    text = payload.get("text")
+    if not isinstance(text, str):
+        return JsonResponse({"error": "Contenu manquant."}, status=400)
+
+    try:
+        content.save_source(index_md, text, payload.get("mtime"))
+    except content.InvalidFrontmatter as exc:
+        return JsonResponse(
+            {"error": f"Frontmatter invalide : {exc}"}, status=400
+        )
+    except content.StaleEdit:
+        return JsonResponse(
+            {
+                "error": "Le fichier a changé sur le disque depuis l'ouverture "
+                         "de l'éditeur. Recharge la page pour repartir de la "
+                         "version courante.",
+            },
+            status=409,
+        )
+
+    committed = _commit_page(relpath)
+    # Re-read *after* committing: the content repo's pre-commit hook stamps
+    # `updated:` into the frontmatter, so the text and the mtime the editor
+    # holds are already out of date by the time we answer.
+    page = content.load_page(index_md)
+    return JsonResponse(
+        {
+            "text": content.read_source(index_md),
+            "mtime": content.page_mtime(index_md),
+            "title": page.title,
+            "committed": committed,
+        }
+    )
 
 
 async def markdown_stream(request):

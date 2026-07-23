@@ -12,8 +12,10 @@ without any src rewriting.
 from __future__ import annotations
 
 import html
+import os
 import re
 import subprocess
+import tempfile
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
@@ -128,6 +130,82 @@ def reading_minutes(index_md: Path) -> int:
     post = frontmatter.load(index_md)
     words = len(_plain_text(post.content).split())
     return max(1, round(words / 200))
+
+
+# --------------------------------------------------------------------------- #
+# Editing                                                                     #
+# --------------------------------------------------------------------------- #
+
+
+class InvalidFrontmatter(ValueError):
+    """The submitted Markdown carries a frontmatter block YAML cannot parse."""
+
+
+class StaleEdit(Exception):
+    """The file changed on disk since the editor loaded it.
+
+    Raised instead of overwriting: the browser editor and a local text editor
+    can hold the same page at once, and the last writer would otherwise win in
+    silence.
+    """
+
+
+def page_mtime(index_md: Path) -> float:
+    """Return the page's modification time, the token the editor round-trips."""
+    return index_md.stat().st_mtime
+
+
+def read_source(index_md: Path) -> str:
+    """Return the page's Markdown verbatim, frontmatter included."""
+    return index_md.read_text(encoding="utf-8")
+
+
+def save_source(
+    index_md: Path, text: str, expected_mtime: float | None = None
+) -> None:
+    """Overwrite a page's Markdown, refusing to clobber a concurrent edit.
+
+    The write is atomic (temporary file in the same directory, then
+    ``os.replace``) because the live-reload stream polls this file every 0.3 s
+    and would otherwise be able to read it half-written.
+
+    Parameters
+    ----------
+    index_md : pathlib.Path
+        The page's ``index.md``.
+    text : str
+        Full Markdown source, frontmatter included.
+    expected_mtime : float, optional
+        Modification time the editor saw when it loaded the page. When given
+        and no longer current, the write is refused.
+
+    Raises
+    ------
+    InvalidFrontmatter
+        The frontmatter block does not parse, which would break the page.
+    StaleEdit
+        The file changed on disk since ``expected_mtime``.
+    """
+    try:
+        frontmatter.loads(text)
+    except Exception as exc:  # yaml raises several unrelated types
+        raise InvalidFrontmatter(str(exc)) from exc
+
+    if expected_mtime is not None and index_md.exists():
+        # Sub-second timestamps survive JSON as floats, but comparing them for
+        # exact equality is brittle across filesystems; a millisecond of slack
+        # is far below the interval a human edit takes.
+        if abs(page_mtime(index_md) - expected_mtime) > 0.001:
+            raise StaleEdit(str(index_md))
+
+    fd, tmp = tempfile.mkstemp(dir=str(index_md.parent), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        os.replace(tmp, index_md)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
 
 
 def _page_from(index_md: Path, post: frontmatter.Post | None = None) -> Page:
