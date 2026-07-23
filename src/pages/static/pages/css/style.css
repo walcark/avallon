@@ -830,3 +830,62 @@ mjx-container[display="true"] { margin: 1.4em 0; }
 }
 .editor-status[data-kind="ok"]    { color: var(--accent); }
 .editor-status[data-kind="error"] { color: light-dark(#a3341f, #e79080); }
+
+/* --------------------------------------------------------------------------
+   Creation form
+   -------------------------------------------------------------------------- */
+
+#newPage svg { width: 1.05rem; height: 1.05rem; display: block; }
+
+.form { display: flex; flex-direction: column; gap: 1.25rem; margin-top: 1.5rem; }
+.form-row { display: flex; flex-direction: column; gap: 0.35rem; }
+.form-row label {
+    font-family: var(--font-ui);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.form-row input,
+.form-row select {
+    font-family: var(--font-ui);
+    font-size: 0.95rem;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--ink);
+}
+.form-row input:focus-visible,
+.form-row select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+/* The decision rules sit under the field they apply to, because that is where
+   the choice is made; in taxonomy.toml nobody reads them at that moment. */
+.form-hint {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--muted);
+}
+.form-actions { display: flex; align-items: center; gap: 0.75rem; }
+.btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: light-dark(#fff, #17212b);
+    font-weight: 600;
+}
+.btn-primary:hover { filter: brightness(1.08); background: var(--accent); }
+.form-error {
+    margin: 0;
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    border: 1px solid light-dark(#e4b4a8, #7a4034);
+    background: light-dark(#fbeeea, #2c1c18);
+    color: light-dark(#a3341f, #e79080);
+    font-family: var(--font-ui);
+    font-size: 0.88rem;
+}

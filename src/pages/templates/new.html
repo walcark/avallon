@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load taxonomy %}
+
+{% block title %}Nouvelle page{% endblock %}
+{% block topbar %}Nouvelle page{% endblock %}
+
+{% block content %}
+<main class="prose">
+    <header class="page-head">
+        <h1>Nouvelle page</h1>
+        <p class="page-summary">
+            Le domaine et le type viennent de <code>taxonomy.toml</code>. La page
+            est créée vide et s'ouvre directement dans l'éditeur.
+        </p>
+    </header>
+
+    {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+
+    <form class="form" method="post" action="/nouvelle/">
+        {% csrf_token %}
+
+        <div class="form-row">
+            <label for="f-title">Titre</label>
+            <input type="text" id="f-title" name="title" value="{{ form.title }}"
+                   required autofocus autocomplete="off">
+        </div>
+
+        <div class="form-row">
+            <label for="f-domain">Domaine</label>
+            <select id="f-domain" name="domain" required>
+                <option value="" disabled {% if not form.domain %}selected{% endif %}>Choisir…</option>
+                {% for d in domains %}
+                <option value="{{ d }}" {% if form.domain == d %}selected{% endif %}>{{ d|label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-row">
+            <label for="f-type">Type</label>
+            <select id="f-type" name="type" required>
+                <option value="" disabled {% if not form.type %}selected{% endif %}>Choisir…</option>
+                {% for t in types %}
+                <option value="{{ t }}" {% if form.type == t %}selected{% endif %}>{{ t|label }}</option>
+                {% endfor %}
+            </select>
+            <!-- The rule for picking a type, where the choice is actually made.
+                 It lives in taxonomy.toml too, but nobody opens that file at
+                 the moment they need it. -->
+            <p class="form-hint">
+                La première réponse « oui » gagne :
+                ça renvoie vers d'autres choses → <b>recueil</b> ·
+                ça a un état d'avancement → <b>chantier</b> ·
+                ça raconte un moment précis → <b>compte rendu</b> ·
+                sinon → <b>fiche</b>
+            </p>
+        </div>
+
+        <div class="form-row">
+            <label for="f-tags">Tags</label>
+            <input type="text" id="f-tags" name="tags" value="{{ form.tags }}"
+                   autocomplete="off" placeholder="séparés par des virgules">
+            <p class="form-hint">
+                Le cadre d'écriture est un tag, pas un domaine : <b>travail</b> ou
+                <b>perso</b>, et les deux quand c'est vrai.
+            </p>
+        </div>
+
+        <div class="form-row">
+            <label for="f-summary">Résumé</label>
+            <input type="text" id="f-summary" name="summary" value="{{ form.summary }}"
+                   autocomplete="off" placeholder="une phrase, affichée sur l'accueil">
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Créer et éditer</button>
+            <a class="btn" href="/">Annuler</a>
+        </div>
+    </form>
+</main>
+{% endblock %}

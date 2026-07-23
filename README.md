@@ -162,6 +162,22 @@ rechargement complet et sans perdre la position de défilement.
 Les polices (Roboto) et **MathJax** (build SVG) sont **auto-hébergées** sous
 `static/` : le rendu fonctionne hors-ligne, sans CDN.
 
+## Créer une page depuis le navigateur
+
+Le bouton `+` de la topbar (ou `Ctrl+N`, ou la palette `Ctrl+K`) ouvre
+`/nouvelle/` : titre, domaine, type, tags, résumé. La page est créée vide,
+commitée, et s'ouvre directement dans l'éditeur.
+
+Le formulaire n'offre que les domaines et types déclarés dans `taxonomy.toml`,
+donc il ne peut pas créer ce que `pixi run check-taxo` refuserait ensuite. Les
+règles de choix (l'arbre des types, le rappel que le cadre d'écriture est un
+tag) sont affichées **sous les champs concernés** : c'est au moment du choix
+qu'elles servent.
+
+Le slug et le frontmatter viennent de `scripts/new_page.py`, importés plutôt
+que réécrits, sinon `pixi run new` et le navigateur produiraient des URL
+différentes pour le même titre. Un slug déjà pris reçoit un suffixe (`-2`).
+
 ## Édition dans le navigateur
 
 Sur une page, le bouton crayon de la topbar (ou `Ctrl+E`) bascule entre le rendu

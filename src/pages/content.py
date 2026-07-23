@@ -11,6 +11,7 @@ without any src rewriting.
 
 from __future__ import annotations
 
+import datetime
 import html
 import os
 import re
@@ -119,34 +120,49 @@ class SearchHit:
 # Directory names double as URL segments, so they stay lowercase and
 # unaccented. `[labels]` in taxonomy.toml maps them to what a reader sees
 # ("sante" -> "santé", "cr" -> "compte rendu"), leaving the paths untouched.
-_labels_cache: tuple[float, dict[str, str]] | None = None
+_taxonomy_cache: tuple[float, dict[str, Any]] | None = None
 
 
-def labels() -> dict[str, str]:
-    """Display names declared in taxonomy.toml, keyed by directory name.
+def taxonomy() -> dict[str, Any]:
+    """Parsed taxonomy.toml, cached against its mtime.
 
-    Cached against the file's mtime: it is read on nearly every request, and
-    it changes about twice a year.
+    It is read on nearly every request and changes about twice a year, so the
+    cache matters; keying it on the mtime means an edit still takes effect
+    without restarting the server.
     """
-    global _labels_cache
+    global _taxonomy_cache
     path = CONTENT_DIR / "taxonomy.toml"
     try:
         mtime = path.stat().st_mtime
     except OSError:
         return {}
-    if _labels_cache is None or _labels_cache[0] != mtime:
+    if _taxonomy_cache is None or _taxonomy_cache[0] != mtime:
         try:
             data = tomllib.loads(path.read_text(encoding="utf-8"))
         except (OSError, tomllib.TOMLDecodeError):
             data = {}
-        raw = data.get("labels")
-        table = (
-            {str(k): str(v) for k, v in raw.items()}
-            if isinstance(raw, dict)
-            else {}
-        )
-        _labels_cache = (mtime, table)
-    return _labels_cache[1]
+        _taxonomy_cache = (mtime, data)
+    return _taxonomy_cache[1]
+
+
+def labels() -> dict[str, str]:
+    """Display names declared in taxonomy.toml, keyed by directory name."""
+    raw = taxonomy().get("labels")
+    return {str(k): str(v) for k, v in raw.items()} if isinstance(raw, dict) else {}
+
+
+def vocabulary() -> dict[str, list[str]]:
+    """The declared domains and types, each paired with its display name.
+
+    The creation form offers exactly this and nothing else, which is the same
+    rule `pixi run new` enforces: a page cannot be born under an undeclared
+    domain or type.
+    """
+    data = taxonomy()
+    return {
+        key: sorted(str(v) for v in data.get(key, []) or [])
+        for key in ("domains", "types")
+    }
 
 
 def label_for(name: str) -> str:
@@ -203,6 +219,76 @@ class StaleEdit(Exception):
     can hold the same page at once, and the last writer would otherwise win in
     silence.
     """
+
+
+class InvalidPage(ValueError):
+    """The submitted creation form cannot produce a page."""
+
+
+def create_page(
+    domain: str, type_: str, title: str, tags: list[str], summary: str = ""
+) -> Page:
+    """Scaffold ``<domain>/<type>/<slug>/index.md`` and return the new Page.
+
+    The slug and the frontmatter come from ``scripts/new_page.py`` rather than
+    from a second implementation here: the browser and ``pixi run new`` must
+    produce the same URL for the same title, and two copies of the rules would
+    drift apart.
+
+    Parameters
+    ----------
+    domain, type_ : str
+        Must both be declared in taxonomy.toml.
+    title : str
+        Free text; the slug is derived from it.
+    tags : list of str
+        Free text, no vocabulary.
+    summary : str, optional
+        One-line summary shown on the home page.
+
+    Returns
+    -------
+    Page
+        The page just created.
+
+    Raises
+    ------
+    InvalidPage
+        Undeclared domain or type, or an empty title.
+    """
+    # scripts/ is on sys.path (see config.settings).
+    from new_page import scalar, slugify
+
+    vocab = vocabulary()
+    if domain not in vocab["domains"]:
+        raise InvalidPage(f"Domaine non déclaré : {domain}")
+    if type_ not in vocab["types"]:
+        raise InvalidPage(f"Type non déclaré : {type_}")
+    if not title.strip():
+        raise InvalidPage("Le titre est obligatoire.")
+
+    base = CONTENT_DIR / domain / type_
+    slug = slugify(title)
+    target = base / slug
+    suffix = 2
+    while target.exists():
+        target = base / f"{slug}-{suffix}"
+        suffix += 1
+
+    today = datetime.date.today().isoformat()
+    lines = [
+        f"title: {scalar(title.strip())}",
+        f"date: {today}",
+        f"updated: {today}",
+        "tags: [" + ", ".join(scalar(t) for t in tags) + "]",
+    ]
+    if summary.strip():
+        lines.append(f"summary: {scalar(summary.strip())}")
+    body = "---\n" + "\n".join(lines) + "\n---\n\n"
+
+    target.mkdir(parents=True)
+    (target / "index.md").write_text(body, encoding="utf-8")
+    return _page_from(target / "index.md")
 
 
 def page_mtime(index_md: Path) -> float:

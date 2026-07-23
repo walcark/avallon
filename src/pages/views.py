@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 
 import sync
 from django.conf import settings
@@ -7,6 +8,7 @@ from django.http import (
     FileResponse,
     Http404,
     HttpResponsePermanentRedirect,
+    HttpResponseRedirect,
     JsonResponse,
     StreamingHttpResponse,
 )
@@ -121,7 +123,7 @@ def _editable_page(relpath: str):
     return index_md
 
 
-def _commit_page(relpath: str) -> bool:
+def _commit_page(relpath: str, action: str = "edit") -> bool:
     """Commit the saved page, then push in the background. Returns whether a
     commit was made.
 
@@ -134,11 +136,52 @@ def _commit_page(relpath: str) -> bool:
     if not sync.is_repo_root(content_dir):
         return False  # not its own repo (dev fallback): saving stays unversioned
     committed, _ = sync.commit_scoped(
-        content_dir, f"edit {relpath}", window=sync.sync_window()
+        content_dir, f"{action} {relpath}", window=sync.sync_window()
     )
     if committed:
         sync.spawn_flush(content_dir)
     return committed
+
+
+def new_page(request):
+    """Create a page from the browser: the form on GET, the page on POST.
+
+    Domain and type are offered from taxonomy.toml only, so the web cannot
+    create what `pixi run check-taxo` would then flag as out of vocabulary.
+    """
+    if not may_edit(request):
+        raise Http404("Édition indisponible")
+
+    vocab = content.vocabulary()
+    form = {"domain": "", "type": "", "title": "", "tags": "", "summary": ""}
+    error = ""
+
+    if request.method == "POST":
+        form = {k: request.POST.get(k, "").strip() for k in form}
+        tags = [t for t in re.split(r"[,\n]+", form["tags"]) if t.strip()]
+        try:
+            page = content.create_page(
+                form["domain"], form["type"], form["title"],
+                [t.strip() for t in tags], form["summary"],
+            )
+        except content.InvalidPage as exc:
+            error = str(exc)
+        else:
+            _commit_page(page.relpath, action="new")
+            # Straight into the editor: a page created from the browser is
+            # empty, so the next thing wanted is always to write in it.
+            return HttpResponseRedirect(page.url + "#edit")
+
+    return render(
+        request,
+        "new.html",
+        {
+            "domains": vocab["domains"],
+            "types": vocab["types"],
+            "form": form,
+            "error": error,
+        },
+    )
 
 
 def page_source(request):

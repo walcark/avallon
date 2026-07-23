@@ -56,6 +56,15 @@
             <button type="button" class="icon-btn" id="navToggle" aria-label="Afficher ou masquer le menu">☰</button>
             <span class="topbar-title">{% block topbar %}{% endblock %}</span>
             {% block topbar_actions %}{% endblock %}
+            <!-- In base.html, not next to the editor in index.html: creating a
+                 page is just as useful from the home page or a search. -->
+            <a class="icon-btn" href="/nouvelle/" id="newPage"
+               aria-label="Créer une nouvelle page" title="Nouvelle page (Ctrl+N)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+            </a>
             <button type="button" class="icon-btn" id="themeToggle" aria-label="Basculer le thème clair/sombre">🌓</button>
         </header>
 
@@ -134,6 +143,7 @@
           return { title: a.textContent.trim(), url: a.getAttribute('href') };
         });
         var ACTIONS = [
+          { title: 'Nouvelle page', url: '/nouvelle/' },
           { title: 'Basculer le thème clair/sombre', run: toggleTheme },
           { title: 'Basculer la largeur de lecture', run: toggleWidth },
           { title: 'Afficher ou masquer le menu', run: function () {
@@ -245,7 +255,10 @@
           }
         });
         document.addEventListener('keydown', function (e) {
-          if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+          if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+            e.preventDefault();
+            window.location.href = '/nouvelle/';
+          } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
             e.preventDefault();
             palette.hidden ? open() : close();
           } else if (e.key === 'Escape' && !palette.hidden) {
