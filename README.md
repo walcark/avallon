@@ -53,6 +53,45 @@ Résolution de l'emplacement (le premier qui répond gagne) :
 
 Après un changement d'emplacement, **redémarre le serveur** (`pixi run serve`).
 
+## Synchronisation du contenu
+
+```
+pixi run sync                    # pull (rebase) -> commit -> push
+pixi run sync -- --local         # commit seulement, sans réseau
+pixi run sync -- -m "message"    # message de commit personnalisé
+```
+
+Le dépôt de contenu **gère lui-même son origine** : l'application ne connaît
+pas GitHub, elle pousse seulement si un remote `origin` existe. Sans remote, la
+commande se contente de commiter en local. Pour en ajouter un, une seule fois :
+
+```
+git -C <dépôt de contenu> remote add origin <url>
+```
+
+Deux garanties, reprises de `neverland` :
+
+- **le commit local est immédiat**, jamais différé. Hors-ligne, le pull et le
+  push échouent en avertissement, la note est commitée quand même ;
+- **tout est scopé au dépôt de contenu** (`git add -A -- .`), donc un dépôt
+  imbriqué dans un autre n'embarque jamais son parent.
+
+### Groupage des commits
+
+Douze enregistrements en dix minutes doivent se lire comme un seul changement.
+Tant que `HEAD` a moins de **15 minutes**, porte le marqueur `mysite-batch:` et
+n'a pas été poussé, l'édition suivante y est repliée par `git commit --amend`.
+
+Ce qui n'est **pas** fait : différer l'écriture. Seul l'historique est compacté.
+Conséquence à connaître, le **push est retenu** tant que le lot est ouvert
+(pousser un commit interdit de l'amender ensuite), donc une note peut mettre
+jusqu'à 15 minutes à atteindre le remote. `pixi run sync -- --no-batch` force un
+commit isolé et un envoi immédiat ; `MYSITE_SYNC_WINDOW` (en secondes, `0` pour
+désactiver) change la fenêtre.
+
+Un commit que tu écris **à la main** dans le dépôt de contenu n'a pas le
+marqueur, donc il n'est jamais réécrit.
+
 ## Taxonomie déclarée
 
 `taxonomy.toml` (à la racine du dépôt de contenu) est la **source de vérité** des
@@ -136,6 +175,7 @@ Les polices (Roboto) et **MathJax** (build SVG) sont **auto-hébergées** sous
 | `pixi run content-init <chemin>` | Crée/adopte et active le dépôt de contenu externe |
 | `pixi run content-set <chemin>` | Active un dépôt de contenu existant |
 | `pixi run content-where` | Affiche le dépôt de contenu actif |
+| `pixi run sync` | Synchronise le dépôt de contenu (pull, commit, push) |
 
 ## Lancer
 

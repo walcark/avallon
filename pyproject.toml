@@ -41,6 +41,9 @@ stamp = "python scripts/stamp_dates.py --backfill"
 content-where = "python scripts/content_repo.py where"        # print active dir
 content-init = "python scripts/content_repo.py init"          # create/adopt <path>
 content-set = "python scripts/content_repo.py set"            # activate <path>
+# Sync the content repo: pull (rebase), commit, push if an origin exists.
+# Consecutive edits fold into one commit for 15 min (MYSITE_SYNC_WINDOW).
+sync = "python scripts/sync.py"
 # Scaffold a new page (interactive: domaine/type from taxonomy.toml, free tags).
 new = "python scripts/new_page.py"
 # Extend the taxonomy vocabulary (edits taxonomy.toml and commits it).
