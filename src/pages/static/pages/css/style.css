@@ -777,6 +777,10 @@ mjx-container[display="true"] { margin: 1.4em 0; }
     gap: 0.75rem;
     margin-top: 1.5rem;
 }
+/* `display: flex` above has the same specificity as the UA `[hidden]` rule but
+   comes later, so it would win and show the editor in read mode; restore the
+   attribute's effect explicitly. */
+.editor[hidden] { display: none; }
 
 .editor textarea {
     width: 100%;
