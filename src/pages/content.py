@@ -166,6 +166,27 @@ def vocabulary() -> dict[str, list[str]]:
     }
 
 
+def _normalize_tag(tag: str) -> str:
+    """Canonical form of a tag: trimmed, inner whitespace collapsed, lowercased.
+
+    Case and stray spacing are the usual source of near-duplicate tags
+    ("Monte-Carlo" vs "monte-carlo"), which then split the facets in two.
+    Folding them here treats the variants as one. Accents are kept, so
+    "déformation" stays readable.
+    """
+    return re.sub(r"\s+", " ", tag.strip()).lower()
+
+
+def normalize_tags(tags: list[str]) -> list[str]:
+    """Normalize *tags* and drop duplicates, preserving first-seen order."""
+    seen: dict[str, None] = {}
+    for tag in tags:
+        norm = _normalize_tag(tag)
+        if norm:
+            seen.setdefault(norm, None)
+    return list(seen)
+
+
 def label_for(name: str) -> str:
     """Display name for a domain or type, falling back to the name itself.
 
@@ -300,7 +321,7 @@ def create_page(
         f"title: {scalar(title.strip())}",
         f"date: {today}",
         f"updated: {today}",
-        "tags: [" + ", ".join(scalar(t) for t in tags) + "]",
+        "tags: [" + ", ".join(scalar(t) for t in normalize_tags(tags)) + "]",
     ]
     if summary.strip():
         lines.append(f"summary: {scalar(summary.strip())}")
@@ -382,7 +403,7 @@ def _page_from(index_md: Path, post: frontmatter.Post | None = None) -> Page:
         title=str(post.get("title", parts[-1])),
         date=post.get("date"),
         updated=post.get("updated"),
-        tags=[str(t) for t in (post.get("tags") or [])],
+        tags=normalize_tags([str(t) for t in (post.get("tags") or [])]),
         summary=str(post.get("summary", "")),
         visibility=str(post.get("visibility", "public")).strip().lower(),
     )
@@ -409,6 +430,15 @@ def all_pages() -> list[Page]:
     pages.sort(key=lambda p: p.title)
     pages.sort(key=_recency_key, reverse=True)
     return pages
+
+
+def all_tags() -> list[str]:
+    """Every distinct tag across visible pages, alphabetically.
+
+    Feeds the creation form's suggestions so an existing tag gets reused
+    instead of a near-duplicate being invented.
+    """
+    return sorted({tag for page in all_pages() for tag in page.tags})
 
 
 def backlinks(target: Page) -> list[Page]:

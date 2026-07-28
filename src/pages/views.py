@@ -180,6 +180,8 @@ def new_page(request):
             "types": vocab["types"],
             "form": form,
             "error": error,
+            # Existing tags, offered as clickable chips so they get reused
+            "known_tags": content.all_tags(),
         },
     )
 

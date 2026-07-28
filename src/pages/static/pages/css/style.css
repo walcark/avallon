@@ -889,6 +889,21 @@ mjx-container[display="true"] { margin: 1.4em 0; }
     line-height: 1.5;
     color: var(--muted);
 }
+/* Existing-tag suggestions under the creation form: click to append. */
+.tag-suggest { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.15rem; }
+.tag-suggest .chip {
+    font: inherit;
+    font-family: var(--font-ui);
+    font-size: 0.78rem;
+    cursor: pointer;
+    padding: 0.05rem 0.55rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--code-bg);
+    color: var(--muted);
+}
+.tag-suggest .chip:hover { border-color: var(--accent); color: var(--ink); }
+
 .form-actions { display: flex; align-items: center; gap: 0.75rem; }
 .btn-primary {
     background: var(--accent);

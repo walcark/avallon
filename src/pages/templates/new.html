@@ -63,6 +63,13 @@
                 Le cadre d'écriture est un tag, pas un domaine : <b>travail</b> ou
                 <b>perso</b>, et les deux quand c'est vrai.
             </p>
+            {% if known_tags %}
+            <!-- Existing tags: click to append, so a near-duplicate isn't
+                 invented. Names are already normalized (lowercase) on read. -->
+            <div class="tag-suggest" data-target="f-tags">
+                {% for t in known_tags %}<button type="button" class="chip" data-value="{{ t }}">{{ t }}</button>{% endfor %}
+            </div>
+            {% endif %}
         </div>
 
         <div class="form-row">
@@ -77,4 +84,22 @@
         </div>
     </form>
 </main>
+
+<script>
+  // Clicking a suggested tag appends it to the comma-separated field, unless
+  // it is already present. Comparison is lowercase, matching how tags are
+  // normalized on read.
+  document.querySelectorAll('.tag-suggest').forEach(box => {
+    const input = document.getElementById(box.dataset.target);
+    box.addEventListener('click', ev => {
+      const chip = ev.target.closest('.chip');
+      if (!chip) return;
+      const value = chip.dataset.value;
+      const current = input.value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+      if (current.includes(value)) return;
+      input.value = current.length ? input.value.replace(/,\s*$/, '') + ', ' + value : value;
+      input.focus();
+    });
+  });
+</script>
 {% endblock %}

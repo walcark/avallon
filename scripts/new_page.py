@@ -111,7 +111,12 @@ def main() -> int:
     if not title.strip():
         sys.exit("titre requis.")
     tags_raw = args.tags if args.tags is not None else ask("Tags (séparés par des virgules)")
-    tags = [t.strip() for t in re.split(r"[,\n]+", tags_raw) if t.strip()]
+    # Same normalization the app applies on read (content.normalize_tags):
+    # lowercase + collapsed spacing, so case variants don't split a tag in two.
+    tags = list(dict.fromkeys(
+        re.sub(r"\s+", " ", t.strip()).lower()
+        for t in re.split(r"[,\n]+", tags_raw) if t.strip()
+    ))
     summary = args.summary if args.summary is not None else ask("Résumé (optionnel)")
 
     slug = slugify(title)
