@@ -11,6 +11,7 @@ without any src rewriting.
 
 from __future__ import annotations
 
+import contextvars
 import datetime
 import html
 import os
@@ -189,11 +190,30 @@ def safe_resolve(relpath: str) -> Path:
 _LEADING_H1 = re.compile(r"\A\s*#[^#\n][^\n]*\n")
 
 
+# The directory of the page currently being rendered, so the wikilink
+# extension can tell a reference to a co-located file ([[alis-2019.pdf]]) from
+# a broken page slug. A ContextVar rather than a global: rendering runs in a
+# worker thread (asyncio.to_thread), which copies the context, so concurrent
+# renders never see each other's directory.
+_render_dir: contextvars.ContextVar[Path | None] = contextvars.ContextVar(
+    "render_dir", default=None
+)
+
+
+def current_render_dir() -> Path | None:
+    """The folder of the page being rendered, or None outside a render."""
+    return _render_dir.get()
+
+
 def render_markdown(index_md: Path) -> str:
     """Render an index.md (frontmatter stripped) to HTML, using the same filter
     the template uses so streamed updates match the initial render."""
     post = frontmatter.load(index_md)
-    return str(markdownify(_LEADING_H1.sub("", post.content, count=1)))
+    token = _render_dir.set(index_md.parent)
+    try:
+        return str(markdownify(_LEADING_H1.sub("", post.content, count=1)))
+    finally:
+        _render_dir.reset(token)
 
 
 def reading_minutes(index_md: Path) -> int:
