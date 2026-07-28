@@ -561,6 +561,16 @@ html { scroll-behavior: smooth; }
 .prose em { font-style: italic; }
 sub, sup { line-height: 0; }
 
+/* Inline text colors: {rouge}(...) etc. (pages.mdx.colors). Soft, a touch
+   pastel, but the classic red stays a real red. light-dark() darkens each hue
+   for the light theme (a pure pastel washes out on paper) and lightens it for
+   the dark theme, so every color stays legible on both backgrounds. */
+.prose .c-rouge  { color: light-dark(#cc2222, #ff8a80); }
+.prose .c-orange { color: light-dark(#c06a12, #ffb870); }
+.prose .c-vert   { color: light-dark(#2e7d46, #8fe0a6); }
+.prose .c-bleu   { color: light-dark(#2a6db3, #8ec5ff); }
+.prose .c-violet { color: light-dark(#7a45b0, #cda8ff); }
+
 /* --- Lists -------------------------------------------------------------- */
 .prose ul, .prose ol { padding-left: 1.4em; margin: 1.1em 0; }
 .prose li { margin: 0.35em 0; }

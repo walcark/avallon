@@ -99,6 +99,8 @@ MARKDOWNIFY = {
             "pymdownx.smartsymbols",           # (c) (tm) --> etc.
             # Local extension: [[slug]] cross-references between pages.
             "pages.mdx.wikilinks",
+            # Local extension: {rouge}(texte) inline color spans.
+            "pages.mdx.colors",
         ],
         "MARKDOWN_EXTENSION_CONFIGS": {
             # generic=True emits \(...\) / \[...\] spans for MathJax to render
