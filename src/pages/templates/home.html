@@ -27,6 +27,26 @@
       .count { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.75rem; }
 
       .cards { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.85rem; }
+      /* A `display` on a class is an author rule, so it beats the browser's
+         `[hidden] { display: none }` (a UA rule): a hidden .cards list would
+         stay laid out. Restate the hide with matching specificity so toggling
+         `hidden` actually hides it. */
+      .cards[hidden] { display: none; }
+
+      /* Search results overlay: a panel that drops under the facets and floats
+         over the browse list while the box has text. */
+      .search-area { position: relative; }
+      .results-panel { position: absolute; left: 0; right: 0; top: 100%; z-index: 20;
+              margin-top: 0.5rem; padding: 0.9rem 1rem;
+              background: var(--bg); border: 1px solid var(--border);
+              border-radius: 0.7rem; box-shadow: 0 12px 34px var(--shadow-lg);
+              max-height: 72vh; overflow-y: auto; }
+      .results-panel[hidden] { display: none; }
+      .results-head { margin: 0 0 0.7rem; font-size: 0.82rem; font-weight: 600;
+              text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+      /* While results float on top, fade the browse list so the eye stays on them. */
+      .home.searching #pages,
+      .home.searching #count { opacity: 0.3; pointer-events: none; }
       .card { padding: 0.9rem 1.1rem; border: 1px solid var(--border);
               border-radius: 0.7rem; background: var(--surface);
               transition: border-color 0.15s ease, box-shadow 0.15s ease; }
@@ -51,26 +71,35 @@
     <main class="home">
         <h1>Contenu</h1>
 
-        <input type="search" class="search" id="q" placeholder="Rechercher dans le contenu…" autocomplete="off">
+        <div class="search-area">
+            <input type="search" class="search" id="q" placeholder="Rechercher dans le contenu…" autocomplete="off">
 
-        <div class="facets">
-            <div class="facet-group" data-facet="domain">
-                <span class="facet-label">Domaine</span>
-                {% for d in domains %}<button type="button" class="chip" aria-pressed="false" data-value="{{ d }}">{{ d|label }}</button>{% endfor %}
+            <div class="facets">
+                <div class="facet-group" data-facet="domain">
+                    <span class="facet-label">Domaine</span>
+                    {% for d in domains %}<button type="button" class="chip" aria-pressed="false" data-value="{{ d }}">{{ d|label }}</button>{% endfor %}
+                </div>
+                <div class="facet-group" data-facet="type">
+                    <span class="facet-label">Type</span>
+                    {% for t in types %}<button type="button" class="chip" aria-pressed="false" data-value="{{ t }}">{{ t|label }}</button>{% endfor %}
+                </div>
+                <div class="facet-group" data-facet="tag">
+                    <span class="facet-label">Tags</span>
+                    {% for t in tags %}<button type="button" class="chip" aria-pressed="false" data-value="{{ t }}">{{ t }}</button>{% endfor %}
+                </div>
             </div>
-            <div class="facet-group" data-facet="type">
-                <span class="facet-label">Type</span>
-                {% for t in types %}<button type="button" class="chip" aria-pressed="false" data-value="{{ t }}">{{ t|label }}</button>{% endfor %}
-            </div>
-            <div class="facet-group" data-facet="tag">
-                <span class="facet-label">Tags</span>
-                {% for t in tags %}<button type="button" class="chip" aria-pressed="false" data-value="{{ t }}">{{ t }}</button>{% endfor %}
+
+            <!-- Full-text results float here, over the browse list, while the
+                 search box has text (JS toggles the [hidden] attribute). -->
+            <div class="results-panel" id="panel" hidden>
+                <header class="results-head" id="resultsHead"></header>
+                <ul class="cards" id="results"></ul>
             </div>
         </div>
 
         <p class="count" id="count"></p>
 
-        <!-- Server-rendered full list (shown when the search box is empty). -->
+        <!-- Server-rendered browse list, always in place; results float above it. -->
         <ul class="cards" id="pages">
             {% for p in pages %}
             <li class="card" data-domain="{{ p.domain }}" data-type="{{ p.type }}" data-tags="{{ p.tags|join:'||' }}">
@@ -84,9 +113,6 @@
             </li>
             {% endfor %}
         </ul>
-
-        <!-- JS-rendered full-text results (shown when the search box has text). -->
-        <ul class="cards" id="results" hidden></ul>
     </main>
 {% endblock %}
 
@@ -97,6 +123,9 @@
         const pagesEl = document.getElementById('pages');
         const resultsEl = document.getElementById('results');
         const countEl = document.getElementById('count');
+        const panel = document.getElementById('panel');
+        const resultsHead = document.getElementById('resultsHead');
+        const home = document.querySelector('.home');
 
         function parseTags(str) { return str ? str.split('||') : []; }
 
@@ -148,6 +177,8 @@
         }
 
         function showPages() {
+          panel.hidden = true;
+          home.classList.remove('searching');
           updateChips(PAGES);
           let n = 0;
           pagesEl.querySelectorAll('.card').forEach(card => {
@@ -157,15 +188,16 @@
             card.classList.toggle('is-hidden', !ok);
             if (ok) n++;
           });
-          pagesEl.hidden = false;
-          resultsEl.hidden = true;
           countEl.textContent = n + (n > 1 ? ' pages' : ' page');
         }
 
-        function showResults(results) {
+        function showResults(results, q) {
           updateChips(results);
           const kept = results.filter(matchFacets);
-          resultsEl.innerHTML = kept.length ? kept.map(r => `
+          resultsHead.textContent = kept.length
+            ? `${kept.length} résultat${kept.length > 1 ? 's' : ''} pour « ${q} »`
+            : `Aucun résultat pour « ${q} »`;
+          resultsEl.innerHTML = kept.map(r => `
             <li class="card">
               <a class="card-title" href="${r.url}">${escapeHtml(r.title)}</a>
               <div class="card-meta">
@@ -174,10 +206,9 @@
                 ${r.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}
               </div>
               <p class="card-snippet">${r.snippet}</p>
-            </li>`).join('') : '<li class="empty">Aucun résultat.</li>';
-          pagesEl.hidden = true;
-          resultsEl.hidden = false;
-          countEl.textContent = kept.length + (kept.length > 1 ? ' résultats' : ' résultat');
+            </li>`).join('');
+          panel.hidden = false;
+          home.classList.add('searching');
         }
 
         function escapeHtml(s) {
@@ -191,16 +222,20 @@
         function refresh() {
           const q = qInput.value.trim();
           if (!q) { lastQuery = null; showPages(); return; }
-          if (q === lastQuery) { showResults(lastResults); return; }
+          if (q === lastQuery) { showResults(lastResults, q); return; }
           clearTimeout(timer);
           timer = setTimeout(() => {
             fetch('/search/?q=' + encodeURIComponent(q))
               .then(r => r.json())
-              .then(data => { lastQuery = q; lastResults = data.results; showResults(data.results); });
+              .then(data => { lastQuery = q; lastResults = data.results; showResults(data.results, q); });
           }, 180);
         }
 
         qInput.addEventListener('input', refresh);
+        // Escape clears the box, which closes the overlay and restores the list.
+        qInput.addEventListener('keydown', e => {
+          if (e.key === 'Escape' && qInput.value) { qInput.value = ''; refresh(); }
+        });
 
         document.querySelectorAll('.facet-group').forEach(group => {
           const kind = group.dataset.facet;
