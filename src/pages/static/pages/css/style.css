@@ -362,31 +362,72 @@ body {
 #widthToggle svg { display: block; width: 1.15rem; height: 1.15rem; }
 #exportBtn svg { display: block; width: 1.1rem; height: 1.1rem; }
 
-/* Export format menu: a small popover anchored under the toolbar button. */
+/* Export format menu: a small popover anchored under the toolbar button,
+   in the spirit of a browser bookmarks menu (icon, label, muted extension). */
 .export-menu { position: relative; display: inline-flex; }
 .export-choices {
     position: absolute;
-    top: calc(100% + 6px);
+    top: calc(100% + 8px);
     right: 0;
     z-index: 20;
-    min-width: 9.5rem;
-    padding: 0.3rem;
+    min-width: 12rem;
+    padding: 0.35rem;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    box-shadow: 0 6px 20px var(--shadow-lg);
+    border-radius: 10px;
+    box-shadow: 0 8px 28px var(--shadow-lg);
+    transform-origin: top right;
 }
-.export-choices a {
-    display: block;
-    padding: 0.4rem 0.6rem;
-    border-radius: 5px;
+/* Plays on show: `hidden` is removed, the element appears, the animation runs.
+   Skipped for users who ask for reduced motion. */
+.export-choices:not([hidden]) { animation: export-pop 0.13s ease-out; }
+@keyframes export-pop {
+    from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+    to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .export-choices:not([hidden]) { animation: none; }
+}
+.export-choices-label {
+    margin: 0.15rem 0.55rem 0.3rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.export-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 0.55rem;
+    border-radius: 7px;
     color: var(--ink);
-    font-size: 0.9rem;
     text-decoration: none;
     white-space: nowrap;
 }
-.export-choices a:hover {
+.export-item:hover,
+.export-item:focus-visible {
     background: light-dark(rgba(42, 93, 143, 0.10), rgba(134, 179, 220, 0.14));
+    outline: none;
+}
+.export-item-ico {
+    width: 1.15rem;
+    height: 1.15rem;
+    flex: none;
+    color: var(--accent);
+}
+.export-item-text {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    font-size: 0.92rem;
+    font-weight: 500;
+}
+.export-item-ext {
+    font-size: 0.78rem;
+    font-weight: 400;
+    color: var(--muted);
 }
 #widthToggle .i-collapse,
 :root.reading-wide #widthToggle .i-expand { display: none; }
