@@ -28,6 +28,11 @@ from content_config import resolve_content_dir  # noqa: E402
 
 CONTENT_DIR = resolve_content_dir()
 
+# Custom Markdown fences (gallery/plot/csv/query). Imported here because
+# SuperFences needs the actual callables in its config below, not import
+# strings.
+from pages.mdx import fences as _fences  # noqa: E402
+
 # Pages carrying `visibility: private` in their frontmatter are personal notes
 # that must never leave this machine. When SHOW_PRIVATE is false they vanish
 # from the listings, the navigation, the search *and* their own URL (404), so
@@ -114,6 +119,18 @@ MARKDOWNIFY = {
             },
             "pymdownx.tasklist": {"custom_checkbox": True},
             "toc": {"permalink": "#"},
+            # Local blocks rendered server-side (see pages/mdx/fences.py). Only
+            # the custom names are declared: adding custom_fences leaves the
+            # generic ```lang code box (with its Pygments title) untouched, so
+            # these sit alongside ordinary fenced code.
+            "pymdownx.superfences": {
+                "custom_fences": [
+                    {"name": "gallery", "class": "gallery", "format": _fences.gallery_fence},
+                    {"name": "plot", "class": "plot", "format": _fences.plot_fence},
+                    {"name": "csv", "class": "csv", "format": _fences.csv_fence},
+                    {"name": "query", "class": "query", "format": _fences.query_fence},
+                ],
+            },
         },
     },
 }

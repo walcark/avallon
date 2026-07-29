@@ -1,12 +1,15 @@
 import asyncio
 import json
 import re
+import tempfile
+from pathlib import Path
 
 import sync
 from django.conf import settings
 from django.http import (
     FileResponse,
     Http404,
+    HttpResponse,
     HttpResponsePermanentRedirect,
     HttpResponseRedirect,
     JsonResponse,
@@ -15,7 +18,7 @@ from django.http import (
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
 
-from . import content
+from . import content, exporter
 
 # How often the stream re-checks the watched file's modification time (seconds).
 POLL_INTERVAL = 0.3
@@ -287,6 +290,41 @@ def move_page(request):
 
     _commit_page(page.relpath, action=f"move {relpath} ->")
     return JsonResponse({"url": page.url})
+
+
+_EXPORT_TYPES = {
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "pdf": "application/pdf",
+}
+
+
+def export_page(request):
+    """Download a note as a styled Word document (``?format=pdf`` for a PDF).
+
+    The document is built in a temp dir and streamed back as an attachment;
+    nothing is written into the content tree. Reuses the reader's path guards
+    so only a servable page can be exported.
+    """
+    index_md = _editable_page(request.GET.get("path", ""))
+    page = content.load_page(index_md)
+    fmt = request.GET.get("format", "docx")
+    if fmt not in _EXPORT_TYPES:
+        raise Http404("Format d'export inconnu")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / f"{page.slug}.{fmt}"
+        try:
+            if fmt == "pdf":
+                exporter.export_pdf(index_md, out)
+            else:
+                exporter.export_docx(index_md, out)
+        except exporter.ExportError as exc:
+            return JsonResponse({"error": str(exc)}, status=500)
+        data = out.read_bytes()
+
+    response = HttpResponse(data, content_type=_EXPORT_TYPES[fmt])
+    response["Content-Disposition"] = f'attachment; filename="{page.slug}.{fmt}"'
+    return response
 
 
 async def markdown_stream(request):

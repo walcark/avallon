@@ -48,6 +48,10 @@ sync = "python scripts/sync.py"
 new = "python scripts/new_page.py"
 # Re-file a page under another domaine/type (its directory moves; slug kept).
 move = "python scripts/move_page.py"
+# Export a note to Word (.docx) or PDF, styled by a reference document.
+export = "python manage.py export"
+# Rebuild the demo company reference document used by `export`.
+make-reference = "python scripts/make_reference_docx.py"
 # Extend the taxonomy vocabulary (edits taxonomy.toml and commits it).
 add-domain = "python scripts/taxonomy.py add-domain"
 add-type = "python scripts/taxonomy.py add-type"
@@ -61,3 +65,5 @@ pymdown-extensions = ">=11,<12"
 # Fuzzy picker for `pixi run new` (domaine/type). Pinned here so the command
 # uses the project's own fzf, not one leaking from another env's PATH.
 fzf = "*"
+pandoc = ">=3.10.1,<4"
+python-docx = ">=1.2.0,<2"

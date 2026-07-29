@@ -227,15 +227,47 @@ def current_render_dir() -> Path | None:
     return _render_dir.get()
 
 
-def render_markdown(index_md: Path) -> str:
+@dataclass
+class ExportContext:
+    """State for a Word/PDF export in progress.
+
+    Rendering to a document instead of to the site: the content blocks emit
+    document-friendly HTML (a plot becomes a self-contained ``<img>`` rather
+    than a themed inline SVG). *assets_dir* is where those generated files are
+    written for Pandoc to pick up, and *count* names them uniquely.
+    """
+
+    assets_dir: Path
+    count: int = 0
+
+
+# Set for the duration of an export render (see pages.exporter). The content
+# fences read it to switch to their document-friendly output.
+_export: contextvars.ContextVar[ExportContext | None] = contextvars.ContextVar(
+    "export", default=None
+)
+
+
+def current_export() -> ExportContext | None:
+    """The export in progress, or None during an ordinary site render."""
+    return _export.get()
+
+
+def render_markdown(index_md: Path, export: ExportContext | None = None) -> str:
     """Render an index.md (frontmatter stripped) to HTML, using the same filter
-    the template uses so streamed updates match the initial render."""
+    the template uses so streamed updates match the initial render.
+
+    When *export* is given, the content blocks render their document form
+    instead of their interactive one (see :mod:`pages.exporter`).
+    """
     post = frontmatter.load(index_md)
     token = _render_dir.set(index_md.parent)
+    etoken = _export.set(export)
     try:
         return str(markdownify(_LEADING_H1.sub("", post.content, count=1)))
     finally:
         _render_dir.reset(token)
+        _export.reset(etoken)
 
 
 def reading_minutes(index_md: Path) -> int:

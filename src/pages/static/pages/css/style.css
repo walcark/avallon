@@ -360,6 +360,7 @@ body {
    extended mode; the swap is driven by the same root class, no JS needed. */
 #widthToggle { display: inline-flex; align-items: center; }
 #widthToggle svg { display: block; width: 1.15rem; height: 1.15rem; }
+#exportBtn svg { display: block; width: 1.1rem; height: 1.1rem; }
 #widthToggle .i-collapse,
 :root.reading-wide #widthToggle .i-expand { display: none; }
 :root.reading-wide #widthToggle .i-collapse { display: block; }
@@ -936,6 +937,128 @@ mjx-container[display="true"] { margin: 1.4em 0; }
 .btn-primary:hover { filter: brightness(1.08); background: var(--accent); }
 .form-error {
     margin: 0;
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    border: 1px solid light-dark(#e4b4a8, #7a4034);
+    background: light-dark(#fbeeea, #2c1c18);
+    color: light-dark(#a3341f, #e79080);
+    font-family: var(--font-ui);
+    font-size: 0.88rem;
+}
+
+/* --------------------------------------------------------------------------
+   Content blocks: gallery, plot, data tables (custom SuperFences)
+   -------------------------------------------------------------------------- */
+
+/* Gallery: a responsive thumbnail grid; clicking opens the lightbox below. */
+.gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.8rem;
+    margin: 1.4rem 0;
+}
+.gallery-item { margin: 0; }
+.gallery-link {
+    display: block;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surface);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.gallery-link:hover { border-color: var(--accent); box-shadow: 0 2px 12px var(--shadow-sm); }
+.gallery-link img { display: block; width: 100%; height: 140px; object-fit: cover; }
+.gallery-item figcaption {
+    margin-top: 0.35rem;
+    font-family: var(--font-ui);
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-align: center;
+}
+
+/* Lightbox: a full-screen overlay appended to <body>, so it is not scoped
+   under .prose. Hidden until a thumbnail is clicked. */
+.lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.9rem;
+    padding: 2.5rem;
+    background: rgba(0, 0, 0, 0.86);
+}
+.lightbox[hidden] { display: none; }
+.lightbox img { max-width: 92vw; max-height: 80vh; object-fit: contain; border-radius: 4px; }
+.lightbox-caption { color: #eee; font-family: var(--font-ui); font-size: 0.9rem; text-align: center; }
+.lightbox button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font: inherit;
+    font-size: 2rem;
+    line-height: 1;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
+    border: none;
+    border-radius: 8px;
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+}
+.lightbox button:hover { background: rgba(255, 255, 255, 0.24); }
+.lightbox-prev { left: 1.2rem; }
+.lightbox-next { right: 1.2rem; }
+.lightbox-close { top: 1rem; right: 1.2rem; transform: none; font-size: 1.5rem; padding: 0.2rem 0.6rem; }
+
+/* Plot: inline SVG chart. Series get their color from a `plot-sN` class; the
+   shapes use currentColor, so the same hue drives lines, dots and bars, and
+   light/dark is handled by the class colors below. */
+.plot-wrap { margin: 1.4rem 0; overflow-x: auto; }
+.plot { width: 100%; height: auto; font-family: var(--font-ui); }
+.plot-title { fill: var(--ink); font-size: 15px; font-weight: 600; }
+.plot-axis { stroke: var(--muted); stroke-width: 1; }
+.plot-grid { stroke: var(--border); stroke-width: 1; }
+.plot-tick { fill: var(--muted); font-size: 11px; }
+.plot-axis-label { fill: var(--muted); font-size: 12px; }
+.plot-legend { fill: var(--ink); font-size: 12px; }
+.plot-line { fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.plot-fill { fill: currentColor; }
+.plot-dot { stroke: var(--bg); stroke-width: 1; }
+.plot-s0 { color: light-dark(#2a6db3, #8ec5ff); }
+.plot-s1 { color: light-dark(#cc2222, #ff8a80); }
+.plot-s2 { color: light-dark(#2e7d46, #8fe0a6); }
+.plot-s3 { color: light-dark(#c06a12, #ffb870); }
+.plot-s4 { color: light-dark(#7a45b0, #cda8ff); }
+.plot-s5 { color: light-dark(#1f8a8a, #74d5d5); }
+
+/* Data tables (csv and query blocks): shared look, sortable header. */
+.data-table-wrap { overflow-x: auto; margin: 1.4rem 0; }
+.data-table, .query-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-family: var(--font-ui);
+    font-size: 0.88rem;
+}
+.data-table th, .data-table td,
+.query-table th, .query-table td {
+    border: 1px solid var(--rule);
+    padding: 0.4rem 0.65rem;
+    text-align: left;
+    vertical-align: top;
+}
+.data-table thead th, .query-table thead th { background: var(--code-bg); font-weight: 600; }
+.data-table td.num, .data-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.sortable th { cursor: pointer; user-select: none; white-space: nowrap; }
+.sortable th:hover { color: var(--accent); }
+.sortable th[aria-sort="ascending"]::after  { content: " \2191"; color: var(--accent); }
+.sortable th[aria-sort="descending"]::after { content: " \2193"; color: var(--accent); }
+.query-empty { color: var(--muted); font-style: italic; }
+
+/* A malformed block renders this instead of raising. */
+.block-error {
+    margin: 1.2rem 0;
     padding: 0.6rem 0.8rem;
     border-radius: 8px;
     border: 1px solid light-dark(#e4b4a8, #7a4034);
