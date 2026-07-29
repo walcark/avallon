@@ -22,7 +22,13 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("relpath", help="note, <domaine>/<type>/<slug>")
         parser.add_argument("-o", "--output", help="fichier de sortie")
-        parser.add_argument("--pdf", action="store_true", help="produire un PDF")
+        parser.add_argument(
+            "-f", "--format", choices=("docx", "pdf"), default="docx",
+            help="format de sortie (défaut : docx)",
+        )
+        parser.add_argument(
+            "--pdf", action="store_true", help="raccourci pour --format pdf"
+        )
         parser.add_argument("--reference", help="reference.docx (styles) à utiliser")
 
     def handle(self, *args, **opts):
@@ -35,11 +41,11 @@ class Command(BaseCommand):
             raise CommandError(f"page introuvable : {relpath}")
 
         page = content.load_page(index_md)
-        ext = "pdf" if opts["pdf"] else "docx"
-        out = Path(opts["output"]) if opts["output"] else Path(f"{page.slug}.{ext}")
+        fmt = "pdf" if opts["pdf"] else opts["format"]
+        out = Path(opts["output"]) if opts["output"] else Path(f"{page.slug}.{fmt}")
 
         try:
-            if opts["pdf"]:
+            if fmt == "pdf":
                 exporter.export_pdf(index_md, out, opts.get("reference"))
             else:
                 exporter.export_docx(index_md, out, opts.get("reference"))

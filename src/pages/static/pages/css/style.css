@@ -361,6 +361,33 @@ body {
 #widthToggle { display: inline-flex; align-items: center; }
 #widthToggle svg { display: block; width: 1.15rem; height: 1.15rem; }
 #exportBtn svg { display: block; width: 1.1rem; height: 1.1rem; }
+
+/* Export format menu: a small popover anchored under the toolbar button. */
+.export-menu { position: relative; display: inline-flex; }
+.export-choices {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 20;
+    min-width: 9.5rem;
+    padding: 0.3rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 6px 20px var(--shadow-lg);
+}
+.export-choices a {
+    display: block;
+    padding: 0.4rem 0.6rem;
+    border-radius: 5px;
+    color: var(--ink);
+    font-size: 0.9rem;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.export-choices a:hover {
+    background: light-dark(rgba(42, 93, 143, 0.10), rgba(134, 179, 220, 0.14));
+}
 #widthToggle .i-collapse,
 :root.reading-wide #widthToggle .i-expand { display: none; }
 :root.reading-wide #widthToggle .i-collapse { display: block; }

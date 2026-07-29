@@ -47,15 +47,24 @@
             <path d="M3 12h6M15 12h6M6 8l3 4-3 4M18 8l-3 4 3 4"/>
         </svg>
     </button>
-    <a class="icon-btn" id="exportBtn" href="/export/?path={{ relpath|urlencode }}"
-       aria-label="Exporter cette page en Word" title="Exporter en Word (.docx)" download>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <path d="M7 10l5 5 5-5"/>
-            <path d="M12 15V3"/>
-        </svg>
-    </a>
+    <div class="export-menu" id="exportMenu">
+        <button type="button" class="icon-btn" id="exportBtn" aria-haspopup="true"
+                aria-expanded="false" aria-controls="exportChoices"
+                aria-label="Exporter cette page" title="Exporter (Word ou PDF)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <path d="M7 10l5 5 5-5"/>
+                <path d="M12 15V3"/>
+            </svg>
+        </button>
+        <div class="export-choices" id="exportChoices" role="menu" hidden>
+            <a role="menuitem" download
+               href="/export/?path={{ relpath|urlencode }}&amp;format=docx">Word (.docx)</a>
+            <a role="menuitem" download
+               href="/export/?path={{ relpath|urlencode }}&amp;format=pdf">PDF</a>
+        </div>
+    </div>
 {% endblock %}
 
 {% block content %}
@@ -331,6 +340,33 @@
           if (e.key === 'Escape') { e.preventDefault(); closeLightbox(); }
           else if (e.key === 'ArrowLeft') { e.preventDefault(); showLightbox(lbIndex - 1); }
           else if (e.key === 'ArrowRight') { e.preventDefault(); showLightbox(lbIndex + 1); }
+        });
+
+        // --- Export menu -----------------------------------------------------
+        // The button opens a small menu to pick the format; each entry is a
+        // plain download link, so the server does the conversion and no script
+        // is needed once a format is chosen. Closes on outside click or Escape.
+        const exportMenu = document.getElementById('exportMenu');
+        const exportBtn = document.getElementById('exportBtn');
+        const exportChoices = document.getElementById('exportChoices');
+        function closeExport() {
+          exportChoices.hidden = true;
+          exportBtn.setAttribute('aria-expanded', 'false');
+        }
+        exportBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          const open = exportChoices.hidden;
+          exportChoices.hidden = !open;
+          exportBtn.setAttribute('aria-expanded', String(open));
+        });
+        exportChoices.addEventListener('click', function (e) {
+          if (e.target.closest('a')) closeExport();
+        });
+        document.addEventListener('click', function (e) {
+          if (!exportChoices.hidden && !exportMenu.contains(e.target)) closeExport();
+        });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && !exportChoices.hidden) closeExport();
         });
 
         // --- Markdown editor -------------------------------------------------
