@@ -46,6 +46,8 @@ content-set = "python scripts/content_repo.py set"            # activate <path>
 sync = "python scripts/sync.py"
 # Scaffold a new page (interactive: domaine/type from taxonomy.toml, free tags).
 new = "python scripts/new_page.py"
+# Re-file a page under another domaine/type (its directory moves; slug kept).
+move = "python scripts/move_page.py"
 # Extend the taxonomy vocabulary (edits taxonomy.toml and commits it).
 add-domain = "python scripts/taxonomy.py add-domain"
 add-type = "python scripts/taxonomy.py add-type"
