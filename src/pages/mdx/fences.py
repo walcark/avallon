@@ -610,9 +610,16 @@ def _bar_svg(
 # Plot export (self-contained SVG file for Pandoc)                            #
 # --------------------------------------------------------------------------- #
 
+# Per-series light-theme palette, matching the site's `.plot-s0..5` classes.
+_EXPORT_SERIES = ("#2a6db3", "#cc2222", "#2e7d46", "#c06a12", "#7a45b0", "#1f8a8a")
+
 # A document has no site stylesheet, so an exported plot carries its own: a
 # <style> with the light-theme palette, spelled out per series (no dependence
-# on `currentColor`, which not every SVG rasterizer resolves).
+# on `currentColor`, which not every SVG rasterizer resolves). The per-series
+# rules use compound selectors (`.plot-fill.plot-s0`); Pandoc's PNG rasterizer
+# ignores those, so the colors are *also* inlined as presentation attributes
+# by `_inline_series_colors` below. Single-class rules (grid, ticks, title)
+# are honored, so they stay in the stylesheet.
 _EXPORT_SVG_STYLE = (
     "<style>"
     "text{font-family:Calibri,Helvetica,sans-serif}"
@@ -624,14 +631,34 @@ _EXPORT_SVG_STYLE = (
     ".plot-legend{fill:#23211e;font-size:12px}"
     ".plot-line{fill:none;stroke-width:2}"
     ".plot-dot{stroke:#ffffff;stroke-width:1}"
-    ".plot-line.plot-s0{stroke:#2a6db3}.plot-fill.plot-s0{fill:#2a6db3}"
-    ".plot-line.plot-s1{stroke:#cc2222}.plot-fill.plot-s1{fill:#cc2222}"
-    ".plot-line.plot-s2{stroke:#2e7d46}.plot-fill.plot-s2{fill:#2e7d46}"
-    ".plot-line.plot-s3{stroke:#c06a12}.plot-fill.plot-s3{fill:#c06a12}"
-    ".plot-line.plot-s4{stroke:#7a45b0}.plot-fill.plot-s4{fill:#7a45b0}"
-    ".plot-line.plot-s5{stroke:#1f8a8a}.plot-fill.plot-s5{fill:#1f8a8a}"
-    "</style>"
+    + "".join(
+        f".plot-line.plot-s{i}{{stroke:{c}}}.plot-fill.plot-s{i}{{fill:{c}}}"
+        for i, c in enumerate(_EXPORT_SERIES)
+    )
+    + "</style>"
 )
+
+
+def _inline_series_colors(svg: str) -> str:
+    """Add explicit ``fill``/``stroke`` attributes to the series-colored shapes.
+
+    The site styles series with compound CSS selectors (``.plot-fill.plot-s0``),
+    which the export rasterizer drops, leaving bars and points black. Spelling
+    the color out as a presentation attribute is honored by every renderer and,
+    being lower priority than CSS, changes nothing where the stylesheet already
+    applies.
+    """
+    for i, color in enumerate(_EXPORT_SERIES):
+        svg = svg.replace(
+            f'class="plot-line plot-s{i}"',
+            f'class="plot-line plot-s{i}" fill="none" '
+            f'stroke="{color}" stroke-width="2"',
+        )
+        # Bars, dots and legend swatches all end their class with the series.
+        svg = svg.replace(
+            f'plot-fill plot-s{i}"', f'plot-fill plot-s{i}" fill="{color}"'
+        )
+    return svg
 _PLOT_OPEN = (
     '<svg class="plot" viewBox="0 0 640 380" role="img" '
     'preserveAspectRatio="xMidYMid meet">'
@@ -657,6 +684,7 @@ def _export_plot(svg_html: str, config: dict[str, Any], export: Any) -> str:
     standalone = inner.replace(
         _PLOT_OPEN, _PLOT_OPEN_STANDALONE + _EXPORT_SVG_STYLE, 1
     )
+    standalone = _inline_series_colors(standalone)
 
     export.count += 1
     name = f"__plot{export.count}.svg"
