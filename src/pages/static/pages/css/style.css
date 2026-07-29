@@ -849,6 +849,28 @@ mjx-container[display="true"] { margin: 1.4em 0; }
 .editor-status[data-kind="ok"]    { color: var(--accent); }
 .editor-status[data-kind="error"] { color: light-dark(#a3341f, #e79080); }
 
+/* Move control: pushed to the far end of the bar so it reads as a distinct
+   action, apart from saving the text. */
+.editor-move {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-left: auto;
+    font-family: var(--font-ui);
+    font-size: 0.82rem;
+    color: var(--muted);
+}
+.editor-move-label { white-space: nowrap; }
+.editor-move select {
+    font-family: var(--font-ui);
+    font-size: 0.82rem;
+    padding: 0.3rem 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--ink);
+}
+
 /* --------------------------------------------------------------------------
    Creation form
    -------------------------------------------------------------------------- */

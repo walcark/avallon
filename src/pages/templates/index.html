@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load taxonomy %}
 
 {% block title %}{{ page.title }}{% endblock %}
 
@@ -85,6 +86,19 @@
             <div class="editor-bar">
                 <button type="button" class="btn" id="editorSave">Enregistrer</button>
                 <span class="editor-status" id="editorStatus" role="status"></span>
+                <!-- Re-file the page under another domain/type: the directory
+                     moves on disk and the browser follows the new URL. -->
+                <div class="editor-move">
+                    <span class="editor-move-label">Déplacer vers</span>
+                    <select id="moveDomain" aria-label="Domaine de destination">
+                        {% for d in domains %}<option value="{{ d }}"{% if d == page.domain %} selected{% endif %}>{{ d|label }}</option>{% endfor %}
+                    </select>
+                    <span aria-hidden="true">/</span>
+                    <select id="moveType" aria-label="Type de destination">
+                        {% for t in types %}<option value="{{ t }}"{% if t == page.type %} selected{% endif %}>{{ t|label }}</option>{% endfor %}
+                    </select>
+                    <button type="button" class="btn" id="moveBtn">Déplacer</button>
+                </div>
             </div>
         </div>
 
@@ -331,6 +345,41 @@
           editor.hidden ? openEditor() : closeEditor();
         });
         document.getElementById('editorSave').addEventListener('click', save);
+
+        // --- Move (change domain/type) --------------------------------------
+        // Re-files the page: the directory moves on disk, so the URL changes.
+        // Refused while there are unsaved edits, since the reload that follows
+        // the move would drop them.
+        const moveBtn = document.getElementById('moveBtn');
+        const moveDomain = document.getElementById('moveDomain');
+        const moveType = document.getElementById('moveType');
+        function move() {
+          if (dirty) {
+            say('Enregistre d’abord tes modifications avant de déplacer la page.', 'error');
+            return;
+          }
+          say('Déplacement…');
+          fetch('/move/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+            body: JSON.stringify({ path: RELPATH, domain: moveDomain.value, type: moveType.value })
+          })
+            .then(function (r) {
+              return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+            })
+            .then(function (res) {
+              if (!res.ok) {
+                say(res.d.error || 'Échec du déplacement.', 'error');
+                return;
+              }
+              // The URL moved with the directory; land on it, still in edit mode.
+              window.location.href = res.d.url + '#edit';
+            })
+            .catch(function () {
+              say('Échec du déplacement (réseau).', 'error');
+            });
+        }
+        moveBtn.addEventListener('click', move);
         document.addEventListener('keydown', function (e) {
           if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
             e.preventDefault();

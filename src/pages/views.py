@@ -76,6 +76,7 @@ def serve_content(request, relpath):
         if not request.path.endswith("/"):
             return HttpResponsePermanentRedirect(request.path + "/")
         page = content.load_page(index_md)
+        vocab = content.vocabulary()
         return render(
             request,
             "index.html",
@@ -85,6 +86,10 @@ def serve_content(request, relpath):
                 "relpath": page.relpath,
                 "reading_minutes": content.reading_minutes(index_md),
                 "backlinks": content.backlinks(page),
+                # Destinations offered by the "move" control in the editor:
+                # exactly the declared taxonomy, like the creation form.
+                "domains": vocab["domains"],
+                "types": vocab["types"],
             },
         )
 
@@ -251,6 +256,37 @@ def save_page(request):
             "committed": committed,
         }
     )
+
+
+@require_POST
+def move_page(request):
+    """Re-file a page under another domain/type (its directory moves on disk).
+
+    The slug is kept, so the page's assets and the wikilinks pointing at it by
+    slug keep resolving; only its URL changes, which the browser follows via
+    the ``url`` returned here. Answers 400 on an undeclared destination or a
+    slug collision, rather than moving the page somewhere it cannot live.
+    """
+    if not may_edit(request):
+        raise Http404("Édition indisponible")
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Requête illisible."}, status=400)
+
+    relpath = str(payload.get("path", ""))
+    # Same guards as the reader: refuse a path escaping the tree or a page the
+    # site would not serve, before touching anything on disk.
+    _editable_page(relpath)
+    try:
+        page = content.move_page(
+            relpath, str(payload.get("domain", "")), str(payload.get("type", ""))
+        )
+    except content.InvalidPage as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
+    _commit_page(page.relpath, action=f"move {relpath} ->")
+    return JsonResponse({"url": page.url})
 
 
 async def markdown_stream(request):

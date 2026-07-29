@@ -16,6 +16,7 @@ import datetime
 import html
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import tomllib
@@ -329,6 +330,58 @@ def create_page(
 
     target.mkdir(parents=True)
     (target / "index.md").write_text(body, encoding="utf-8")
+    return _page_from(target / "index.md")
+
+
+def move_page(relpath: str, new_domain: str, new_type: str) -> Page:
+    """Re-file a page under another domain/type and return it at its new home.
+
+    Domain and type *are* the page's directory, so moving a note to a different
+    domain or type means moving ``<domain>/<type>/<slug>/`` whole. The slug and
+    the co-located assets travel with it, so ``[[wikilink]]`` references by slug
+    and relative image paths keep resolving; only the page's own URL changes.
+
+    Parameters
+    ----------
+    relpath : str
+        The page's current relpath, ``<domain>/<type>/<slug>``.
+    new_domain, new_type : str
+        Destination taxonomy, both declared in taxonomy.toml.
+
+    Returns
+    -------
+    Page
+        The page at its new location.
+
+    Raises
+    ------
+    InvalidPage
+        Undeclared destination, missing source page, an unchanged destination,
+        or a slug already taken under the target domain/type.
+    """
+    vocab = vocabulary()
+    if new_domain not in vocab["domains"]:
+        raise InvalidPage(f"Domaine non déclaré : {new_domain}")
+    if new_type not in vocab["types"]:
+        raise InvalidPage(f"Type non déclaré : {new_type}")
+
+    source = safe_resolve(relpath)
+    if not (source / "index.md").is_file():
+        raise InvalidPage("Page introuvable.")
+
+    slug = source.name
+    target = CONTENT_DIR / new_domain / new_type / slug
+    if target == source:
+        raise InvalidPage("La note est déjà dans ce domaine et ce type.")
+    if target.exists():
+        raise InvalidPage(
+            f"Une note « {slug} » existe déjà dans {new_domain}/{new_type}."
+        )
+
+    # The intermediate <domain>/<type> dir need not exist yet (a domain/type
+    # pair no page has used so far); make it, then move the leaf whole.
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(source), str(target))
     return _page_from(target / "index.md")
 
 
