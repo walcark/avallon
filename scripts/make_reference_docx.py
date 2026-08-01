@@ -52,19 +52,6 @@ def _shading(style, fill_hex: str) -> None:
     pPr.append(shd)
 
 
-def _left_bar(style, color_hex: str, size: int = 24) -> None:
-    """Give *style* a thick colored left border (a callout bar)."""
-    pPr = style.element.get_or_add_pPr()
-    borders = OxmlElement("w:pBdr")
-    left = OxmlElement("w:left")
-    left.set(qn("w:val"), "single")
-    left.set(qn("w:sz"), str(size))
-    left.set(qn("w:space"), "10")
-    left.set(qn("w:color"), color_hex)
-    borders.append(left)
-    pPr.append(borders)
-
-
 def _bottom_border(paragraph, color_hex: str) -> None:
     """Underline a header paragraph with a thin bottom rule."""
     pPr = paragraph._p.get_or_add_pPr()
@@ -225,6 +212,38 @@ def _code_block_style(doc, normal) -> None:
     _para_borders(style, ("bottom", "left", "right"))
 
 
+def _admonition_card(
+    doc, normal, name, title_fill, title_text, body_fill, body_text, border
+) -> None:
+    """Add the two-paragraph card styles for an admonition *name*.
+
+    ``Encadré <name> Titre`` is the darker header (kept with the body below);
+    ``Encadré <name>`` is the lighter body. They share a border frame and stack
+    flush, matching the code-block card. Consecutive body paragraphs merge into
+    one frame, so the bottom border is drawn once, under the last line.
+    """
+    title = doc.styles.add_style(f"Encadré {name} Titre", WD_STYLE_TYPE.PARAGRAPH)
+    title.base_style = normal
+    title.font.bold = True
+    title.font.color.rgb = title_text
+    tpf = title.paragraph_format
+    tpf.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    tpf.space_before = Pt(8)
+    tpf.space_after = Pt(0)
+    tpf.keep_with_next = True
+    _shading(title, title_fill)
+    _para_borders(title, ("top", "left", "right", "bottom"), border)
+
+    body = doc.styles.add_style(f"Encadré {name}", WD_STYLE_TYPE.PARAGRAPH)
+    body.base_style = normal
+    body.font.color.rgb = body_text
+    bpf = body.paragraph_format
+    bpf.space_before = Pt(0)
+    bpf.space_after = Pt(8)
+    _shading(body, body_fill)
+    _para_borders(body, ("left", "right", "bottom"), border)
+
+
 def _page_number(paragraph) -> None:
     """Append a live PAGE field to *paragraph*."""
     run = paragraph.add_run()
@@ -277,24 +296,19 @@ def build(out_path: Path) -> None:
         style.font.color.rgb = rgb
         style.font.bold = True
 
-    # Admonition boxes: shaded, with a colored left bar.
-    note = doc.styles.add_style("Encadré Note", WD_STYLE_TYPE.PARAGRAPH)
-    note.base_style = normal
-    note.font.color.rgb = SLATE
-    note.paragraph_format.left_indent = Pt(12)
-    note.paragraph_format.space_before = Pt(6)
-    note.paragraph_format.space_after = Pt(6)
-    _shading(note, "EAF1F8")
-    _left_bar(note, "2A6DB3")
-
-    warn = doc.styles.add_style("Encadré Warning", WD_STYLE_TYPE.PARAGRAPH)
-    warn.base_style = normal
-    warn.font.color.rgb = RGBColor(0x7A, 0x52, 0x0A)
-    warn.paragraph_format.left_indent = Pt(12)
-    warn.paragraph_format.space_before = Pt(6)
-    warn.paragraph_format.space_after = Pt(6)
-    _shading(warn, "FDF3DD")
-    _left_bar(warn, "C9A227")
+    # Admonition boxes: a two-tone card, matching the code block. Dark title
+    # header over a light body, tinted to each type (blue for note, amber for
+    # warning).
+    _admonition_card(
+        doc, normal, "Note",
+        title_fill="1F5A8F", title_text=RGBColor(0xEA, 0xF1, 0xF8),
+        body_fill="EAF1F8", body_text=SLATE, border="C4DBF0",
+    )
+    _admonition_card(
+        doc, normal, "Warning",
+        title_fill="8A6A10", title_text=RGBColor(0xFD, 0xF3, 0xDD),
+        body_fill="FDF3DD", body_text=RGBColor(0x7A, 0x52, 0x0A), border="E6D28C",
+    )
 
     # Monospace, boxed style for exported code blocks.
     _code_block_style(doc, normal)

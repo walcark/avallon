@@ -27,11 +27,26 @@ function Span(el)
 end
 
 function Div(el)
+  -- Admonition: split the box into a darker title paragraph and a lighter body,
+  -- so it reads as the same two-tone card as a code block. The title is always
+  -- the first child (its class is lost in the AST, but its position is not).
   if el.classes:includes("admonition") then
-    local style = el.classes:includes("warning")
-      and "Encadré Warning" or "Encadré Note"
-    el.attributes["custom-style"] = style
-    return el
+    local kind = el.classes:includes("warning") and "Warning" or "Note"
+    local blocks = el.content
+    if #blocks == 0 then return el end
+    local title = pandoc.Div(
+      { blocks[1] },
+      pandoc.Attr("", {}, { { "custom-style", "Encadré " .. kind .. " Titre" } })
+    )
+    local out = { title }
+    if #blocks > 1 then
+      local rest = {}
+      for i = 2, #blocks do rest[#rest + 1] = blocks[i] end
+      out[#out + 1] = pandoc.Div(
+        rest, pandoc.Attr("", {}, { { "custom-style", "Encadré " .. kind } })
+      )
+    end
+    return out
   end
   -- The language caption a code block is rebuilt with (see content.py): its
   -- darker header style sits directly above the lighter code paragraph.
