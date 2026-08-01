@@ -33,6 +33,12 @@ function Div(el)
     el.attributes["custom-style"] = style
     return el
   end
+  -- The language caption a code block is rebuilt with (see content.py): its
+  -- darker header style sits directly above the lighter code paragraph.
+  if el.classes:includes("code-label") then
+    el.attributes["custom-style"] = "Code Label"
+    return el
+  end
   return el
 end
 

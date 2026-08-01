@@ -300,12 +300,16 @@ def _export_code_blocks(html_out: str) -> str:
             return match.group(0)
         text = html.unescape(_TAG.sub("", inner.group("code")))
         label = _CODE_LABEL.search(body)
+        display = label.group("name").strip() if label else ""
         # The label is a display name ("Python"); its first word, lowercased,
         # is a good Pandoc/skylighting language id ("python"). Unknown ids just
         # yield an un-highlighted (still monospace) block, so this is safe.
-        lang = label.group("name").strip().split()[0].lower() if label else ""
+        lang = display.split()[0].lower() if display else ""
         cls = f' class="{html.escape(lang)}"' if lang else ""
-        return f"<pre><code{cls}>{html.escape(text)}</code></pre>"
+        # A "code-label" caption (word_styles.lua maps it to a darker header
+        # style) then the code, so the two stack into one two-tone card.
+        header = f'<div class="code-label">{html.escape(display or "Code")}</div>'
+        return f"{header}<pre><code{cls}>{html.escape(text)}</code></pre>"
 
     return _CODE_BOX.sub(rewrite, html_out)
 

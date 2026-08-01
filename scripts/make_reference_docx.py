@@ -158,14 +158,58 @@ def _enhance_table_style(doc) -> None:
     tcPr.addprevious(rPr)
 
 
-def _code_block_style(doc, normal) -> None:
-    """Add the ``Source Code`` paragraph style Pandoc applies to code blocks.
+def _para_borders(style, edges, color: str = "DDE1E6") -> None:
+    """Add single borders on *edges* of a paragraph style.
 
-    Without it Pandoc invents one based on ``Normal``, which now inherits the
-    justified body alignment (wrong for code). This defines a left-aligned,
-    monospace, softly boxed block instead. The run font is set on the style so
-    the whitespace between highlighted tokens stays monospace too.
+    In CT_PPr, ``pBdr`` sits immediately before ``shd``, so the borders are
+    anchored just before the shading (which the callers add first).
     """
+    pPr = style.element.get_or_add_pPr()
+    borders = OxmlElement("w:pBdr")
+    for edge in edges:
+        e = OxmlElement(f"w:{edge}")
+        e.set(qn("w:val"), "single")
+        e.set(qn("w:sz"), "4")
+        e.set(qn("w:space"), "6")
+        e.set(qn("w:color"), color)
+        borders.append(e)
+    shd = pPr.find(qn("w:shd"))
+    if shd is not None:
+        shd.addprevious(borders)
+    else:
+        pPr.append(borders)
+
+
+def _code_block_style(doc, normal) -> None:
+    """Add the code-block card styles Pandoc's export relies on.
+
+    ``Code Label`` is the darker header carrying the language name; ``Source
+    Code`` is the lighter, monospace, syntax-highlighted body. They stack with
+    no gap (the label keeps with the next paragraph, the body starts flush) and
+    share a border frame, so together they read as one two-tone card. Without a
+    ``Source Code`` style Pandoc invents one based on ``Normal``, which now
+    inherits the justified body alignment (wrong for code).
+    """
+    # Header strip: dark fill, light monospace text, glued to the code below.
+    label = doc.styles.add_style("Code Label", WD_STYLE_TYPE.PARAGRAPH)
+    label.base_style = normal
+    label.font.name = "Consolas"
+    label.font.size = Pt(8)
+    label.font.bold = True
+    label.font.color.rgb = RGBColor(0xE8, 0xEB, 0xEE)
+    lpf = label.paragraph_format
+    lpf.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    lpf.line_spacing = 1.0
+    lpf.space_before = Pt(8)
+    lpf.space_after = Pt(0)
+    lpf.keep_with_next = True
+    _shading(label, "33383E")
+    _para_borders(label, ("top", "left", "right", "bottom"))
+
+    # Code body: light fill, monospace. The run font is set on the style so the
+    # whitespace between highlighted tokens stays monospace too. No top border
+    # (the label's bottom border is the divider) and no space before, so it sits
+    # flush under the header.
     style = doc.styles.add_style("Source Code", WD_STYLE_TYPE.PARAGRAPH)
     style.base_style = normal
     style.font.name = "Consolas"
@@ -174,23 +218,11 @@ def _code_block_style(doc, normal) -> None:
     pf = style.paragraph_format
     pf.alignment = WD_ALIGN_PARAGRAPH.LEFT
     pf.line_spacing = 1.0
-    pf.space_before = Pt(4)
+    pf.space_before = Pt(0)
     pf.space_after = Pt(8)
     pf.keep_together = True
     _shading(style, "F4F5F7")
-    # A thin border boxing the block. In CT_PPr, pBdr sits immediately before
-    # shd, so anchor it there (the shading was just appended by _shading()).
-    pPr = style.element.get_or_add_pPr()
-    borders = OxmlElement("w:pBdr")
-    for edge in ("top", "bottom", "left", "right"):
-        e = OxmlElement(f"w:{edge}")
-        e.set(qn("w:val"), "single")
-        e.set(qn("w:sz"), "4")
-        e.set(qn("w:space"), "6")
-        e.set(qn("w:color"), "DDE1E6")
-        borders.append(e)
-    shd = pPr.find(qn("w:shd"))
-    shd.addprevious(borders)
+    _para_borders(style, ("bottom", "left", "right"))
 
 
 def _page_number(paragraph) -> None:
