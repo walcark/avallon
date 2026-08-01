@@ -264,10 +264,50 @@ def render_markdown(index_md: Path, export: ExportContext | None = None) -> str:
     token = _render_dir.set(index_md.parent)
     etoken = _export.set(export)
     try:
-        return str(markdownify(_LEADING_H1.sub("", post.content, count=1)))
+        html_out = str(markdownify(_LEADING_H1.sub("", post.content, count=1)))
+        if export is not None:
+            html_out = _export_code_blocks(html_out)
+        return html_out
     finally:
         _render_dir.reset(token)
         _export.reset(etoken)
+
+
+# A Pygments code box, as pymdownx.highlight emits it: an optional language
+# label (auto_title) then the highlighted <pre>. The label and the tokenizing
+# <span>s stop Pandoc from reading the <pre> as a code block (it flattens the
+# lot into one run-together paragraph), so for export we rebuild a clean
+# <pre><code> Pandoc turns into a real, monospace, syntax-highlighted CodeBlock.
+_CODE_BOX = re.compile(r'<div class="highlight">(?P<body>.*?)</div>', re.DOTALL)
+_CODE_LABEL = re.compile(r'<span class="filename">(?P<name>[^<]*)</span>')
+_CODE_INNER = re.compile(r"<code[^>]*>(?P<code>.*?)</code>", re.DOTALL)
+_TAG = re.compile(r"<[^>]+>")
+
+
+def _export_code_blocks(html_out: str) -> str:
+    """Rewrite Pygments code boxes to clean ``<pre><code>`` for the export.
+
+    Pygments wraps each line in ``<span>`` tokens; Pandoc's HTML reader then
+    treats the box as inline text and collapses the newlines. Stripping the
+    tokens back to plain text (Pandoc re-highlights from the language class)
+    restores real code blocks in the Word/PDF output.
+    """
+
+    def rewrite(match: re.Match[str]) -> str:
+        body = match.group("body")
+        inner = _CODE_INNER.search(body)
+        if inner is None:
+            return match.group(0)
+        text = html.unescape(_TAG.sub("", inner.group("code")))
+        label = _CODE_LABEL.search(body)
+        # The label is a display name ("Python"); its first word, lowercased,
+        # is a good Pandoc/skylighting language id ("python"). Unknown ids just
+        # yield an un-highlighted (still monospace) block, so this is safe.
+        lang = label.group("name").strip().split()[0].lower() if label else ""
+        cls = f' class="{html.escape(lang)}"' if lang else ""
+        return f"<pre><code{cls}>{html.escape(text)}</code></pre>"
+
+    return _CODE_BOX.sub(rewrite, html_out)
 
 
 def reading_minutes(index_md: Path) -> int:

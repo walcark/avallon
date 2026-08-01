@@ -158,6 +158,41 @@ def _enhance_table_style(doc) -> None:
     tcPr.addprevious(rPr)
 
 
+def _code_block_style(doc, normal) -> None:
+    """Add the ``Source Code`` paragraph style Pandoc applies to code blocks.
+
+    Without it Pandoc invents one based on ``Normal``, which now inherits the
+    justified body alignment (wrong for code). This defines a left-aligned,
+    monospace, softly boxed block instead. The run font is set on the style so
+    the whitespace between highlighted tokens stays monospace too.
+    """
+    style = doc.styles.add_style("Source Code", WD_STYLE_TYPE.PARAGRAPH)
+    style.base_style = normal
+    style.font.name = "Consolas"
+    style.font.size = Pt(9.5)
+    style.font.color.rgb = SLATE
+    pf = style.paragraph_format
+    pf.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    pf.line_spacing = 1.0
+    pf.space_before = Pt(4)
+    pf.space_after = Pt(8)
+    pf.keep_together = True
+    _shading(style, "F4F5F7")
+    # A thin border boxing the block. In CT_PPr, pBdr sits immediately before
+    # shd, so anchor it there (the shading was just appended by _shading()).
+    pPr = style.element.get_or_add_pPr()
+    borders = OxmlElement("w:pBdr")
+    for edge in ("top", "bottom", "left", "right"):
+        e = OxmlElement(f"w:{edge}")
+        e.set(qn("w:val"), "single")
+        e.set(qn("w:sz"), "4")
+        e.set(qn("w:space"), "6")
+        e.set(qn("w:color"), "DDE1E6")
+        borders.append(e)
+    shd = pPr.find(qn("w:shd"))
+    shd.addprevious(borders)
+
+
 def _page_number(paragraph) -> None:
     """Append a live PAGE field to *paragraph*."""
     run = paragraph.add_run()
@@ -228,6 +263,9 @@ def build(out_path: Path) -> None:
     warn.paragraph_format.space_after = Pt(6)
     _shading(warn, "FDF3DD")
     _left_bar(warn, "C9A227")
+
+    # Monospace, boxed style for exported code blocks.
+    _code_block_style(doc, normal)
 
     # Corporate look for the table style Pandoc applies to exported tables.
     _enhance_table_style(doc)
