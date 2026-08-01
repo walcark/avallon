@@ -184,6 +184,9 @@ def build(out_path: Path) -> None:
     normal.font.color.rgb = SLATE
     normal.paragraph_format.space_after = Pt(8)
     normal.paragraph_format.line_spacing = 1.15
+    # Justify body copy to match the web layout (headings keep their own
+    # left-aligned styles, which do not inherit this).
+    normal.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
     # Document title and headings, in the corporate navy.
     title = doc.styles["Title"]

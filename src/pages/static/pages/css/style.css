@@ -600,6 +600,14 @@ html { scroll-behavior: smooth; }
 .prose h3:hover .headerlink { opacity: 1; color: var(--accent); }
 
 /* --- Text --------------------------------------------------------------- */
+/* Justify body copy for a cleaner, book-like block. Hyphenation (the page is
+   lang="fr") breaks long words so justification does not open ugly rivers of
+   whitespace; the last line stays ragged and short words are never stretched. */
+.prose p, .prose li {
+    text-align: justify;
+    hyphens: auto;
+    text-wrap: pretty;
+}
 .prose p { margin: 1.15em 0; }
 /* Links stay underlined rather than lighting up on hover only: in a serif
    paragraph an underline is the calmer signal, and it survives color-blindness.
