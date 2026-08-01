@@ -856,11 +856,46 @@ mjx-container[display="true"] { margin: 1.4em 0; }
 #editToggle[aria-pressed="true"] .i-eye { display: block; }
 #editToggle svg { width: 1.05rem; height: 1.05rem; display: block; }
 
+/* Editing takes over the viewport: the document stops scrolling and the source
+   pane is sized to end exactly where the toolbar begins. That sizing, and not
+   a reserved margin, is what keeps the lines being typed visible. Padding
+   under the text would not do it: it scrolls away with the content, while the
+   caret is still revealed flush against the viewport edge, which is precisely
+   where the sticky bar sits. Making the box stop short of the bar removes the
+   overlap instead of trying to compensate for it. */
+html:has(.page.is-editing) { overflow: hidden; }
+.main:has(.page.is-editing) {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    min-height: 0;
+}
+
 /* Editing wants room, so take the wide measure whatever the reading toggle
    says. The sommaire column is not fought over here: the editor sets the
    toc's `hidden` attribute, which is what the grid rule above already keys
    on, so the column collapses on its own. */
-.page.is-editing > .prose { max-width: var(--measure-wide); }
+.page.is-editing {
+    flex: 1;
+    /* Without this a flex item refuses to shrink below its content, and the
+       whole column would overflow the viewport again. Same reason on each of
+       the nested items below. */
+    min-height: 0;
+    /* One row that fills the container, so .prose has a definite height to
+       stretch into rather than one derived from its own content. */
+    grid-template-rows: minmax(0, 1fr);
+    padding-bottom: 1rem;
+}
+.page.is-editing > .prose {
+    max-width: var(--measure-wide);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    /* The reading column's 6rem tail is there to let the last paragraph rise
+       off the bottom of the screen; here it would just steal editing room. */
+    padding-bottom: 0;
+}
+.page.is-editing .editor { flex: 1; min-height: 0; }
 
 .editor {
     display: flex;
@@ -875,11 +910,18 @@ mjx-container[display="true"] { margin: 1.4em 0; }
 
 .editor textarea {
     width: 100%;
-    /* Tall enough that the common case needs no scrolling inside the box,
-       while still leaving the toolbar reachable without hunting for it. */
-    min-height: min(70vh, 40rem);
-    resize: vertical;
-    padding: 1rem 1.1rem;
+    /* Fills the column between the page header and the toolbar. The floor is
+       only there for windows too short to give it anything. */
+    flex: 1;
+    min-height: 8rem;
+    /* The box already fits its column; a drag handle could only fight it. */
+    resize: none;
+    /* Bottom inset in two parts: the padding lets the last line be scrolled
+       clear of the border once, and the scroll-padding keeps that clearance
+       while typing, since the browser reveals the caret against this inset
+       rather than against the edge of the box. */
+    padding: 1rem 1.1rem 2.5rem;
+    scroll-padding-block-end: 2.5rem;
     border: 1px solid var(--border);
     border-radius: 10px;
     background: var(--code-panel);
@@ -894,11 +936,12 @@ mjx-container[display="true"] { margin: 1.4em 0; }
     outline-offset: 1px;
 }
 
-/* Sticky: the textarea is taller than the viewport on any real note, and a
-   save button you have to scroll to find is a save button you stop using. */
+/* Always on screen, because a save button you have to scroll to find is a save
+   button you stop using. It used to get there by sticking to the bottom of the
+   viewport, which is what put it over the text; now it simply is the last row
+   of a column that already fits the viewport, so it is visible without ever
+   covering anything. */
 .editor-bar {
-    position: sticky;
-    bottom: 0;
     display: flex;
     align-items: center;
     gap: 1rem;
