@@ -1,11 +1,13 @@
 """python-markdown extension: ``[[slug]]`` -> internal page links.
 
-Turns author cross-references into real ``<a>`` links. The target is matched,
-in order, against each page's *slug* (leaf folder name) or its full *relpath*
-(``domaine/type/slug``). Two forms are supported::
+Turns author cross-references into real ``<a>`` links. The target is matched
+against each page's *slug* (leaf folder name) or its full *relpath*
+(``domaine/type/slug``), and may be written as the page's title rather than as
+its folder name (see :func:`resolves_to`)::
 
     [[pyspark-et-foundry]]              -> link, text = the page title
     [[pyspark-et-foundry|le sujet]]     -> link, text = "le sujet"
+    [[PySpark et Foundry]]              -> same page, written as it reads
 
 A target that names a file sitting next to the page (``[[alis-2019.pdf]]``)
 links to that co-located file instead, so a dropped PDF is one click away.
@@ -36,8 +38,50 @@ WIKILINK_RE = r"\[\[\s*([^\]|]+?)\s*(?:\|\s*([^\]]+?)\s*)?\]\]"
 _FILE_SUFFIX = re.compile(r"\.[A-Za-z0-9]{1,8}$")
 
 
+def resolves_to(target: str, slug: str, relpath: str) -> bool:
+    """Whether the wikilink *target* designates the page (*slug*, *relpath*).
+
+    The single matching rule, shared with the backlink walker so a reference
+    that renders as a link is always the one that shows up as a backlink.
+    Three forms are accepted, so a cross-reference can be written the way the
+    page reads rather than the way its folder happens to be named:
+
+    - the slug or the full relpath, verbatim: ``[[titre-exact]]``
+    - either of those in any case: ``[[Titre-Exact]]``
+    - the title itself: ``[[Titre exact]]``, or ``[[titre exact]]``
+
+    The last form works by slugifying the target, which is exactly how the
+    slug was derived from the title when the page was created (accents
+    stripped, case folded, runs of punctuation collapsed to hyphens). Slugs
+    are already in that shape, so the rule is a strict superset of the exact
+    match and cannot make two pages compete for one reference.
+
+    Parameters
+    ----------
+    target : str
+        The text inside the brackets, already stripped.
+    slug : str
+        The candidate page's leaf folder name.
+    relpath : str
+        The candidate page's ``domaine/type/slug``.
+
+    Returns
+    -------
+    bool
+        True when *target* designates that page.
+    """
+    from new_page import slugify  # scripts/ is on sys.path (see config.settings)
+
+    lowered = target.lower()
+    if lowered in (slug.lower(), relpath.lower()):
+        return True
+    # Not applied to the relpath: slugify would eat its slashes and turn it
+    # into something that can only ever collide by accident.
+    return slugify(target) == slug.lower()
+
+
 def _resolve(target: str):
-    """Return the Page whose slug or relpath equals *target*, else None."""
+    """Return the Page *target* designates, else None."""
     # Imported lazily: the extension is loaded while Django builds the markdown
     # pipeline, and `content` pulls in settings/Http404, so importing it at
     # module top would risk an import cycle. Resolving here also means the map is
@@ -45,7 +89,7 @@ def _resolve(target: str):
     from .. import content
 
     for page in content.all_pages():
-        if target == page.slug or target == page.relpath:
+        if resolves_to(target, page.slug, page.relpath):
             return page
     return None
 

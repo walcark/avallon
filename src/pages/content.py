@@ -30,7 +30,7 @@ from django.conf import settings
 from django.http import Http404
 from markdownify.templatetags.markdownify import markdownify
 
-from .mdx.wikilinks import WIKILINK_RE
+from .mdx.wikilinks import WIKILINK_RE, resolves_to
 
 CONTENT_DIR: Path = settings.CONTENT_DIR
 
@@ -574,8 +574,9 @@ def backlinks(target: Page) -> list[Page]:
     """Visible pages whose body cites *target* with a [[wikilink]].
 
     Wikilinks are one-way in the Markdown; this walks the tree to invert them,
-    so a page can show what refers to it. Matching follows the same rule as the
-    extension itself: the reference is either the slug or the full relpath.
+    so a page can show what refers to it. Matching is delegated to the
+    extension's own `resolves_to`, so the two can never disagree about which
+    references count.
     """
     found: list[Page] = []
     for index_md in CONTENT_DIR.glob(_PAGE_GLOB):
@@ -585,7 +586,7 @@ def backlinks(target: Page) -> list[Page]:
             continue
         for match in _WIKILINK.finditer(post.content):
             ref = match.group(1).strip()
-            if ref in (target.slug, target.relpath):
+            if resolves_to(ref, target.slug, target.relpath):
                 found.append(source)
                 break
     found.sort(key=lambda p: p.title)
