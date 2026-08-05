@@ -40,7 +40,7 @@ NET_TIMEOUT = 20  # seconds, for pull/push
 
 # Marks a commit as written by this script, hence safe to amend. A commit the
 # user wrote by hand in the content repo has no trailer and is never rewritten.
-BATCH_TRAILER = "mysite-batch"
+BATCH_TRAILER = "avallon-batch"
 
 # How long consecutive edits keep folding into the same commit. Saving a page
 # twelve times in ten minutes should read as one change, not twelve.
@@ -333,7 +333,7 @@ def sync_lock(content_dir: Path, *, blocking: bool = False):
     bool
         Whether the lock was acquired.
     """
-    handle = open(_state_path(content_dir, "mysite-sync.lock"), "w")
+    handle = open(_state_path(content_dir, "avallon-sync.lock"), "w")
     try:
         flags = fcntl.LOCK_EX if blocking else (fcntl.LOCK_EX | fcntl.LOCK_NB)
         try:
@@ -504,7 +504,7 @@ def _log_flush(content_dir: Path, result: SyncResult) -> None:
     """Record a background sync's problems, which are otherwise invisible."""
     if not (result.warnings or result.conflict_files):
         return
-    with open(_state_path(content_dir, "mysite-sync.log"), "a", encoding="utf-8") as f:
+    with open(_state_path(content_dir, "avallon-sync.log"), "a", encoding="utf-8") as f:
         f.write(f"{datetime.now():%Y-%m-%dT%H:%M:%S}\n")
         for w in result.warnings:
             f.write(f"  warn: {w}\n")
@@ -620,19 +620,19 @@ def main(argv: list[str]) -> int:
     if not is_git_repo(content_dir):
         sys.exit(
             f"{content_dir} n'est pas un dépôt git.\n"
-            "Lance `pixi run content-init <chemin>` pour en créer un."
+            "Lance `avallon init <chemin>` pour en créer un."
         )
-    # `is_git_repo` is true for any subdirectory of any repo, so the in-repo
-    # dev fallback (mysite/content, inside the app repo) passes it. Syncing
-    # there would commit notes into the application's history, which is the
-    # exact accident this refuses. content-init always produces a repo root.
+    # `is_git_repo` is true for any subdirectory of any repo, so a notes
+    # directory sitting inside another checkout would pass it. Syncing there
+    # would commit notes into that project's history, which is the exact
+    # accident this refuses. `avallon init` always produces a repo root.
     if not is_repo_root(content_dir):
         enclosing = run_git(["rev-parse", "--show-toplevel"], cwd=content_dir)
         sys.exit(
             f"{content_dir} n'est pas la racine d'un dépôt git : il est contenu\n"
             f"dans {enclosing.stdout.strip()}.\n"
             "Synchroniser ici committerait les notes dans ce dépôt-là.\n"
-            "Lance `pixi run content-init <chemin>` pour sortir le contenu."
+            "Lance `avallon init <chemin>` pour sortir le contenu."
         )
 
     window = 0 if args.no_batch else sync_window()

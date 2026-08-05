@@ -12,7 +12,7 @@ which makes the command scriptable and testable:
     python scripts/move_page.py --path informatique/fiche/ma-note \\
         --domain science --type cr
 
-The move is left uncommitted, like `new`: `pixi run sync` records it (git sees
+The move is left uncommitted, like `new`: `avallon sync` records it (git sees
 a rename) on the next sync.
 """
 
@@ -49,7 +49,7 @@ def main() -> int:
     if not taxo["domains"] or not taxo["types"]:
         sys.exit(
             "taxonomy.toml est vide : déclare d'abord un domaine et un type "
-            "(pixi run add-domain …, pixi run add-type …)."
+            "(avallon add-domain …, avallon add-type …)."
         )
 
     all_pages = pages()
@@ -66,12 +66,12 @@ def main() -> int:
     if not domain:
         sys.exit("Annulé.")
     if domain not in taxo["domains"]:
-        sys.exit(f"domaine non déclaré : {domain}  (pixi run add-domain {domain})")
+        sys.exit(f"domaine non déclaré : {domain}  (avallon add-domain {domain})")
     type_ = args.type or pick("Nouveau type", taxo["types"])
     if not type_:
         sys.exit("Annulé.")
     if type_ not in taxo["types"]:
-        sys.exit(f"type non déclaré : {type_}  (pixi run add-type {type_})")
+        sys.exit(f"type non déclaré : {type_}  (avallon add-type {type_})")
 
     slug = source.name
     target = CONTENT / domain / type_ / slug

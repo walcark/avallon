@@ -185,7 +185,7 @@ def new_page(request):
     """Create a page from the browser: the form on GET, the page on POST.
 
     Domain and type are offered from taxonomy.toml only, so the web cannot
-    create what `pixi run check-taxo` would then flag as out of vocabulary.
+    create what `avallon check` would then flag as out of vocabulary.
     """
     if not may_edit(request):
         raise Http404("Édition indisponible")

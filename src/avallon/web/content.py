@@ -170,7 +170,7 @@ def vocabulary() -> dict[str, list[str]]:
     """The declared domains and types, each paired with its display name.
 
     The creation form offers exactly this and nothing else, which is the same
-    rule `pixi run new` enforces: a page cannot be born under an undeclared
+    rule `avallon new` enforces: a page cannot be born under an undeclared
     domain or type.
     """
     data = taxonomy()
@@ -367,7 +367,7 @@ def create_page(
     """Scaffold ``<domain>/<type>/<slug>/index.md`` and return the new Page.
 
     The slug and the frontmatter come from ``scripts/new_page.py`` rather than
-    from a second implementation here: the browser and ``pixi run new`` must
+    from a second implementation here: the browser and ``avallon new`` must
     produce the same URL for the same title, and two copies of the rules would
     drift apart.
 

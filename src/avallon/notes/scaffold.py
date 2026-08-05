@@ -98,19 +98,19 @@ def main() -> int:
     if not taxo["domains"] or not taxo["types"]:
         sys.exit(
             "taxonomy.toml est vide : déclare d'abord un domaine et un type "
-            "(pixi run add-domain …, pixi run add-type …)."
+            "(avallon add-domain …, avallon add-type …)."
         )
 
     domain = args.domain or pick("Domaine", taxo["domains"])
     if not domain:
         sys.exit("Annulé.")
     if domain not in taxo["domains"]:
-        sys.exit(f"domaine non déclaré : {domain}  (pixi run add-domain {domain})")
+        sys.exit(f"domaine non déclaré : {domain}  (avallon add-domain {domain})")
     type_ = args.type or pick("Type", taxo["types"])
     if not type_:
         sys.exit("Annulé.")
     if type_ not in taxo["types"]:
-        sys.exit(f"type non déclaré : {type_}  (pixi run add-type {type_})")
+        sys.exit(f"type non déclaré : {type_}  (avallon add-type {type_})")
 
     title = args.title or ask("Titre")
     if not title.strip():
