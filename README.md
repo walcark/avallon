@@ -1,243 +1,271 @@
-# mysite
+# avallon
 
-Site personnel de notes en **Markdown** : chaque page est un fichier Markdown
-rendu en HTML, rangé dans une arborescence qui encode à la fois l'URL et la
-taxonomie. Une page centrale permet de filtrer par domaine / type / tags et de
-faire une recherche plein-texte.
+<p align="center"><em>A place where notes are kept, and found again.</em></p>
 
-## Structure du contenu
+<p align="center">
+  <a href="https://github.com/walcark/avallon/actions/workflows/ci.yml"><img src="https://github.com/walcark/avallon/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://codecov.io/gh/walcark/avallon"><img src="https://codecov.io/gh/walcark/avallon/branch/main/graph/badge.svg"></a>
+  <img src="https://img.shields.io/badge/python-3.11%2B-blue">
+  <a href="https://pixi.sh"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/prefix-dev/pixi/main/assets/badge/v0.json"></a>
+  <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json"></a>
+  <a href="https://mypy-lang.org/"><img src="https://img.shields.io/badge/mypy-checked-2a6db2"></a>
+  <img src="https://img.shields.io/badge/tested%20with-pytest-0a9edc?logo=pytest&logoColor=white">
+  <img src="https://img.shields.io/badge/Django-092E20?logo=django&logoColor=white">
+</p>
+
+A personal note site: every page is a Markdown file in a directory tree that
+encodes both its URL and its taxonomy. Pages cite each other with `[[wikilinks]]`
+and show their backlinks, group into dossiers, and are found through faceted
+browsing or full-text search. Notes live in **their own git repository**, apart
+from this tool, and sync across devices on their own.
+
+The content model, and the reasoning behind it, lives in
+[`docs/model.md`](docs/model.md). This README is the user guide.
+
+> **Status.** Working toward v0.1.0, the first released version. See
+> [`ROADMAP.md`](ROADMAP.md) for what is in and what is not.
+
+## How it works in one picture
 
 ```
-content/<domaine>/<type>/<slug>/index.md   ->   /<domaine>/<type>/<slug>/
+your machine                              git remote (e.g. GitHub)
+------------                              ------------------------
+avallon serve  --> reads/writes the notes repo
+                   |
+                   +--> commit (instant, batched)
+                        |
+                        +--> [detached] pull + push  ------------> origin
+                                                                     ^
+another device: the running server polls  <-- pull ----------------- +
 ```
 
-- Chaque page est un **dossier** contenant `index.md` et ses **images
-  co-localisées** (référencées en chemin *relatif*, ex. `![](figure.png)`),
-  servies sous l'URL de la page.
-- Deux axes de taxonomie viennent du chemin : le **domaine** et le **type** ;
-  les **tags** viennent du frontmatter.
+- **One directory per page**, holding `index.md` and its images.
+- **Instant local commit** on every save, network sync in the background.
+- **The tool and the notes are two repositories.** Upgrading one never touches
+  the other.
+
+## Requirements
+
+- Python 3.11+
+- `git`
+- [`pandoc`](https://pandoc.org) for the Word/PDF export
+- [`fzf`](https://github.com/junegunn/fzf) for the interactive pickers
+- [`ripgrep`](https://github.com/BurntSushi/ripgrep) *(optional)*: full-text
+  search falls back to a pure-Python scan without it
+
+`pandoc` and `fzf` are not Python packages. The supported install is through
+[pixi](https://pixi.sh), which brings them along.
+
+## Install
+
+```bash
+pixi global install avallon      # brings pandoc and fzf
+pip install avallon              # Python parts only, see Requirements
+```
+
+## Setup a notes repository
+
+The notes live in their own git repository, separate from this tool. Point
+avallon at it once:
+
+```bash
+avallon init ~/notes                          # local path
+avallon init git@github.com:you/notes.git     # or a clone URL
+```
+
+`init` creates the layout, makes the repository active, and remembers its path
+in `~/.config/avallon/config.toml`. The created repository looks like:
+
+```
+notes/
+├── taxonomy.toml          # the declared domains and types
+└── <domain>/<type>/<slug>/
+    ├── index.md
+    └── figure.png         # assets sit next to the page that uses them
+```
+
+`init` and `repo` are **create-or-validate**:
+
+| Target | What happens |
+| --- | --- |
+| Path does not exist | `mkdir` + `git init` + full scaffold |
+| Existing directory, not a git repository | `git init` + scaffold what is missing |
+| Existing repository, already conformant | adopted as is |
+| Existing repository with unrelated content | asks for confirmation first |
+| A clone URL | cloned into `~/<repo-name>`, then validated |
+
+### Switch repositories
+
+```bash
+avallon repo                 # print the active notes repository
+avallon repo ~/other-notes   # switch to another one (same rules)
+```
+
+## Pages
+
+A page is a directory holding an `index.md`. Its path is both its URL and its
+taxonomy:
+
+```
+content/<domain>/<type>/<slug>/index.md   ->   /<domain>/<type>/<slug>/
+```
+
+- **domain**: what the page is about (`informatique`, `administratif`, ...). A
+  subject, never a context: "work" or "personal" is a tag, because a page can
+  be both.
+- **type**: what the page is (`fiche`, `cr`, `tutoriel`, `recueil`).
+
+Both are declared in `taxonomy.toml`, and a page cannot be born under an
+undeclared pair. Extend the vocabulary with `avallon add-domain` /
+`avallon add-type`, check the tree with `avallon check`.
 
 ### Frontmatter
 
 ```yaml
 ---
-title: Titre de la page
-date: 2026-07-01        # création (posée une fois)
-updated: 2026-07-08     # dernière modif (tamponnée à chaque commit)
+title: Page title
+date: 2026-07-01        # creation, set once
+updated: 2026-07-08     # last change, stamped on commit
 tags: [smartg, flux]
-summary: Une phrase de résumé affichée sur la page d'accueil.
+summary: One sentence, shown on the home page.
+project: recours-batterie   # slug of the page indexing the dossier (optional)
+status: en cours            # en cours | terminé | abandonné (optional)
+visibility: private         # local only, never served elsewhere (optional)
 ---
 ```
 
-## Emplacement du contenu (dépôt externe)
+### Dossiers
 
-Le contenu (arbre Markdown **et** `taxonomy.toml`) vit dans un **dépôt séparé**,
-hors de ce repo applicatif, comme les données de `pytodo`. L'emplacement actif
-est stocké dans un fichier local non versionné
-(`~/.config/mysite/config.toml`, `content_dir = "…"`).
+A dossier is not a new kind of object: **it is an ordinary page**, the one that
+introduces it, and its pages name it in their `project:`. The site derives the
+rest, so nothing has to be kept up to date by hand:
 
-```
-pixi run content-init <chemin>   # crée/adopte le dépôt de contenu, l'active,
-                                 # (propose de migrer le contenu in-repo),
-                                 # y installe le hook de dates + commit initial
-pixi run content-set  <chemin>   # active un dépôt de contenu existant
-pixi run content-where           # affiche le dépôt actif et sa provenance
-```
+- the dossier's page lists its own pages, grouped by type;
+- the sidebar browses the dossier instead of the whole tree while you are in it;
+- each page names the dossier it belongs to, and search shows it too.
 
-Résolution de l'emplacement (le premier qui répond gagne) :
+Titles can therefore stay short ("Mail retour"): the dossier places them.
 
-1. la variable d'environnement **`MYSITE_CONTENT_DIR`** (override, utile en test/CI) ;
-2. **`content_dir`** dans `~/.config/mysite/config.toml` ;
-3. le dossier **`content/`** de ce repo (repli de dev, pour qu'un clone tourne
-   sans configuration).
+**Belonging is not citing.** A page enters a dossier when it will be archived
+with it; a durable note the dossier merely cites stays outside and is linked
+with `[[…]]`, so it outlives the dossier it was written during.
 
-Après un changement d'emplacement, **redémarre le serveur** (`pixi run serve`).
+### Writing
 
-## Synchronisation du contenu
+Standard Markdown, plus:
 
-```
-pixi run sync                    # pull (rebase) -> commit -> push
-pixi run sync -- --local         # commit seulement, sans réseau
-pixi run sync -- -m "message"    # message de commit personnalisé
-```
+| Syntax | What it does |
+| --- | --- |
+| `[[slug]]`, `[[slug\|label]]` | link another page, by slug, path or title |
+| `[[figure.pdf]]` | link a file sitting next to the page |
+| ` ```python ` | syntax-highlighted code (Pygments) |
+| `!!! note` / `!!! warning` | admonition cards |
+| `$…$`, `$$…$$` | LaTeX math (MathJax) |
+| `{rouge}(texte)` | inline coloured span |
+| ` ```gallery `, ` ```plot `, ` ```csv `, ` ```query ` | content blocks |
+| `- [ ]` | task lists |
 
-Le dépôt de contenu **gère lui-même son origine** : l'application ne connaît
-pas GitHub, elle pousse seulement si un remote `origin` existe. Sans remote, la
-commande se contente de commiter en local. Pour en ajouter un, une seule fois :
+Every page shows what cites it, so a note is never a dead end.
 
-```
-git -C <dépôt de contenu> remote add origin <url>
-```
+## Commands
 
-Deux garanties, reprises de `neverland` :
+| Command | What it does |
+| --- | --- |
+| `avallon serve` | Run the site (see [Server](#server)). |
+| `avallon init <path\|url>` | Initialize or adopt a notes repository, make it active. |
+| `avallon repo [path]` | Print or switch the active repository. |
+| `avallon new` | Scaffold a page (domain and type picked from the taxonomy). |
+| `avallon move <page>` | Re-file a page under another domain/type. |
+| `avallon sync` | Pull, commit, push. `--local` commits without the network. |
+| `avallon export <page>` | Export a page to `.docx` or `.pdf` (needs pandoc). |
+| `avallon add-domain <name>` | Extend the taxonomy. |
+| `avallon add-type <name>` | Extend the taxonomy. |
+| `avallon check` | Verify every page sits under a declared domain/type. |
 
-- **le commit local est immédiat**, jamais différé. Hors-ligne, le pull et le
-  push échouent en avertissement, la note est commitée quand même ;
-- **tout est scopé au dépôt de contenu** (`git add -A -- .`), donc un dépôt
-  imbriqué dans un autre n'embarque jamais son parent.
+## Server
 
-### Groupage des commits
+### Quick start (local)
 
-Douze enregistrements en dix minutes doivent se lire comme un seul changement.
-Tant que `HEAD` a moins de **15 minutes**, porte le marqueur `mysite-batch:` et
-n'a pas été poussé, l'édition suivante y est repliée par `git commit --amend`.
-
-Ce qui n'est **pas** fait : différer l'écriture. Seul l'historique est compacté.
-Conséquence à connaître, le **push est retenu** tant que le lot est ouvert
-(pousser un commit interdit de l'amender ensuite), donc une note peut mettre
-jusqu'à 15 minutes à atteindre le remote. `pixi run sync -- --no-batch` force un
-commit isolé et un envoi immédiat ; `MYSITE_SYNC_WINDOW` (en secondes, `0` pour
-désactiver) change la fenêtre.
-
-Un commit que tu écris **à la main** dans le dépôt de contenu n'a pas le
-marqueur, donc il n'est jamais réécrit.
-
-## Taxonomie déclarée
-
-`taxonomy.toml` (à la racine du dépôt de contenu) est la **source de vérité** des
-domaines et types autorisés. On l'étend avec :
-
-```
-pixi run add-domain maison      # ajoute un domaine + commit taxonomy.toml
-pixi run add-type   recette     # ajoute un type    + commit taxonomy.toml
-pixi run check-taxo             # vérifie que toutes les pages sont conformes
+```bash
+avallon serve                 # 127.0.0.1:8000
+avallon serve --port 8800
 ```
 
-Comme le vocabulaire est committé, une page ne peut pas naître sous un
-domaine / type non déclaré.
+The browser is also the editor: `Ctrl+E` opens the raw Markdown of the page,
+saving writes the file and commits it. `Ctrl+K` opens the command palette,
+`Ctrl+N` creates a page. What you type is re-rendered live.
 
-## Créer une page
+### Access token
 
-```
-pixi run new
-```
+Binding anywhere other than loopback **requires** a token:
 
-Choix du **domaine** puis du **type** parmi la taxonomie (via `gum`, sinon
-`fzf`, sinon un menu numéroté), puis saisie du **titre** et des **tags** (texte
-libre). La commande crée `content/<domaine>/<type>/<slug>/index.md` avec un
-frontmatter prêt (`date`/`updated` du jour). Tout peut aussi être passé en
-options (`--domain`, `--type`, `--title`, `--tags`, `--summary`) pour scripter.
-
-## Dates de modification
-
-- `date` = création, `updated` = dernière modification.
-- Un **hook `pre-commit`** (installé dans le **dépôt de contenu** par
-  `content-init` / `content-set`) tamponne `updated` (et remplit `date` si
-  absent) sur chaque page `**/index.md` stagée, puis la ré-ajoute au commit. Le
-  hook n'appelle que la bibliothèque standard, donc il tourne sans l'env pixi.
-- `pixi run stamp` remplit les dates manquantes de toutes les notes (depuis
-  l'historique git, repli sur le `mtime`).
-- Le frontmatter est édité **au fil du texte** (seules les lignes de date
-  bougent), donc les diffs restent propres.
-
-## Navigation, recherche et thème
-
-- **Shell commun** (`templates/base.html`) : une **sidebar gauche
-  rétractable** (bouton ☰) présente l'arbre `domaine ▸ type ▸ pages` (via des
-  `<details>` natifs, sans JS) ; la page courante y est mise en évidence. Une
-  topbar fine porte le titre de contexte et la bascule de **thème clair/sombre**
-  (persistée, sinon suit l'OS ; implémentée avec `light-dark()` en CSS).
-- **Accueil** (`/`) : toutes les pages, les plus récentes d'abord, avec des
-  filtres à facettes **adaptatifs** : les types proposés suivent le domaine
-  choisi, les tags suivent le couple domaine + type.
-- **Recherche plein-texte** (`/search/?q=`) : `ripgrep` multi-termes en **ET**
-  (repli Python pur si `rg` absent), extraits surlignés tirés du texte lisible.
-- Les liens `/?domaine=…`, `/?type=…`, `/?tag=…` préactivent les filtres.
-- **Renvois entre pages** : `[[slug]]` (ou `[[domaine/type/slug]]`, ou
-  `[[slug|texte affiché]]`) dans le Markdown devient un vrai lien vers la page.
-  Une cible introuvable s'affiche signalée (barrée), pas silencieusement perdue.
-
-## Live reload (édition du Markdown)
-
-La page se met à jour dès que le fichier Markdown change sur le disque, sans
-rechargement complet et sans perdre la position de défilement.
-
-- **Vue SSE asynchrone** (`pages/views.py` → `markdown_stream`, route
-  `stream/?path=<relpath>`) : surveille le `mtime` de l'`index.md`
-  (`POLL_INTERVAL` = 0,3 s) et, à chaque changement, re-rend le Markdown et
-  pousse le HTML en Server-Sent Events.
-- **Côté client** (`templates/index.html`) : un `EventSource` remplace le
-  `innerHTML` de `.prose` et relance MathJax.
-
-Les polices (Roboto) et **MathJax** (build SVG) sont **auto-hébergées** sous
-`static/` : le rendu fonctionne hors-ligne, sans CDN.
-
-## Créer une page depuis le navigateur
-
-Le bouton `+` de la topbar (ou `Ctrl+N`, ou la palette `Ctrl+K`) ouvre
-`/nouvelle/` : titre, domaine, type, tags, résumé. La page est créée vide,
-commitée, et s'ouvre directement dans l'éditeur.
-
-Le formulaire n'offre que les domaines et types déclarés dans `taxonomy.toml`,
-donc il ne peut pas créer ce que `pixi run check-taxo` refuserait ensuite. Les
-règles de choix (l'arbre des types, le rappel que le cadre d'écriture est un
-tag) sont affichées **sous les champs concernés** : c'est au moment du choix
-qu'elles servent.
-
-Le slug et le frontmatter viennent de `scripts/new_page.py`, importés plutôt
-que réécrits, sinon `pixi run new` et le navigateur produiraient des URL
-différentes pour le même titre. Un slug déjà pris reçoit un suffixe (`-2`).
-
-## Édition dans le navigateur
-
-Sur une page, le bouton crayon de la topbar (ou `Ctrl+E`) bascule entre le rendu
-et la source Markdown éditable, frontmatter compris. `Ctrl+S` enregistre, `Échap`
-referme. L'URL `…/#edit` ouvre directement en mode édition.
-
-Chaque enregistrement écrit le fichier **puis le commite** dans le dépôt de
-contenu (message `edit <domaine>/<type>/<slug>`), avec le groupage de 15 minutes
-décrit plus haut, et lance le push en tâche de fond. Le commit est ce qui rend
-l'édition web sûre : sans lui, une sauvegarde écraserait le fichier sans recours.
-
-Trois refus délibérés :
-
-- **frontmatter invalide** : la sauvegarde est refusée (400) plutôt que d'écrire
-  un fichier qui casserait la page ;
-- **fichier modifié entre-temps** : le `mtime` lu à l'ouverture repart au
-  serveur, qui refuse (409) si le fichier a bougé sur le disque depuis. Sans ça,
-  éditer la même note dans le navigateur et dans son éditeur local ferait gagner
-  le dernier à écrire, en silence ;
-- **page privée** : quand `SHOW_PRIVATE` est faux, la page est introuvable pour
-  l'éditeur comme pour la lecture (404 sur les deux routes).
-
-L'écriture est atomique (fichier temporaire puis `os.replace`), sinon le flux de
-live reload, qui relit le fichier toutes les 0,3 s, pourrait le lire à moitié
-écrit.
-
-> **Aucune authentification.** N'importe qui atteignant le site peut écrire.
-> C'est acceptable en local ; ça ne l'est pas dès que le site est exposé, même
-> derrière un VPN. Le point de contrôle unique est `may_edit()` dans
-> `pages/views.py` : toutes les écritures y passent, donc poser un
-> `login_required` s'y fait en une ligne.
-
-## Commandes
-
-| Commande | Rôle |
-|---|---|
-| `pixi run serve` | Lance le site (ASGI / uvicorn) sur `http://127.0.0.1:8000` |
-| `pixi run new` | Crée une nouvelle page |
-| `pixi run add-domain <nom>` | Ajoute un domaine à la taxonomie (+ commit) |
-| `pixi run add-type <nom>` | Ajoute un type à la taxonomie (+ commit) |
-| `pixi run check-taxo` | Vérifie la conformité des pages à la taxonomie |
-| `pixi run stamp` | Remplit les `date`/`updated` manquants |
-| `pixi run content-init <chemin>` | Crée/adopte et active le dépôt de contenu externe |
-| `pixi run content-set <chemin>` | Active un dépôt de contenu existant |
-| `pixi run content-where` | Affiche le dépôt de contenu actif |
-| `pixi run sync` | Synchronise le dépôt de contenu (pull, commit, push) |
-
-## Lancer
-
-```
-pixi run serve
+```bash
+AVALLON_TOKEN=$(openssl rand -hex 32) avallon serve --host 10.8.0.2
 ```
 
-Sert l'app en **ASGI** (uvicorn, `--reload`, y compris les templates et le CSS)
-sur `http://127.0.0.1:8000`. Le streaming SSE **ne fonctionne pas** sous
-`pixi run runserver` (le WSGI met les réponses asynchrones en tampon au lieu de
-les diffuser).
+The guard is a no-op when no token is set, which is only safe on loopback, so
+the command refuses any other bind without one. The token is the second layer,
+behind the network boundary: it is what stands between your notes and any other
+device that can reach the port.
 
-## À venir
+### Deploy (systemd + wireguard)
 
-- [ ] Outil d'export d'une note (pandoc → Word / docx, etc.)
-- [ ] Outil pour récupérer des images de sortie de code (rendu adaptatif des
-      évolutions)
+```bash
+avallon setup      # write the env file, generate a token
+avallon install    # install and start a systemd user unit
+```
+
+The unit binds the address given at setup, and the notes repository is polled
+on a timer so pages written on another device show up without a restart.
+
+### Configuration
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `AVALLON_CONTENT_DIR` | the configured repository | Override the notes location. |
+| `AVALLON_TOKEN` | *(none)* | Bearer token required for every request. |
+| `AVALLON_HOST` / `AVALLON_PORT` | `127.0.0.1` / `8000` | Bind address. |
+| `AVALLON_SHOW_PRIVATE` | on in debug | Serve pages marked `visibility: private`. |
+| `AVALLON_SYNC_WINDOW` | `900` | Seconds during which consecutive edits fold into one commit. |
+| `AVALLON_SECRET_KEY` | *(generated at setup)* | Django secret key. |
+| `AVALLON_DEBUG` | `0` | Debug mode. Never on when exposed. |
+
+## Sync model
+
+Every write commits immediately and locally, then a detached process pulls and
+pushes. A save never waits on the network, and being offline only costs a
+warning.
+
+**Commit batching.** Consecutive edits fold into a single commit for
+`AVALLON_SYNC_WINDOW` seconds, so a page written in ten passes does not leave
+ten commits behind. Only commits the tool made itself are amended, recognized
+by their trailer.
+
+**Polling.** A long-running server is one more git writer among the devices, so
+it pulls on a timer to reflect what was written elsewhere.
+
+## Development
+
+```bash
+pixi run serve        # the site, with live reload
+pixi run fmt          # ruff format
+pixi run lint         # ruff check
+pixi run type-check   # mypy
+pixi run test         # pytest + coverage
+pixi run all          # the four above
+```
+
+### Releasing
+
+Version numbers live in `pyproject.toml`. Tagging `vX.Y.Z` and pushing the tag
+triggers the release workflow, which builds the sdist and the wheel and
+publishes them to PyPI through Trusted Publishing (OIDC), so no token is
+stored anywhere.
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+## License
+
+Apache License 2.0, see [`LICENSE`](LICENSE).
