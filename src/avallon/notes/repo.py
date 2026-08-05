@@ -101,8 +101,35 @@ def cmd_where() -> int:
     return 0
 
 
+def looks_like_url(target: str) -> bool:
+    """Whether *target* names a clone URL rather than a local path."""
+    if "://" in target or target.startswith("git@"):
+        return True
+    # A `foo.git` string that matches no existing local path.
+    return target.endswith(".git") and not Path(target).expanduser().exists()
+
+
+def _clone(url: str) -> Path:
+    """Clone *url* next to the home directory and return where it landed.
+
+    Named after the repository, like git itself does, so the notes end up
+    somewhere predictable instead of wherever the command happened to run.
+    """
+    name = url.rstrip("/").rsplit("/", 1)[-1].removesuffix(".git")
+    target = Path.home() / name
+    if target.exists():
+        sys.exit(
+            f"{target} existe déjà : utilise `avallon repo {target}` pour l'activer"
+        )
+    subprocess.run(["git", "clone", url, str(target)], check=True)
+    return target
+
+
 def cmd_init(path: str) -> int:
-    target = Path(path).expanduser().resolve()
+    if looks_like_url(path):
+        target = _clone(path)
+    else:
+        target = Path(path).expanduser().resolve()
     target.mkdir(parents=True, exist_ok=True)
 
     created_repo = _ensure_git(target)
