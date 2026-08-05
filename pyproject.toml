@@ -57,31 +57,21 @@ manage = "python manage.py"
 makemigrations = "python manage.py makemigrations"
 migrate = "python manage.py migrate"
 runserver = "python manage.py runserver"
-# ASGI server: required for the live-reload SSE stream to actually stream
-# (the WSGI runserver buffers async responses instead of streaming them).
-serve = "uvicorn avallon.settings.asgi:application --reload --reload-dir src --reload-include '*.html' --reload-include '*.css' --host 127.0.0.1 --port 8000"
-# Fill any missing date/updated in content frontmatter (from git dates / mtime).
-stamp = "python -m avallon.notes.stamp --backfill"
-# Content location (notes + taxonomy.toml), stored in ~/.config/mysite/.
-content-where = "python -m avallon.notes.repo where"        # print active dir
-content-init = "python -m avallon.notes.repo init"          # create/adopt <path>
-content-set = "python -m avallon.notes.repo set"            # activate <path>
-# Sync the content repo: pull (rebase), commit, push if an origin exists.
-# Consecutive edits fold into one commit for 15 min (MYSITE_SYNC_WINDOW).
-sync = "python -m avallon.notes.sync"
-# Scaffold a new page (interactive: domaine/type from taxonomy.toml, free tags).
-new = "python -m avallon.notes.scaffold"
-# Re-file a page under another domaine/type (its directory moves; slug kept).
-move = "python -m avallon.notes.move"
-# Export a note to Word (.docx) or PDF, styled by a reference document.
-export = "python manage.py export"
+# The tasks are aliases of the shipped command, so what is used here and what
+# a user gets from `pip install avallon` are the same code path.
+serve = "avallon serve --reload"
+stamp = "avallon stamp --backfill"
+repo = "avallon repo"          # print or switch the active notes repository
+init = "avallon init"          # create/adopt <path|url> and activate it
+sync = "avallon sync"
+new = "avallon new"
+move = "avallon move"
+export = "avallon export"
+add-domain = "avallon add-domain"
+add-type = "avallon add-type"
+check = "avallon check"
 # Rebuild the demo company reference document used by `export`.
 make-reference = "python scripts/make_reference_docx.py"
-# Extend the taxonomy vocabulary (edits taxonomy.toml and commits it).
-add-domain = "python -m avallon.notes.taxonomy add-domain"
-add-type = "python -m avallon.notes.taxonomy add-type"
-# Verify every existing page sits under a declared domaine/type.
-check-taxo = "python -m avallon.notes.taxonomy check"
 
 [tool.pixi.dependencies]
 django = ">=6.0.6,<7"
