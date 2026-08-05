@@ -23,7 +23,10 @@ class Command(BaseCommand):
         parser.add_argument("relpath", help="note, <domaine>/<type>/<slug>")
         parser.add_argument("-o", "--output", help="fichier de sortie")
         parser.add_argument(
-            "-f", "--format", choices=("docx", "pdf"), default="docx",
+            "-f",
+            "--format",
+            choices=("docx", "pdf"),
+            default="docx",
             help="format de sortie (défaut : docx)",
         )
         parser.add_argument(

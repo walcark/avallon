@@ -27,7 +27,8 @@ STAMP_SCRIPT = cc._REPO_ROOT / "scripts" / "stamp_dates.py"
 _HOOK = """#!/usr/bin/env sh
 # Auto-stamp `updated:` (fill `date:` if missing) on staged content pages, then
 # re-stage them. Installed by mysite (`pixi run content-init`).
-staged=$(git diff --cached --name-only --diff-filter=ACM | grep -E 'index\\.md$' || true)
+staged=$(git diff --cached --name-only --diff-filter=ACM \\
+  | grep -E 'index\\.md$' || true)
 [ -z "$staged" ] && exit 0
 if ! command -v python3 >/dev/null 2>&1; then
     echo "pre-commit: python3 introuvable, dates non tamponnees" >&2
@@ -70,8 +71,8 @@ def _ensure_taxonomy(target: Path) -> None:
         "# Vocabulaire autorisé pour les pages du site.\n"
         "# Édité par `pixi run add-domain <nom>` / `pixi run add-type <nom>`.\n"
         "# Chaque page vit dans <domaine>/<type>/<slug>/.\n\n"
-        'domains = []\n'
-        'types = []\n',
+        "domains = []\n"
+        "types = []\n",
         encoding="utf-8",
     )
 
@@ -105,11 +106,14 @@ def _confirm(prompt: str) -> bool:
 def cmd_where() -> int:
     active = cc.resolve_content_dir()
     print(f"content_dir : {active}")
-    print(f"source      : {cc.content_source()}  "
-          f"(env {cc.ENV_VAR} > {cc.local_config_path()} > repli in-repo)")
+    print(
+        f"source      : {cc.content_source()}  "
+        f"(env {cc.ENV_VAR} > {cc.local_config_path()} > repli in-repo)"
+    )
     taxo = cc.taxonomy_path(active)
     print(f"taxonomy    : {taxo}  {'✓' if taxo.exists() else '(absent)'}")
-    print(f"pages       : {sum(1 for _ in active.glob('*/*/*/index.md')) if active.exists() else 0}")
+    n_pages = sum(1 for _ in active.glob("*/*/*/index.md")) if active.exists() else 0
+    print(f"pages       : {n_pages}")
     print(f"dépôt git   : {'oui' if cc.is_git_root(active) else 'non'}")
     return 0
 
@@ -152,7 +156,9 @@ def cmd_init(path: str) -> int:
 def cmd_set(path: str) -> int:
     target = Path(path).expanduser().resolve()
     if not target.exists():
-        sys.exit(f"Dossier introuvable : {target}  (utilise `content-init` pour le créer)")
+        sys.exit(
+            f"Dossier introuvable : {target}  (utilise `content-init` pour le créer)"
+        )
     cc.write_content_dir(target)
     if cc.is_git_root(target):
         _install_hook(target)

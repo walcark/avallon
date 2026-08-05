@@ -300,14 +300,24 @@ def build(out_path: Path) -> None:
     # header over a light body, tinted to each type (blue for note, amber for
     # warning).
     _admonition_card(
-        doc, normal, "Note",
-        title_fill="1F5A8F", title_text=RGBColor(0xEA, 0xF1, 0xF8),
-        body_fill="EAF1F8", body_text=SLATE, border="C4DBF0",
+        doc,
+        normal,
+        "Note",
+        title_fill="1F5A8F",
+        title_text=RGBColor(0xEA, 0xF1, 0xF8),
+        body_fill="EAF1F8",
+        body_text=SLATE,
+        border="C4DBF0",
     )
     _admonition_card(
-        doc, normal, "Warning",
-        title_fill="8A6A10", title_text=RGBColor(0xFD, 0xF3, 0xDD),
-        body_fill="FDF3DD", body_text=RGBColor(0x7A, 0x52, 0x0A), border="E6D28C",
+        doc,
+        normal,
+        "Warning",
+        title_fill="8A6A10",
+        title_text=RGBColor(0xFD, 0xF3, 0xDD),
+        body_fill="FDF3DD",
+        body_text=RGBColor(0x7A, 0x52, 0x0A),
+        border="E6D28C",
     )
 
     # Monospace, boxed style for exported code blocks.
@@ -341,7 +351,10 @@ def build(out_path: Path) -> None:
 def main() -> int:
     default = (
         Path(__file__).resolve().parent.parent
-        / "src" / "pages" / "exporter_data" / "reference-entreprise.docx"
+        / "src"
+        / "pages"
+        / "exporter_data"
+        / "reference-entreprise.docx"
     )
     ap = argparse.ArgumentParser(description="Fabriquer un reference.docx de démo.")
     ap.add_argument("-o", "--output", type=Path, default=default)

@@ -21,7 +21,6 @@ import shutil
 import subprocess
 import sys
 import unicodedata
-from pathlib import Path
 
 import content_config as cc
 import taxonomy  # sibling module (scripts/ is on sys.path[0])
@@ -47,13 +46,16 @@ def pick(prompt: str, options: list[str]) -> str:
     if shutil.which("gum"):
         out = subprocess.run(
             ["gum", "choose", "--header", prompt, *options],
-            text=True, capture_output=True,
+            text=True,
+            capture_output=True,
         ).stdout.strip()
         return out
     if shutil.which("fzf"):
         out = subprocess.run(
             ["fzf", "--prompt", prompt + " › ", "--height", "40%"],
-            input="\n".join(options), text=True, capture_output=True,
+            input="\n".join(options),
+            text=True,
+            capture_output=True,
         ).stdout.strip()
         return out
     print(prompt)
@@ -74,7 +76,8 @@ def ask(prompt: str) -> str:
     if shutil.which("gum"):
         return subprocess.run(
             ["gum", "input", "--header", prompt],
-            text=True, capture_output=True,
+            text=True,
+            capture_output=True,
         ).stdout.strip()
     try:
         return input(f"{prompt} : ").strip()
@@ -93,8 +96,10 @@ def main() -> int:
 
     taxo = taxonomy.load()
     if not taxo["domains"] or not taxo["types"]:
-        sys.exit("taxonomy.toml est vide : déclare d'abord un domaine et un type "
-                 "(pixi run add-domain …, pixi run add-type …).")
+        sys.exit(
+            "taxonomy.toml est vide : déclare d'abord un domaine et un type "
+            "(pixi run add-domain …, pixi run add-type …)."
+        )
 
     domain = args.domain or pick("Domaine", taxo["domains"])
     if not domain:
@@ -110,13 +115,18 @@ def main() -> int:
     title = args.title or ask("Titre")
     if not title.strip():
         sys.exit("titre requis.")
-    tags_raw = args.tags if args.tags is not None else ask("Tags (séparés par des virgules)")
+    tags_raw = (
+        args.tags if args.tags is not None else ask("Tags (séparés par des virgules)")
+    )
     # Same normalization the app applies on read (content.normalize_tags):
     # lowercase + collapsed spacing, so case variants don't split a tag in two.
-    tags = list(dict.fromkeys(
-        re.sub(r"\s+", " ", t.strip()).lower()
-        for t in re.split(r"[,\n]+", tags_raw) if t.strip()
-    ))
+    tags = list(
+        dict.fromkeys(
+            re.sub(r"\s+", " ", t.strip()).lower()
+            for t in re.split(r"[,\n]+", tags_raw)
+            if t.strip()
+        )
+    )
     summary = args.summary if args.summary is not None else ask("Résumé (optionnel)")
 
     slug = slugify(title)

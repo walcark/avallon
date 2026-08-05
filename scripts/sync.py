@@ -473,8 +473,10 @@ def sync(
 
     # -- push ---------------------------------------------------------------
     pending = origin and has_pending(content_dir)
-    if origin and not result.conflict_files and (
-        result.committed or push_if_unchanged or pending
+    if (
+        origin
+        and not result.conflict_files
+        and (result.committed or push_if_unchanged or pending)
     ):
         # Pushing an open batch would freeze it, since a pushed commit must
         # never be rewritten. Hold it: the flush after the window sends it.
@@ -583,7 +585,7 @@ def _report(content_dir: Path, result: SyncResult, window: int) -> int:
         print(f"  ⏸ push retenu : commit encore groupable ({mins} min)")
     elif not has_origin(content_dir):
         print("  · pas d'origin : commit local seulement")
-        print("    git -C %s remote add origin <url>" % content_dir)
+        print(f"    git -C {content_dir} remote add origin <url>")
     for w in result.warnings:
         print(f"  ! {w}")
     if result.conflict_files:
@@ -597,15 +599,17 @@ def _report(content_dir: Path, result: SyncResult, window: int) -> int:
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
-        "command", nargs="?", default="sync", choices=["sync", "flush"],
+        "command",
+        nargs="?",
+        default="sync",
+        choices=["sync", "flush"],
         help="sync (default) commits then pushes; flush only pushes what is pending",
     )
     parser.add_argument("-m", "--message", help="commit message")
+    parser.add_argument("--local", action="store_true", help="commit only, no network")
     parser.add_argument(
-        "--local", action="store_true", help="commit only, no network"
-    )
-    parser.add_argument(
-        "--no-batch", action="store_true",
+        "--no-batch",
+        action="store_true",
         help="write a standalone commit instead of folding it into the current batch",
     )
     args = parser.parse_args(argv)

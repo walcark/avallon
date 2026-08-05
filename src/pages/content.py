@@ -74,18 +74,18 @@ def _fr_date(value: Any) -> str:
 class Page:
     """Metadata for one Markdown page, derived from its path + frontmatter."""
 
-    relpath: str          # "travail/cr/reunion-hygeos"
-    domain: str           # from the path: <domaine>/...
-    type: str             # from the path: .../<type>/...
-    slug: str             # the leaf directory name
+    relpath: str  # "travail/cr/reunion-hygeos"
+    domain: str  # from the path: <domaine>/...
+    type: str  # from the path: .../<type>/...
+    slug: str  # the leaf directory name
     title: str
-    date: Any | None      # creation date (frontmatter, set once)
-    updated: Any | None   # last-modified date (frontmatter, stamped on commit)
+    date: Any | None  # creation date (frontmatter, set once)
+    updated: Any | None  # last-modified date (frontmatter, stamped on commit)
     tags: list[str]
     summary: str
-    visibility: str       # "public" (default) or "private"
-    project: str          # slug of the page that indexes the project, or ""
-    status: str           # one of STATUSES, or "" when the question is moot
+    visibility: str  # "public" (default) or "private"
+    project: str  # slug of the page that indexes the project, or ""
+    status: str  # one of STATUSES, or "" when the question is moot
 
     @property
     def url(self) -> str:
@@ -114,7 +114,7 @@ def _recency_key(page: Page) -> str:
     return _as_date_str(page.updated) or _as_date_str(page.date)
 
 
-def _sort_hits(hits: list["SearchHit"]) -> None:
+def _sort_hits(hits: list[SearchHit]) -> None:
     """Order search hits like the home page: most recent first, then by title."""
     hits.sort(key=lambda h: h.page.title)
     hits.sort(key=lambda h: _recency_key(h.page), reverse=True)
@@ -125,7 +125,7 @@ class SearchHit:
     """A page matched by a full-text query, with a highlighted excerpt."""
 
     page: Page
-    snippet: str          # safe HTML, matched terms wrapped in <mark>
+    snippet: str  # safe HTML, matched terms wrapped in <mark>
 
 
 # --------------------------------------------------------------------------- #
@@ -494,9 +494,7 @@ def read_source(index_md: Path) -> str:
     return index_md.read_text(encoding="utf-8")
 
 
-def save_source(
-    index_md: Path, text: str, expected_mtime: float | None = None
-) -> None:
+def save_source(index_md: Path, text: str, expected_mtime: float | None = None) -> None:
     """Overwrite a page's Markdown, refusing to clobber a concurrent edit.
 
     The write is atomic (temporary file in the same directory, then
@@ -771,6 +769,7 @@ def nav_tree() -> list[dict[str, Any]]:
 
 # --- Full-text search ------------------------------------------------------
 
+
 def _fold(text: str) -> tuple[str, list[int]]:
     """Lowercase *text* and strip its diacritics, so a query typed without
     accents still matches ("systeme" finds "système").
@@ -846,12 +845,12 @@ def _highlight(text: str, terms: list[str], width: int = 220) -> str:
 # raw syntax. Code *content* is kept (only the ``` fences are dropped) so it
 # stays searchable; image/link targets collapse to their alt/link text.
 _MD_STRIP = [
-    (re.compile(r"^ *```.*$", re.MULTILINE), ""),    # code-fence lines
+    (re.compile(r"^ *```.*$", re.MULTILINE), ""),  # code-fence lines
     (re.compile(r"\[\[[^\]|]+\|([^\]]+)\]\]"), r"\1"),  # [[slug|label]] -> label
-    (re.compile(r"\[\[([^\]|]+)\]\]"), r"\1"),          # [[slug]]       -> slug
+    (re.compile(r"\[\[([^\]|]+)\]\]"), r"\1"),  # [[slug]]       -> slug
     (re.compile(r"!\[([^\]]*)\]\([^)]*\)"), r"\1"),  # image  -> alt text
-    (re.compile(r"\[([^\]]*)\]\([^)]*\)"), r"\1"),   # link   -> link text
-    (re.compile(r"[`*_~>#|]+"), " "),                # residual inline/table syntax
+    (re.compile(r"\[([^\]]*)\]\([^)]*\)"), r"\1"),  # link   -> link text
+    (re.compile(r"[`*_~>#|]+"), " "),  # residual inline/table syntax
 ]
 
 
@@ -894,8 +893,14 @@ def _search_python(terms: list[str]) -> list[SearchHit]:
 # Accented spellings each unaccented letter must also match, so the ripgrep
 # shortlist stays accent-insensitive like the Python check that follows it.
 _ACCENTS = {
-    "a": "àáâãäå", "c": "ç", "e": "èéêë", "i": "ìíîï", "n": "ñ",
-    "o": "òóôõö", "u": "ùúûü", "y": "ýÿ",
+    "a": "àáâãäå",
+    "c": "ç",
+    "e": "èéêë",
+    "i": "ìíîï",
+    "n": "ñ",
+    "o": "òóôõö",
+    "u": "ùúûü",
+    "y": "ýÿ",
 }
 
 
@@ -921,10 +926,18 @@ def search(query: str) -> list[SearchHit]:
     try:
         proc = subprocess.run(
             [
-                "rg", "-l", "-i", "--",
-                _rg_pattern(_fold_text(terms[0])), str(CONTENT_DIR), "--glob", "*.md",
+                "rg",
+                "-l",
+                "-i",
+                "--",
+                _rg_pattern(_fold_text(terms[0])),
+                str(CONTENT_DIR),
+                "--glob",
+                "*.md",
             ],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
         return _search_python(terms)

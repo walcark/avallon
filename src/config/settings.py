@@ -53,7 +53,9 @@ SECRET_KEY = "django-insecure-REDACTED"
 DEBUG = True
 
 # Resolved after DEBUG, which is the fallback when the env var is unset.
-SHOW_PRIVATE = DEBUG if _show_private is None else _show_private not in ("0", "", "false")
+SHOW_PRIVATE = (
+    DEBUG if _show_private is None else _show_private not in ("0", "", "false")
+)
 
 ALLOWED_HOSTS = []
 
@@ -84,24 +86,24 @@ MARKDOWNIFY = {
         "BLEACH": False,
         "MARKDOWN_EXTENSIONS": [
             # Core python-markdown extensions
-            "markdown.extensions.tables",      # tables
-            "markdown.extensions.footnotes",   # [^1] footnotes
-            "markdown.extensions.attr_list",   # {: .class #id } on elements
-            "markdown.extensions.def_list",    # definition lists
-            "markdown.extensions.abbr",        # abbreviations
+            "markdown.extensions.tables",  # tables
+            "markdown.extensions.footnotes",  # [^1] footnotes
+            "markdown.extensions.attr_list",  # {: .class #id } on elements
+            "markdown.extensions.def_list",  # definition lists
+            "markdown.extensions.abbr",  # abbreviations
             "markdown.extensions.md_in_html",  # markdown inside raw HTML blocks
             "markdown.extensions.sane_lists",  # predictable list numbering
-            "markdown.extensions.toc",         # heading anchors / [TOC]
+            "markdown.extensions.toc",  # heading anchors / [TOC]
             "markdown.extensions.admonition",  # !!! note / warning boxes
             # pymdown-extensions
-            "pymdownx.superfences",            # ```lang fenced code boxes
-            "pymdownx.highlight",              # Pygments syntax highlighting
-            "pymdownx.inlinehilite",           # `#!python inline` code
-            "pymdownx.arithmatex",             # LaTeX math -> MathJax
-            "pymdownx.tasklist",               # - [ ] task lists
-            "pymdownx.caret",                  # ^superscript^ and <ins>
-            "pymdownx.tilde",                  # ~subscript~ and ~~strike~~
-            "pymdownx.smartsymbols",           # (c) (tm) --> etc.
+            "pymdownx.superfences",  # ```lang fenced code boxes
+            "pymdownx.highlight",  # Pygments syntax highlighting
+            "pymdownx.inlinehilite",  # `#!python inline` code
+            "pymdownx.arithmatex",  # LaTeX math -> MathJax
+            "pymdownx.tasklist",  # - [ ] task lists
+            "pymdownx.caret",  # ^superscript^ and <ins>
+            "pymdownx.tilde",  # ~subscript~ and ~~strike~~
+            "pymdownx.smartsymbols",  # (c) (tm) --> etc.
             # Local extension: [[slug]] cross-references between pages.
             "pages.mdx.wikilinks",
             # Local extension: {rouge}(texte) inline color spans.
@@ -125,7 +127,11 @@ MARKDOWNIFY = {
             # these sit alongside ordinary fenced code.
             "pymdownx.superfences": {
                 "custom_fences": [
-                    {"name": "gallery", "class": "gallery", "format": _fences.gallery_fence},
+                    {
+                        "name": "gallery",
+                        "class": "gallery",
+                        "format": _fences.gallery_fence,
+                    },
                     {"name": "plot", "class": "plot", "format": _fences.plot_fence},
                     {"name": "csv", "class": "csv", "format": _fences.csv_fence},
                     {"name": "query", "class": "query", "format": _fences.query_fence},
@@ -180,19 +186,13 @@ DATABASES = {
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
+_PASSWORD_VALIDATION = "django.contrib.auth.password_validation"
+
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
-    },
+    {"NAME": f"{_PASSWORD_VALIDATION}.UserAttributeSimilarityValidator"},
+    {"NAME": f"{_PASSWORD_VALIDATION}.MinimumLengthValidator"},
+    {"NAME": f"{_PASSWORD_VALIDATION}.CommonPasswordValidator"},
+    {"NAME": f"{_PASSWORD_VALIDATION}.NumericPasswordValidator"},
 ]
 
 

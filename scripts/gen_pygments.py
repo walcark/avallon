@@ -13,7 +13,6 @@ and copied as-is. Run it to regenerate the checked-in stylesheet:
 from __future__ import annotations
 
 import re
-import sys
 
 from pygments.formatters import HtmlFormatter
 
@@ -52,7 +51,9 @@ def _merge(sel: str, light: dict[str, str], dark: dict[str, str]) -> str:
     for key in keys:
         lv, dv = light.get(key), dark.get(key)
         if key in COLOR_PROPS:
-            out.append(f"color: light-dark({lv or LIGHT_DEFAULT}, {dv or DARK_DEFAULT})")
+            out.append(
+                f"color: light-dark({lv or LIGHT_DEFAULT}, {dv or DARK_DEFAULT})"
+            )
         elif key in BG_PROPS:
             out.append(
                 f"{key}: light-dark({lv or 'transparent'}, {dv or 'transparent'})"

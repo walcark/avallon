@@ -18,7 +18,6 @@ import re
 import subprocess
 import sys
 import tomllib
-from pathlib import Path
 
 import content_config as cc
 
@@ -56,15 +55,13 @@ def _insert(text: str, key: str, name: str) -> str:
     other part of it: the comments explaining how to choose a domain or a
     type, and the ``[labels]`` table holding the display names.
     """
-    match = next(
-        (m for m in _ARRAY.finditer(text) if m.group("key") == key), None
-    )
+    match = next((m for m in _ARRAY.finditer(text) if m.group("key") == key), None)
     if match is None:
         return text.rstrip("\n") + f'\n{key} = ["{name}"]\n'
     items = [v.strip() for v in match.group("items").split(",") if v.strip()]
     values = sorted({*(v.strip('"') for v in items), name})
     line = match.group("head") + ", ".join(f'"{v}"' for v in values) + "]"
-    return text[: match.start()] + line + text[match.end():]
+    return text[: match.start()] + line + text[match.end() :]
 
 
 def add(kind: str, name: str, *, commit: bool = True) -> bool:
@@ -86,9 +83,16 @@ def add(kind: str, name: str, *, commit: bool = True) -> bool:
     if commit and cc.is_git_root(CONTENT):
         subprocess.run(["git", "add", "--", str(TAXO)], cwd=CONTENT, check=True)
         subprocess.run(
-            ["git", "commit", "-m", f"taxo: ajoute le {_FR[kind]} « {name} »",
-             "--", str(TAXO)],
-            cwd=CONTENT, check=True,
+            [
+                "git",
+                "commit",
+                "-m",
+                f"taxo: ajoute le {_FR[kind]} « {name} »",
+                "--",
+                str(TAXO),
+            ],
+            cwd=CONTENT,
+            check=True,
         )
     return True
 
@@ -104,8 +108,7 @@ def check() -> int:
     for rel, domain, type_ in bad:
         dd = "" if domain in data["domains"] else " ✗inconnu"
         tt = "" if type_ in data["types"] else " ✗inconnu"
-        print(f"hors taxonomie : {rel}  [{domain}{dd} / {type_}{tt}]",
-              file=sys.stderr)
+        print(f"hors taxonomie : {rel}  [{domain}{dd} / {type_}{tt}]", file=sys.stderr)
     if bad:
         print(f"{len(bad)} page(s) hors taxonomie.", file=sys.stderr)
         return 1

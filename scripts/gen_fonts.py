@@ -45,7 +45,9 @@ FAMILIES = [
 # Subsets to keep, in the order Google labels them with a /* comment */.
 KEEP = {"latin", "latin-ext"}
 
-_BLOCK = re.compile(r"/\* (?P<subset>[\w-]+) \*/\s*(?P<rule>@font-face \{.*?\})", re.DOTALL)
+_BLOCK = re.compile(
+    r"/\* (?P<subset>[\w-]+) \*/\s*(?P<rule>@font-face \{.*?\})", re.DOTALL
+)
 _PROP = re.compile(r"(?P<key>[\w-]+):\s*(?P<val>[^;]+);")
 
 

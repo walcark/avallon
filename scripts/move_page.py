@@ -21,7 +21,6 @@ from __future__ import annotations
 import argparse
 import shutil
 import sys
-from pathlib import Path
 
 import content_config as cc
 import taxonomy  # sibling module (scripts/ is on sys.path[0])
@@ -33,8 +32,7 @@ CONTENT = cc.resolve_content_dir()
 def pages() -> list[str]:
     """Every page relpath (<domaine>/<type>/<slug>), for the source picker."""
     return sorted(
-        str(p.parent.relative_to(CONTENT))
-        for p in CONTENT.glob("*/*/*/index.md")
+        str(p.parent.relative_to(CONTENT)) for p in CONTENT.glob("*/*/*/index.md")
     )
 
 
@@ -49,8 +47,10 @@ def main() -> int:
 
     taxo = taxonomy.load()
     if not taxo["domains"] or not taxo["types"]:
-        sys.exit("taxonomy.toml est vide : déclare d'abord un domaine et un type "
-                 "(pixi run add-domain …, pixi run add-type …).")
+        sys.exit(
+            "taxonomy.toml est vide : déclare d'abord un domaine et un type "
+            "(pixi run add-domain …, pixi run add-type …)."
+        )
 
     all_pages = pages()
     if not all_pages:

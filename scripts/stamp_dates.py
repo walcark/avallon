@@ -68,6 +68,7 @@ def modified_date(path: Path) -> str:
 
 # --- Textual frontmatter editing -------------------------------------------
 
+
 def _frontmatter_lines(text: str) -> tuple[list[str], int, int] | None:
     """Return (lines, start, end) where lines[start:end] is the YAML body of
     the leading `---` frontmatter block, or None if there is no frontmatter."""
@@ -89,8 +90,9 @@ def _get_key(lines: list[str], start: int, end: int, key: str) -> str | None:
     return None
 
 
-def set_date_fields(path: Path, *, date: str | None, updated: str | None,
-                    overwrite_updated: bool) -> bool:
+def set_date_fields(
+    path: Path, *, date: str | None, updated: str | None, overwrite_updated: bool
+) -> bool:
     """Ensure `date`/`updated` in *path*'s frontmatter. `date` is only written
     when missing; `updated` is written when missing or when overwrite_updated.
     Returns True if the file changed."""
@@ -137,6 +139,7 @@ def set_date_fields(path: Path, *, date: str | None, updated: str | None,
 
 # --- Page discovery & CLI ---------------------------------------------------
 
+
 def _pages(args_files: list[str]) -> list[Path]:
     if args_files:
         paths = [Path(f).resolve() for f in args_files]
@@ -156,10 +159,14 @@ def _pages(args_files: list[str]) -> list[Path]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     mode = ap.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--today", action="store_true",
-                      help="set updated=today (fill date if missing)")
-    mode.add_argument("--backfill", action="store_true",
-                      help="fill any missing date/updated from git history")
+    mode.add_argument(
+        "--today", action="store_true", help="set updated=today (fill date if missing)"
+    )
+    mode.add_argument(
+        "--backfill",
+        action="store_true",
+        help="fill any missing date/updated from git history",
+    )
     ap.add_argument("files", nargs="*", help="content pages (default: all)")
     args = ap.parse_args()
 
@@ -167,12 +174,16 @@ def main() -> int:
     for path in _pages(args.files):
         if args.today:
             changed = set_date_fields(
-                path, date=creation_date(path), updated=TODAY,
+                path,
+                date=creation_date(path),
+                updated=TODAY,
                 overwrite_updated=True,
             )
         else:  # --backfill: only fill what's missing
             changed = set_date_fields(
-                path, date=creation_date(path), updated=modified_date(path),
+                path,
+                date=creation_date(path),
+                updated=modified_date(path),
                 overwrite_updated=False,
             )
         if changed:

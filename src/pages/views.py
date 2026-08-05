@@ -191,7 +191,11 @@ def new_page(request):
 
     vocab = content.vocabulary()
     form = {
-        "domain": "", "type": "", "title": "", "tags": "", "summary": "",
+        "domain": "",
+        "type": "",
+        "title": "",
+        "tags": "",
+        "summary": "",
         "project": "",
     }
     error = ""
@@ -201,8 +205,12 @@ def new_page(request):
         tags = [t for t in re.split(r"[,\n]+", form["tags"]) if t.strip()]
         try:
             page = content.create_page(
-                form["domain"], form["type"], form["title"],
-                [t.strip() for t in tags], form["summary"], form["project"],
+                form["domain"],
+                form["type"],
+                form["title"],
+                [t.strip() for t in tags],
+                form["summary"],
+                form["project"],
             )
         except content.InvalidPage as exc:
             error = str(exc)
@@ -267,15 +275,13 @@ def save_page(request):
     try:
         content.save_source(index_md, text, payload.get("mtime"))
     except content.InvalidFrontmatter as exc:
-        return JsonResponse(
-            {"error": f"Frontmatter invalide : {exc}"}, status=400
-        )
+        return JsonResponse({"error": f"Frontmatter invalide : {exc}"}, status=400)
     except content.StaleEdit:
         return JsonResponse(
             {
                 "error": "Le fichier a changé sur le disque depuis l'ouverture "
-                         "de l'éditeur. Recharge la page pour repartir de la "
-                         "version courante.",
+                "de l'éditeur. Recharge la page pour repartir de la "
+                "version courante.",
             },
             status=409,
         )
@@ -390,9 +396,7 @@ async def markdown_stream(request):
                 yield f"event: update\ndata: {json.dumps(html)}\n\n"
             await asyncio.sleep(POLL_INTERVAL)
 
-    response = StreamingHttpResponse(
-        event_stream(), content_type="text/event-stream"
-    )
+    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
     response["Cache-Control"] = "no-cache"
     response["X-Accel-Buffering"] = "no"  # disable proxy buffering (e.g. nginx)
     return response

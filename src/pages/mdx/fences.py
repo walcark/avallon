@@ -116,9 +116,7 @@ def _is_number(text: str) -> bool:
         return False
 
 
-def _render_table(
-    header: list[str], rows: list[list[str]], table_class: str
-) -> str:
+def _render_table(header: list[str], rows: list[list[str]], table_class: str) -> str:
     """Render a header + rows into a sortable HTML table.
 
     A column whose every cell is a number is marked ``num`` (right-aligned and
@@ -200,9 +198,7 @@ def _query_cell(page: Any, field: str) -> str:
     if field == "title":
         return f'<a href="{_attr(page.url)}">{html.escape(page.title)}</a>'
     if field == "tags":
-        return " ".join(
-            f'<span class="tag">{html.escape(t)}</span>' for t in page.tags
-        )
+        return " ".join(f'<span class="tag">{html.escape(t)}</span>' for t in page.tags)
     if field == "domain":
         return html.escape(page.domain_label)
     if field == "type":
@@ -285,8 +281,13 @@ def query_fence(source: str, language, css_class, options, md, **kwargs) -> str:
         return '<p class="query-empty">Aucune note ne correspond à cette requête.</p>'
 
     _labels = {
-        "title": "Titre", "domain": "Domaine", "type": "Type", "date": "Date",
-        "updated": "Modifié", "tags": "Tags", "summary": "Résumé",
+        "title": "Titre",
+        "domain": "Domaine",
+        "type": "Type",
+        "date": "Date",
+        "updated": "Modifié",
+        "tags": "Tags",
+        "summary": "Résumé",
     }
     head = "".join(f"<th>{html.escape(_labels[f])}</th>" for f in fields)
     body = "".join(
@@ -434,7 +435,7 @@ def _axis_labels(config: dict[str, Any], m: dict[str, float]) -> str:
         out.append(
             f'<text class="plot-axis-label" x="{(m["left"] + _W - m["right"]) / 2:g}" '
             f'y="{_H - 8:g}" text-anchor="middle">'
-            f'{html.escape(str(config["xlabel"]))}</text>'
+            f"{html.escape(str(config['xlabel']))}</text>"
         )
     if config.get("ylabel"):
         cy = (m["top"] + _H - m["bottom"]) / 2
@@ -461,7 +462,7 @@ def _legend(series: list[dict[str, Any]], m: dict[str, float]) -> str:
             f'<rect class="plot-fill plot-s{i % 6}" x="{x:g}" y="{y - 8:g}" '
             f'width="10" height="10" rx="2"/>'
             f'<text class="plot-legend" x="{x + 15:g}" y="{y + 1:g}">'
-            f'{html.escape(str(s["name"]))}</text>'
+            f"{html.escape(str(s['name']))}</text>"
         )
         y += 16
     return "".join(out)
@@ -659,6 +660,8 @@ def _inline_series_colors(svg: str) -> str:
             f'plot-fill plot-s{i}"', f'plot-fill plot-s{i}" fill="{color}"'
         )
     return svg
+
+
 _PLOT_OPEN = (
     '<svg class="plot" viewBox="0 0 640 380" role="img" '
     'preserveAspectRatio="xMidYMid meet">'
@@ -681,9 +684,7 @@ def _export_plot(svg_html: str, config: dict[str, Any], export: Any) -> str:
         inner = inner[len('<div class="plot-wrap">') :]
     if inner.endswith("</div>"):
         inner = inner[: -len("</div>")]
-    standalone = inner.replace(
-        _PLOT_OPEN, _PLOT_OPEN_STANDALONE + _EXPORT_SVG_STYLE, 1
-    )
+    standalone = inner.replace(_PLOT_OPEN, _PLOT_OPEN_STANDALONE + _EXPORT_SVG_STYLE, 1)
     standalone = _inline_series_colors(standalone)
 
     export.count += 1

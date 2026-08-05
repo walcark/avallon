@@ -71,15 +71,21 @@ def export_docx(
 
         cmd = [
             "pandoc",
-            "--from", "html+tex_math_single_backslash",
+            "--from",
+            "html+tex_math_single_backslash",
             str(src),
-            "--lua-filter", str(LUA_FILTER),
-            "--reference-doc", str(reference),
+            "--lua-filter",
+            str(LUA_FILTER),
+            "--reference-doc",
+            str(reference),
             # Bare filenames in the HTML resolve either next to the note
             # (co-located images) or in the temp dir (generated plot SVGs).
-            "--resource-path", os.pathsep.join([str(note_dir), str(tmp)]),
-            "--metadata", f"title={page.title}",
-            "--output", str(out_path),
+            "--resource-path",
+            os.pathsep.join([str(note_dir), str(tmp)]),
+            "--metadata",
+            f"title={page.title}",
+            "--output",
+            str(out_path),
         ]
         _run(cmd, "Pandoc")
     return out_path
@@ -102,7 +108,12 @@ def export_pdf(
             "libreoffice",
             # A private profile dir avoids clashing with a desktop session.
             "-env:UserInstallation=file://" + str(tmp / "lo-profile"),
-            "--headless", "--convert-to", "pdf", "--outdir", str(tmp), str(docx),
+            "--headless",
+            "--convert-to",
+            "pdf",
+            "--outdir",
+            str(tmp),
+            str(docx),
         ]
         _run(cmd, "LibreOffice", timeout=180)
         produced = tmp / "doc.pdf"
