@@ -153,6 +153,10 @@ MARKDOWNIFY = {
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Serves /static/ from the app directories, with or without debug and
+    # without a collectstatic step. avallon is meant to be run as it is, not
+    # put behind a web server, so it has to serve its own stylesheet.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -231,3 +235,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
+
+# Serve straight from the app directories: collectstatic is a deployment step
+# that makes no sense for a single-process personal site.
+WHITENOISE_USE_FINDERS = True

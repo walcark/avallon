@@ -25,6 +25,7 @@ dependencies = [
     "uvicorn[standard]",
     "python-docx>=1.2,<2",
     "pyyaml",
+    "whitenoise",
 ]
 
 [project.urls]
@@ -50,6 +51,7 @@ platforms = ["linux-64"]
 avallon = { path = ".", editable = true }
 django-markdownify = "*"
 python-frontmatter = "*"
+whitenoise = "*"
 uvicorn = { version = "*", extras = ["standard"] }
 
 [tool.pixi.tasks]

@@ -1,27 +1,48 @@
-"""
-ASGI config for config project.
+"""ASGI entry point.
 
-It exposes the ASGI callable as a module-level variable named ``application``.
+Static files are handled by WhiteNoise in the middleware, so the Django
+application is all uvicorn needs, with or without debug.
 
-For more information on this file, see
-https://docs.djangoproject.com/en/6.0/howto/deployment/asgi/
+The lifespan protocol is handled here rather than passed on: Django does not
+implement it, and it is the one hook that runs once per process, inside the
+event loop uvicorn is about to drive. That is exactly what the git poller
+needs, so it starts on startup and is cancelled on shutdown.
 """
+
+from __future__ import annotations
 
 import os
-
-from django.core.asgi import get_asgi_application
+from typing import Any
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "avallon.settings.settings")
 
-application = get_asgi_application()
+from django.core.asgi import get_asgi_application  # noqa: E402
 
-# Under uvicorn the plain ASGI app does not serve /static/ (that is a
-# runserver-only convenience). Wrap it in DEBUG so CSS/JS load without a
-# separate static server, and so /static/ is handled before the content
-# catch-all route ever sees it.
+django_application = get_asgi_application()
+
 from django.conf import settings  # noqa: E402
 
-if settings.DEBUG:
-    from django.contrib.staticfiles.handlers import ASGIStaticFilesHandler
+from avallon.web import poller  # noqa: E402
 
-    application = ASGIStaticFilesHandler(application)
+
+async def _lifespan(receive: Any, send: Any) -> None:
+    """Run the poller for the lifetime of the server process."""
+    task = None
+    while True:
+        message = await receive()
+        if message["type"] == "lifespan.startup":
+            task = poller.start(settings.CONTENT_DIR)
+            await send({"type": "lifespan.startup.complete"})
+        elif message["type"] == "lifespan.shutdown":
+            if task is not None:
+                task.cancel()
+            await send({"type": "lifespan.shutdown.complete"})
+            return
+
+
+async def application(scope: dict[str, Any], receive: Any, send: Any) -> None:
+    """Dispatch to Django, keeping the lifespan protocol for ourselves."""
+    if scope["type"] == "lifespan":
+        await _lifespan(receive, send)
+        return
+    await django_application(scope, receive, send)
