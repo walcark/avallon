@@ -2,7 +2,7 @@ r"""Export a note to a styled Word document (and optionally a PDF).
 
 The site already renders each note to clean HTML; exporting reuses that render
 in *export mode* (plots become self-contained images, the gallery becomes plain
-figures, see :mod:`pages.mdx.fences`) and hands the HTML to Pandoc::
+figures, see :mod:`avallon.web.mdx.fences`) and hands the HTML to Pandoc::
 
     HTML  --pandoc-->  .docx        (styles from a reference document)
           --libreoffice-->  .pdf
@@ -62,8 +62,8 @@ def export_docx(
     out_path = Path(out_path)
     note_dir = index_md.parent
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp = Path(tmpdir)
         ctx = content.ExportContext(assets_dir=tmp)
         html = content.render_markdown(index_md, export=ctx)
         src = tmp / "doc.html"
@@ -100,8 +100,8 @@ def export_pdf(
     styles, using the LibreOffice already present rather than a second engine.
     """
     out_path = Path(out_path)
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp = Path(tmp)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp = Path(tmpdir)
         docx = tmp / "doc.docx"
         export_docx(index_md, docx, reference)
         cmd = [

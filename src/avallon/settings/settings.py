@@ -52,7 +52,7 @@ SHOW_PRIVATE = (
     DEBUG if _show_private is None else _show_private not in ("0", "", "false")
 )
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS: list[str] = []
 
 
 # Application definition

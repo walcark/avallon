@@ -540,6 +540,16 @@ def save_source(index_md: Path, text: str, expected_mtime: float | None = None) 
         raise
 
 
+def _tag_list(raw: Any) -> list[str]:
+    """Coerce a frontmatter `tags:` value into a list of strings.
+
+    Anything that is not a YAML list (a forgotten bracket, a bare word) yields
+    no tags rather than an exception: a malformed frontmatter must not take the
+    page down with it.
+    """
+    return [str(t) for t in raw] if isinstance(raw, list) else []
+
+
 def _page_from(index_md: Path, post: frontmatter.Post | None = None) -> Page:
     if post is None:
         post = frontmatter.load(index_md)
@@ -553,7 +563,7 @@ def _page_from(index_md: Path, post: frontmatter.Post | None = None) -> Page:
         title=str(post.get("title", parts[-1])),
         date=post.get("date"),
         updated=post.get("updated"),
-        tags=normalize_tags([str(t) for t in (post.get("tags") or [])]),
+        tags=normalize_tags(_tag_list(post.get("tags"))),
         summary=str(post.get("summary", "")),
         visibility=str(post.get("visibility", "public")).strip().lower(),
         project=str(post.get("project", "") or "").strip(),
