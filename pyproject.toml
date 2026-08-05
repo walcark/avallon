@@ -67,3 +67,52 @@ pymdown-extensions = ">=11,<12"
 fzf = "*"
 pandoc = ">=3.10.1,<4"
 python-docx = ">=1.2.0,<2"
+
+# Development tooling, in its own environment so that installing it never
+# rebuilds the environment the site runs on.
+[tool.pixi.feature.dev.dependencies]
+ruff = "*"
+mypy = ">=1.5"
+pytest = "*"
+pytest-cov = ">=6.0"
+pytest-django = "*"
+
+[tool.pixi.feature.dev.tasks]
+fmt = "ruff format ."
+fmt-check = "ruff format --check ."
+lint = "ruff check src scripts tests"
+type-check = "mypy src scripts"
+test = "pytest -q --cov=pages --cov=scripts --cov-report=term-missing --cov-report=xml"
+all = { depends-on = ["fmt", "lint", "type-check", "test"] }
+
+[tool.pixi.environments]
+default = { solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+exclude = [".pixi"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "TID"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["pages", "config"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+ignore_missing_imports = true
+namespace_packages = true
+explicit_package_bases = true
+# scripts/ is put on sys.path at runtime (see config.settings), so it is a
+# source root here too rather than a package to import through its folder.
+mypy_path = "src:scripts"
+exclude = "^(\\.pixi|scripts/make_reference_docx\\.py)$"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+DJANGO_SETTINGS_MODULE = "config.settings"
+pythonpath = ["src", "scripts"]
+addopts = "--import-mode=importlib"
