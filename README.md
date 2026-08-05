@@ -22,8 +22,8 @@ from this tool, and sync across devices on their own.
 The content model, and the reasoning behind it, lives in
 [`docs/model.md`](docs/model.md). This README is the user guide.
 
-> **Status.** Working toward v0.1.0, the first released version. See
-> [`ROADMAP.md`](ROADMAP.md) for what is in and what is not.
+> **Status.** v0.1.0. What comes next, and why, is in
+> [`ROADMAP.md`](ROADMAP.md).
 
 ## How it works in one picture
 
@@ -181,6 +181,9 @@ Every page shows what cites it, so a note is never a dead end.
 | `avallon add-domain <name>` | Extend the taxonomy. |
 | `avallon add-type <name>` | Extend the taxonomy. |
 | `avallon check` | Verify every page sits under a declared domain/type. |
+| `avallon stamp` | Fill missing `date:` / `updated:` in the frontmatter. |
+| `avallon setup` | Write the deployment env file (address, port, token). |
+| `avallon install` | Install and start the systemd user unit. |
 
 ## Server
 
@@ -227,7 +230,9 @@ on a timer so pages written on another device show up without a restart.
 | `AVALLON_HOST` / `AVALLON_PORT` | `127.0.0.1` / `8000` | Bind address. |
 | `AVALLON_SHOW_PRIVATE` | on in debug | Serve pages marked `visibility: private`. |
 | `AVALLON_SYNC_WINDOW` | `900` | Seconds during which consecutive edits fold into one commit. |
-| `AVALLON_SECRET_KEY` | *(generated at setup)* | Django secret key. |
+| `AVALLON_POLL_INTERVAL` | `120` | Seconds between two pulls; `0` disables the poller. |
+| `AVALLON_ALLOWED_HOSTS` | loopback | Comma separated names the site answers to. |
+| `AVALLON_SECRET_KEY` | *(generated per process)* | Django secret key. `avallon setup` writes a fixed one. |
 | `AVALLON_DEBUG` | `0` | Debug mode. Never on when exposed. |
 
 ## Sync model
