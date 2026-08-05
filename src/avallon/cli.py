@@ -33,6 +33,8 @@ avallon <commande> [options]
   add-type <nom>        étendre le vocabulaire
   check                 vérifier que chaque page est dans le vocabulaire
   stamp                 compléter les dates manquantes du frontmatter
+  setup                 écrire le fichier d'environnement (adresse, jeton)
+  install               installer et démarrer l'unité systemd utilisateur
 """
 
 
@@ -90,6 +92,67 @@ def _serve(argv: Sequence[str]) -> int:
         reload_dirs=[package_dir] if args.reload else None,
         reload_includes=["*.html", "*.css"] if args.reload else None,
     )
+    return 0
+
+
+def _setup(argv: Sequence[str]) -> int:
+    """Write the environment file a deployment reads: address, port, token."""
+    from avallon import deploy
+    from avallon.notes import config
+
+    parser = argparse.ArgumentParser(prog="avallon setup")
+    parser.add_argument("--host", default="127.0.0.1", help="adresse d'écoute")
+    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--token", default="", help="jeton d'accès (généré par défaut)")
+    args = parser.parse_args(argv)
+
+    token = args.token or deploy.generate_token()
+    try:
+        content_dir = config.resolve_content_dir()
+    except config.NotConfigured:
+        content_dir = None
+
+    path = deploy.write_env(
+        deploy.env_file_path(),
+        deploy.render_env(args.host, args.port, token, content_dir),
+    )
+    print(f"✓ environnement écrit : {path}  (0600)")
+    print(f"  - écoute      : {args.host}:{args.port}")
+    print(f"  - jeton       : {token}")
+    if content_dir is None:
+        print("  ! aucun dépôt de notes : lance `avallon init <chemin|url>`")
+    print("  → `avallon install` pour l'unité systemd")
+    return 0
+
+
+def _install(argv: Sequence[str]) -> int:
+    """Install and start the systemd user unit."""
+    from avallon import deploy
+
+    parser = argparse.ArgumentParser(prog="avallon install")
+    parser.add_argument(
+        "--no-start", action="store_true", help="installer sans démarrer"
+    )
+    args = parser.parse_args(argv)
+
+    env_path = deploy.env_file_path()
+    if not env_path.exists():
+        sys.exit(f"Aucun environnement en {env_path} : lance d'abord `avallon setup`")
+
+    unit = deploy.write_unit(env_path)
+    print(f"✓ unité écrite : {unit}")
+    if args.no_start:
+        return 0
+
+    deploy.systemctl("daemon-reload")
+    result = deploy.systemctl("enable", "--now", deploy.UNIT_NAME)
+    if result.returncode != 0:
+        print(result.stderr.strip(), file=sys.stderr)
+        return 1
+    print(f"✓ service démarré : systemctl --user status {deploy.UNIT_NAME}")
+    # Without lingering, a user unit stops at logout, which is exactly when a
+    # server is expected to keep running.
+    print("  ↳ `loginctl enable-linger $USER` pour qu'il survive à la déconnexion")
     return 0
 
 
@@ -151,6 +214,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         from avallon.notes import taxonomy
 
         return taxonomy.main([command, *rest])
+
+    if command == "setup":
+        return _setup(rest)
+
+    if command == "install":
+        return _install(rest)
 
     if command == "export":
         return _django(["export", *rest])
