@@ -102,11 +102,19 @@
                 <a href="/?domaine={{ page.domain|urlencode }}&amp;type={{ page.type|urlencode }}">{{ page.type_label }}</a>
                 {% if page.is_private %}<span class="badge-private" title="Cette page n'est visible qu'en local">privé</span>{% endif %}
             </p>
+            {% if project %}
+            <!-- Which dossier this page belongs to. Titles are written short
+                 inside a project ("Mail retour"); this is what says which one. -->
+            <p class="page-project">
+                <a href="{{ project.url }}">{{ project.title }}</a>
+            </p>
+            {% endif %}
             <h1>{{ page.title }}</h1>
             {% if page.summary %}<p class="page-summary">{{ page.summary }}</p>{% endif %}
             <p class="page-meta">
                 {% if page.display_date %}<span>{{ page.display_date }}</span>{% endif %}
                 <span>{{ reading_minutes }} min de lecture</span>
+                {% if page.status %}<span class="badge-status" data-status="{{ page.status }}">{{ page.status }}</span>{% endif %}
                 {% for t in page.tags %}<a class="tag" href="/?tag={{ t|urlencode }}">{{ t }}</a>{% endfor %}
             </p>
         </header>

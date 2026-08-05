@@ -55,6 +55,25 @@
             </p>
         </div>
 
+        {% if projects %}
+        <div class="form-row">
+            <label for="f-project">Dossier</label>
+            <!-- A project is an ordinary page, so joining one is naming it.
+                 Only pages archived with the dossier belong to it; a durable
+                 note it merely cites stays out and is linked with [[…]]. -->
+            <select id="f-project" name="project">
+                <option value="">Aucun</option>
+                {% for p in projects %}
+                <option value="{{ p.slug }}" {% if form.project == p.slug %}selected{% endif %}>{{ p.title }}</option>
+                {% endfor %}
+            </select>
+            <p class="form-hint">
+                À remplir si la page sera <b>archivée avec le dossier</b>. Une
+                fiche réutilisable reste hors dossier, simplement citée.
+            </p>
+        </div>
+        {% endif %}
+
         <div class="form-row">
             <label for="f-tags">Tags</label>
             <input type="text" id="f-tags" name="tags" value="{{ form.tags }}"

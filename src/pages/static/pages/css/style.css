@@ -485,6 +485,94 @@ body {
     letter-spacing: 0.04em;
 }
 
+/* Where a page stands, when that applies: written in the frontmatter rather
+   than in the path, so progress never moves a page (nor changes its URL). */
+.badge-status {
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    background: var(--code-bg);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+/* Only the unfinished state is worth a colour: it is the one the reader must
+   act on. Done and abandoned stay quiet. */
+.badge-status[data-status="en cours"] {
+    background: var(--warn-bg);
+    color: var(--warn-ink);
+    border-color: currentColor;
+}
+
+/* The dossier a page belongs to, above its title: page titles are written
+   short inside a project ("Mail retour"), and this is what places them. */
+.page-project {
+    margin: 0 0 0.2rem;
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+}
+.page-project a { color: var(--accent); text-decoration: none; }
+.page-project a:hover { text-decoration: underline; }
+
+/* --- Dossier navigation -------------------------------------------------- */
+/* Inside a dossier, the sidebar browses the dossier: its pages are the ones
+   the reader moves between, and they are derived from the pages that claim it,
+   so this list cannot fall behind. The whole tree folds below it rather than
+   disappearing, because the palette reads its page list from that markup. */
+.tree.dossier {
+    padding-bottom: 0.9rem;
+    margin-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border);
+}
+.dossier-label {
+    margin: 0 0 0.35rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+/* The dossier's own title heads its section the way a domain name does, and
+   stays a link because it is a page. Truncated like every other title here:
+   one line per entry is what makes the column scannable. */
+.tree.dossier .tree-d > summary a.tree-name {
+    color: inherit;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.tree.dossier .tree-d > summary a.tree-name:hover { color: var(--accent); }
+.tree.dossier .tree-d > summary a.tree-name.active { color: var(--accent); }
+
+/* Status as a dot, not a word: there is no room for "en cours" on a line that
+   already truncates its title. Absolutely placed so it never pushes the link
+   onto a second line, with room reserved on the right for it to sit in. */
+.tree.dossier li { position: relative; }
+.tree.dossier li a { padding-right: 1.15rem; }
+.dot-status {
+    position: absolute;
+    top: 50%;
+    right: 0.4rem;
+    width: 0.38rem;
+    height: 0.38rem;
+    margin-top: -0.19rem;
+    border-radius: 999px;
+    background: var(--warn-ink);
+    pointer-events: none;
+}
+/* The full tree, folded while a dossier is open. */
+.tree-all > summary {
+    cursor: pointer;
+    padding: 0.25rem 0;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.tree-all > summary:hover { color: var(--accent); }
+
 /* --- Backlinks ----------------------------------------------------------- */
 /* Wikilinks are one-way in the Markdown; this is the inverted index, so a page
    shows what refers to it instead of being a dead end. */

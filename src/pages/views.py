@@ -26,17 +26,30 @@ POLL_INTERVAL = 0.3
 
 def home(request):
     """Central page: lists every page in the content tree and exposes the
-    facet values (domains, types, tags) used by the client-side filters. The
-    full-text search box calls the `search` endpoint below."""
+    facet values (domains, types, projects, statuses, tags) used by the
+    client-side filters. The full-text search box calls the `search` endpoint
+    below.
+
+    Each card carries the project it belongs to, so a title written inside a
+    project ("Mail retour") still says which dossier it comes from once it is
+    read out of context.
+    """
     pages = content.all_pages()
+    projects = content.all_projects()
+    membership = content.membership()
     return render(
         request,
         "home.html",
         {
-            "pages": pages,
+            "cards": [{"page": p, "project": membership.get(p.relpath)} for p in pages],
             "domains": sorted({p.domain for p in pages}),
             "types": sorted({p.type for p in pages}),
-            "tags": sorted({t for p in pages for t in p.tags}),
+            "projects": projects,
+            "statuses": [
+                s for s in content.STATUSES if any(p.status == s for p in pages)
+            ],
+            # Only tags that group several pages: see content.facet_tags.
+            "tags": content.facet_tags(pages),
         },
     )
 
@@ -45,6 +58,7 @@ def search(request):
     """JSON full-text search over the content tree (`?q=<query>`). Facet
     filtering is applied client-side on the returned results."""
     hits = content.search(request.GET.get("q", ""))
+    projects = content.membership()
     return JsonResponse(
         {
             "results": [
@@ -60,6 +74,15 @@ def search(request):
                     "tags": h.page.tags,
                     "date": h.page.display_date,
                     "snippet": h.snippet,
+                    "status": h.page.status,
+                    # Slug for the facet, title to show the dossier a page
+                    # named "Mail retour" comes from.
+                    "project": projects[h.page.relpath].slug
+                    if h.page.relpath in projects
+                    else "",
+                    "project_title": projects[h.page.relpath].title
+                    if h.page.relpath in projects
+                    else "",
                 }
                 for h in hits
             ]
@@ -89,6 +112,12 @@ def serve_content(request, relpath):
                 "relpath": page.relpath,
                 "reading_minutes": content.reading_minutes(index_md),
                 "backlinks": content.backlinks(page),
+                # The dossier this page belongs to: `project` names it above
+                # the title, `dossier` is what the sidebar browses. Both are
+                # derived from the pages themselves, so a dossier's contents
+                # can never fall behind.
+                "project": content.project_of(page),
+                "dossier": content.dossier_nav(page),
                 # Destinations offered by the "move" control in the editor:
                 # exactly the declared taxonomy, like the creation form.
                 "domains": vocab["domains"],
@@ -161,7 +190,10 @@ def new_page(request):
         raise Http404("Édition indisponible")
 
     vocab = content.vocabulary()
-    form = {"domain": "", "type": "", "title": "", "tags": "", "summary": ""}
+    form = {
+        "domain": "", "type": "", "title": "", "tags": "", "summary": "",
+        "project": "",
+    }
     error = ""
 
     if request.method == "POST":
@@ -170,7 +202,7 @@ def new_page(request):
         try:
             page = content.create_page(
                 form["domain"], form["type"], form["title"],
-                [t.strip() for t in tags], form["summary"],
+                [t.strip() for t in tags], form["summary"], form["project"],
             )
         except content.InvalidPage as exc:
             error = str(exc)
@@ -190,6 +222,8 @@ def new_page(request):
             "error": error,
             # Existing tags, offered as clickable chips so they get reused
             "known_tags": content.all_tags(),
+            # Existing projects, so a new page can join a dossier at birth.
+            "projects": content.all_projects(),
         },
     )
 

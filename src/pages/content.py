@@ -41,6 +41,17 @@ _WIKILINK = re.compile(WIKILINK_RE)
 # Glob matching every page: content/<domaine>/<type>/<slug>/index.md.
 _PAGE_GLOB = "*/*/*/index.md"
 
+# Where a page stands, when that question makes sense. The path says what a
+# page *is*, never how far along it is: a note that will be finished one day is
+# still a `cr` or a `fiche`, so progress lives in the frontmatter and can change
+# without moving the page (and thus without changing its URL).
+STATUSES = ("en cours", "terminé", "abandonné")
+
+# A tag earns a place in the home page's facets once this many pages carry it.
+# Below that it filters nothing a search would not find, while crowding out the
+# tags that do group pages together.
+TAG_FACET_MIN = 3
+
 
 def _as_date_str(value: Any) -> str:
     """Normalize a frontmatter date (datetime.date, str or None) to an ISO
@@ -73,6 +84,8 @@ class Page:
     tags: list[str]
     summary: str
     visibility: str       # "public" (default) or "private"
+    project: str          # slug of the page that indexes the project, or ""
+    status: str           # one of STATUSES, or "" when the question is moot
 
     @property
     def url(self) -> str:
@@ -344,7 +357,12 @@ class InvalidPage(ValueError):
 
 
 def create_page(
-    domain: str, type_: str, title: str, tags: list[str], summary: str = ""
+    domain: str,
+    type_: str,
+    title: str,
+    tags: list[str],
+    summary: str = "",
+    project: str = "",
 ) -> Page:
     """Scaffold ``<domain>/<type>/<slug>/index.md`` and return the new Page.
 
@@ -363,6 +381,9 @@ def create_page(
         Free text, no vocabulary.
     summary : str, optional
         One-line summary shown on the home page.
+    project : str, optional
+        Slug of the project page this one belongs to. Left out of the
+        frontmatter when empty, so a standalone note stays free of the field.
 
     Returns
     -------
@@ -402,6 +423,8 @@ def create_page(
     ]
     if summary.strip():
         lines.append(f"summary: {scalar(summary.strip())}")
+    if project.strip():
+        lines.append(f"project: {scalar(project.strip())}")
     body = "---\n" + "\n".join(lines) + "\n---\n\n"
 
     target.mkdir(parents=True)
@@ -535,6 +558,8 @@ def _page_from(index_md: Path, post: frontmatter.Post | None = None) -> Page:
         tags=normalize_tags([str(t) for t in (post.get("tags") or [])]),
         summary=str(post.get("summary", "")),
         visibility=str(post.get("visibility", "public")).strip().lower(),
+        project=str(post.get("project", "") or "").strip(),
+        status=str(post.get("status", "") or "").strip().lower(),
     )
 
 
@@ -591,6 +616,135 @@ def backlinks(target: Page) -> list[Page]:
                 break
     found.sort(key=lambda p: p.title)
     return found
+
+
+# --------------------------------------------------------------------------- #
+# Projects                                                                    #
+# --------------------------------------------------------------------------- #
+#
+# A project is not a new kind of thing: it *is* an ordinary page, the one that
+# introduces the dossier, and the pages that belong to it name it in their
+# `project:` frontmatter. That buys the index page's title, summary and URL for
+# free, and keeps the vocabulary of the site at domain / type / tag.
+#
+# Membership is not the same as reference. A page enters a project when it will
+# be archived with it (the letters of a dispute); a durable note the project
+# merely cites (an article of law, a method) stays outside and is linked with a
+# [[wikilink]], so it survives the project it was written during.
+
+
+def project_of(page: Page) -> Page | None:
+    """The project page *page* belongs to, or None.
+
+    The `project:` frontmatter names its index page the way a wikilink does (by
+    slug, relpath or title), and resolution goes through the same predicate, so
+    a reference that renders as a link cannot fail to designate a project.
+    """
+    if not page.project:
+        return None
+    for candidate in all_pages():
+        if resolves_to(page.project, candidate.slug, candidate.relpath):
+            return candidate
+    return None
+
+
+def project_members(project: Page) -> list[Page]:
+    """Visible pages declaring *project* as theirs, grouped-friendly ordering.
+
+    Sorted by type then most recent first, which is the order the project page
+    lists them in: the type says what each page is for, the date says which one
+    moved last.
+    """
+    members = [
+        page
+        for page in all_pages()
+        if page.project
+        and page.relpath != project.relpath
+        and resolves_to(page.project, project.slug, project.relpath)
+    ]
+    members.sort(key=_recency_key, reverse=True)
+    members.sort(key=lambda p: p.type)
+    return members
+
+
+def dossier_nav(page: Page) -> dict[str, Any] | None:
+    """The dossier to show in the sidebar while *page* is open, or None.
+
+    A page browses inside its dossier whether it is the index of one or a
+    member of it, so both cases resolve to the same thing: the index page and
+    everything filed under it. Returns None for a page that belongs to no
+    dossier, which leaves the sidebar on the whole tree.
+
+    Returns
+    -------
+    dict or None
+        ``{"index": Page, "members": list[Page]}``.
+    """
+    own = project_members(page)
+    if own:
+        return {"index": page, "members": own}
+    parent = project_of(page)
+    if parent is None:
+        return None
+    return {"index": parent, "members": project_members(parent)}
+
+
+def membership() -> dict[str, Page]:
+    """Map each page's relpath to the project page it belongs to.
+
+    One pass for the whole tree, because the home page needs the project of
+    every card at once and resolving them one by one would walk the tree once
+    per card. Pages without a project, or naming one that does not resolve, are
+    simply absent.
+    """
+    pages = all_pages()
+    resolved: dict[str, Page] = {}
+    seen: dict[str, Page | None] = {}
+    for page in pages:
+        if not page.project:
+            continue
+        key = page.project.lower()
+        if key not in seen:
+            seen[key] = next(
+                (c for c in pages if resolves_to(page.project, c.slug, c.relpath)),
+                None,
+            )
+        target = seen[key]
+        if target is not None and target.relpath != page.relpath:
+            resolved[page.relpath] = target
+    return resolved
+
+
+def all_projects() -> list[Page]:
+    """Every page at least one other page claims as its project, by title.
+
+    Being a project is a property a page acquires from the outside, so there is
+    nothing to declare: writing `project: x` in a page makes x a project.
+    """
+    pages = all_pages()
+    refs = {page.project for page in pages if page.project}
+    found = [
+        page
+        for page in pages
+        if any(resolves_to(ref, page.slug, page.relpath) for ref in refs)
+    ]
+    found.sort(key=lambda p: p.title)
+    return found
+
+
+def facet_tags(pages: list[Page], minimum: int = TAG_FACET_MIN) -> list[str]:
+    """Tags carried by at least *minimum* of *pages*, alphabetically.
+
+    Filtering on a tag only one page carries is a link to that page dressed up
+    as a facet: it costs a row of chips and finds what the search box finds
+    faster. The threshold lets tags accumulate silently until they group
+    something, so nothing has to be curated by hand.
+    """
+    counts: dict[str, int] = {}
+    for page in pages:
+        for tag in page.tags:
+            counts[tag] = counts.get(tag, 0) + 1
+    return sorted(tag for tag, n in counts.items() if n >= minimum)
 
 
 def nav_tree() -> list[dict[str, Any]]:

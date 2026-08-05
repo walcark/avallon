@@ -6,6 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Mes notes{% endblock %}</title>
 
+    <!-- Inline SVG rather than a file: the browser asks for /favicon.ico on
+         every first visit, and answering here costs no request and no asset.
+         The glyph is the one in the sidebar's brand. -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext x='16' y='24' font-size='24' text-anchor='middle' fill='%232a5d8f'%3E%E2%97%86%3C/text%3E%3C/svg%3E">
+
     <link rel="stylesheet" href="{% static 'pages/css/fonts.css' %}">
     <link rel="stylesheet" href="{% static 'pages/css/style.css' %}">
     {% block head %}{% endblock %}
@@ -27,6 +32,46 @@
 <body>
     <aside class="sidebar">
         <a class="brand" href="/">◆ Mes notes</a>
+
+        {% if dossier %}
+        <!-- Inside a dossier, its own pages are the navigation that matters:
+             they are what the reader moves between. The whole tree stays one
+             click away, below. -->
+        <nav class="tree dossier" aria-label="Navigation du dossier">
+            <p class="dossier-label">Dossier</p>
+            <!-- Same markup as a domain in the tree below, so the dossier reads
+                 as the navigation it replaces rather than as a second one. -->
+            <details class="tree-d" open>
+                <summary>
+                    <a class="tree-name{% if page.relpath == dossier.index.relpath %} active{% endif %}"
+                       href="{{ dossier.index.url }}" title="{{ dossier.index.title }}">{{ dossier.index.title }}</a>
+                    <span class="tree-count">{{ dossier.members|length }}</span>
+                </summary>
+                {% regroup dossier.members by type_label as groups %}
+                {% for group in groups %}
+                <div class="tree-t">
+                    <p class="tree-type">{{ group.grouper }}</p>
+                    <ul>
+                        {% for m in group.list %}
+                        <li>
+                            <a href="{{ m.url }}" title="{{ m.title }}"{% if page.relpath == m.relpath %} class="active" aria-current="page"{% endif %}>{{ m.title }}</a>
+                            <!-- Only the unfinished ones: a dot on every line
+                                 would say nothing, and a finished page is
+                                 precisely the one needing no attention. -->
+                            {% if m.status == "en cours" %}<span class="dot-status" title="en cours"></span>{% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endfor %}
+            </details>
+        </nav>
+        {% endif %}
+
+        <!-- The tree is folded away rather than dropped while a dossier is
+             open: the command palette (Ctrl+K) reads its page list from this
+             markup, and hiding it would shrink the palette to the dossier. -->
+        {% if dossier %}<details class="tree-all"><summary>Tout le contenu</summary>{% endif %}
         <nav class="tree" aria-label="Navigation du contenu">
             {% for d in nav %}
             <!-- Folded by default; only the domain holding the current page is
@@ -49,6 +94,7 @@
             </details>
             {% endfor %}
         </nav>
+        {% if dossier %}</details>{% endif %}
     </aside>
 
     <div class="main">
