@@ -1,9 +1,10 @@
 from django.urls import path
 
-from . import views
+from . import security, views
 
 urlpatterns = [
     path("", views.home, name="home"),
+    path("deverrouiller/", security.unlock, name="unlock"),
     path("search/", views.search, name="search"),
     path("stream/", views.markdown_stream, name="stream"),
     path("nouvelle/", views.new_page, name="new"),

@@ -19,7 +19,7 @@ from django.views.decorators.http import require_POST
 
 from avallon.notes import sync
 
-from . import content, exporter
+from . import content, exporter, security
 
 # How often the stream re-checks the watched file's modification time (seconds).
 POLL_INTERVAL = 0.3
@@ -140,11 +140,11 @@ def serve_content(request, relpath):
 def may_edit(request) -> bool:
     """Whether *request* is allowed to write to the content tree.
 
-    Editing is currently open: the site has no authentication (see the README).
-    Every write funnels through this one predicate, so putting the editor
-    behind a login later is a change here rather than an audit of the views.
+    Every write funnels through this one predicate. Reading is already gated by
+    the middleware, so this is the same answer for now; keeping it separate is
+    what will allow a read-only session later without auditing every view.
     """
-    return True
+    return security.is_unlocked(request)
 
 
 def _editable_page(relpath: str):

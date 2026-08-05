@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Déverrouiller{% endblock %}
+{% block topbar %}Déverrouiller{% endblock %}
+
+{% block head %}
+    <style>
+      .unlock { max-width: 26rem; margin: 4rem auto; }
+      .unlock h1 { font-size: 1.4rem; margin-bottom: 0.4rem; }
+      .unlock p { color: var(--muted); margin-top: 0; }
+      .unlock form { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 1.5rem; }
+      .unlock input { font: inherit; padding: 0.7rem 0.9rem; border: 1px solid var(--border);
+                      border-radius: 0.6rem; background: var(--surface); color: var(--ink); }
+      .unlock input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+      .unlock .error { color: var(--warn-ink); font-size: 0.9rem; margin: 0; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <main class="unlock">
+        <h1>Ces notes sont verrouillées</h1>
+        <p>Saisis le jeton d'accès pour ouvrir la session sur cet appareil.</p>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next }}">
+            <!-- type=password so the token is not left readable on screen, and
+                 autofocus because unlocking is the only thing to do here. -->
+            <input type="password" name="token" autocomplete="current-password"
+                   autofocus aria-label="Jeton d'accès" placeholder="Jeton d'accès">
+            {% if error %}<p class="error">{{ error }}</p>{% endif %}
+            <button type="submit" class="btn btn-primary">Déverrouiller</button>
+        </form>
+    </main>
+{% endblock %}

@@ -65,3 +65,22 @@ def test_an_unconfigured_install_says_what_to_run(
 
     with pytest.raises(config.NotConfigured, match="avallon init"):
         config.resolve_content_dir()
+
+
+@pytest.mark.parametrize("host", ["127.0.0.1", "localhost", "::1"])
+def test_loopback_needs_no_token(host: str) -> None:
+    assert cli._is_loopback(host)
+
+
+@pytest.mark.parametrize("host", ["0.0.0.0", "10.8.0.2", "example.org"])
+def test_anything_reachable_from_elsewhere_is_not_loopback(host: str) -> None:
+    assert not cli._is_loopback(host)
+
+
+def test_serving_beyond_loopback_without_a_token_is_refused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("AVALLON_TOKEN", raising=False)
+
+    with pytest.raises(SystemExit, match="jeton"):
+        cli.main(["serve", "--host", "10.8.0.2"])

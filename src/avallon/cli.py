@@ -36,6 +36,18 @@ avallon <commande> [options]
 """
 
 
+def _is_loopback(host: str) -> bool:
+    """Whether *host* can only be reached from this machine."""
+    import ipaddress
+
+    if host in ("localhost", ""):
+        return True
+    try:
+        return ipaddress.ip_address(host.strip("[]")).is_loopback
+    except ValueError:
+        return False
+
+
 def _serve(argv: Sequence[str]) -> int:
     """Run the ASGI server.
 
@@ -53,6 +65,18 @@ def _serve(argv: Sequence[str]) -> int:
         "--reload", action="store_true", help="recharger à chaque modification"
     )
     args = parser.parse_args(argv)
+
+    # The guard is a no-op without a token, which only holds on loopback. Any
+    # other bind reaches other machines, so refuse rather than serve the notes
+    # to whoever finds the port.
+    if not _is_loopback(args.host) and not os.environ.get("AVALLON_TOKEN", "").strip():
+        sys.exit(
+            f"Refus de servir sur {args.host} sans jeton d'accès.\n"
+            "  AVALLON_TOKEN=$(openssl rand -hex 32) avallon serve --host "
+            f"{args.host}\n"
+            "  (ou `avallon setup`, qui en génère un et l'écrit dans le fichier "
+            "d'environnement)"
+        )
 
     # Watch the package itself rather than the working directory: it holds the
     # templates and the stylesheet as well as the code, and it is the same
