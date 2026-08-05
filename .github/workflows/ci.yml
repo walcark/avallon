@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Load Pixi
+      uses: prefix-dev/setup-pixi@v0.9.4
+      with:
+        pixi-version: v0.70.1
+        cache: true
+        environments: dev
+
+    - name: Format check
+      run: pixi run -e dev fmt-check
+
+    - name: Lint
+      run: pixi run -e dev lint
+
+    - name: Test
+      run: pixi run -e dev test
+
+    - name: Type check with mypy
+      run: pixi run -e dev type-check
+
+    # Optional: publishes coverage to Codecov for the README badge. Kept
+    # non-blocking so CI stays green until the CODECOV_TOKEN secret is added.
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v5
+      continue-on-error: true
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: coverage.xml
+        slug: walcark/avallon
