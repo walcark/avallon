@@ -7,7 +7,7 @@ dark style token by token: every `color` / `background` becomes
 `light-dark(<light>, <dark>)`, while weight/style properties are theme-neutral
 and copied as-is. Run it to regenerate the checked-in stylesheet:
 
-    python scripts/gen_pygments.py > src/pages/static/pages/css/pygments.css
+    python scripts/gen_pygments.py > src/avallon/web/static/avallon/css/pygments.css
 """
 
 from __future__ import annotations

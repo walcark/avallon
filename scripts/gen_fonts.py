@@ -26,8 +26,8 @@ UA = (
     "Chrome/120.0.0.0 Safari/537.36"
 )
 
-FONT_DIR = Path("src/pages/static/pages/fonts")
-CSS_PATH = Path("src/pages/static/pages/css/fonts.css")
+FONT_DIR = Path("src/avallon/web/static/avallon/fonts")
+CSS_PATH = Path("src/avallon/web/static/avallon/css/fonts.css")
 
 # (family, css2 query, comment). Order drives the output order. All three are
 # variable fonts, so weights are asked for as a *range*: Google then serves one

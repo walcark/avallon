@@ -1,0 +1,318 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Mes notes{% endblock %}</title>
+
+    <!-- Inline SVG rather than a file: the browser asks for /favicon.ico on
+         every first visit, and answering here costs no request and no asset.
+         The glyph is the one in the sidebar's brand. -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext x='16' y='24' font-size='24' text-anchor='middle' fill='%232a5d8f'%3E%E2%97%86%3C/text%3E%3C/svg%3E">
+
+    <link rel="stylesheet" href="{% static 'avallon/css/fonts.css' %}">
+    <link rel="stylesheet" href="{% static 'avallon/css/style.css' %}">
+    {% block head %}{% endblock %}
+
+    <script>
+      // Apply the saved theme and sidebar state before first paint (no flash).
+      (function () {
+        try {
+          var t = localStorage.getItem('theme');
+          if (t) document.documentElement.style.colorScheme = t;
+          var nav = localStorage.getItem('nav');
+          if (nav === null) nav = window.innerWidth < 800 ? 'collapsed' : 'open';
+          if (nav === 'collapsed') document.documentElement.classList.add('nav-collapsed');
+          if (localStorage.getItem('reading') === 'wide') document.documentElement.classList.add('reading-wide');
+        } catch (e) {}
+      })();
+    </script>
+</head>
+<body>
+    <aside class="sidebar">
+        <a class="brand" href="/">◆ Mes notes</a>
+
+        {% if dossier %}
+        <!-- Inside a dossier, its own pages are the navigation that matters:
+             they are what the reader moves between. The whole tree stays one
+             click away, below. -->
+        <nav class="tree dossier" aria-label="Navigation du dossier">
+            <p class="dossier-label">Dossier</p>
+            <!-- Same markup as a domain in the tree below, so the dossier reads
+                 as the navigation it replaces rather than as a second one. -->
+            <details class="tree-d" open>
+                <summary>
+                    <a class="tree-name{% if page.relpath == dossier.index.relpath %} active{% endif %}"
+                       href="{{ dossier.index.url }}" title="{{ dossier.index.title }}">{{ dossier.index.title }}</a>
+                    <span class="tree-count">{{ dossier.members|length }}</span>
+                </summary>
+                {% regroup dossier.members by type_label as groups %}
+                {% for group in groups %}
+                <div class="tree-t">
+                    <p class="tree-type">{{ group.grouper }}</p>
+                    <ul>
+                        {% for m in group.list %}
+                        <li>
+                            <a href="{{ m.url }}" title="{{ m.title }}"{% if page.relpath == m.relpath %} class="active" aria-current="page"{% endif %}>{{ m.title }}</a>
+                            <!-- Only the unfinished ones: a dot on every line
+                                 would say nothing, and a finished page is
+                                 precisely the one needing no attention. -->
+                            {% if m.status == "en cours" %}<span class="dot-status" title="en cours"></span>{% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endfor %}
+            </details>
+        </nav>
+        {% endif %}
+
+        <!-- The tree is folded away rather than dropped while a dossier is
+             open: the command palette (Ctrl+K) reads its page list from this
+             markup, and hiding it would shrink the palette to the dossier. -->
+        {% if dossier %}<details class="tree-all"><summary>Tout le contenu</summary>{% endif %}
+        <nav class="tree" aria-label="Navigation du contenu">
+            {% for d in nav %}
+            <!-- Folded by default; only the domain holding the current page is
+                 opened, so arriving on a page still shows where you are. -->
+            <details class="tree-d"{% if page and page.domain == d.domain %} open{% endif %}>
+                <summary><span class="tree-name">{{ d.label }}</span><span class="tree-count">{{ d.count }}</span></summary>
+                {% for t in d.types %}
+                <!-- Not a <details>: the domain above already folds everything
+                     away, and a collapsed type was indistinguishable from an
+                     empty one once it lost its disclosure marker. -->
+                <div class="tree-t">
+                    <p class="tree-type">{{ t.label }}</p>
+                    <ul>
+                        {% for p in t.pages %}
+                        <li><a href="{{ p.url }}"{% if page and page.relpath == p.relpath %} class="active" aria-current="page"{% endif %}>{{ p.title }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endfor %}
+            </details>
+            {% endfor %}
+        </nav>
+        {% if dossier %}</details>{% endif %}
+    </aside>
+
+    <div class="main">
+        <header class="topbar">
+            <button type="button" class="icon-btn" id="navToggle" aria-label="Afficher ou masquer le menu">☰</button>
+            <span class="topbar-title">{% block topbar %}{% endblock %}</span>
+            {% block topbar_actions %}{% endblock %}
+            <!-- In base.html, not next to the editor in index.html: creating a
+                 page is just as useful from the home page or a search. -->
+            <a class="icon-btn" href="/nouvelle/" id="newPage"
+               aria-label="Créer une nouvelle page" title="Nouvelle page (Ctrl+N)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+            </a>
+            <button type="button" class="icon-btn" id="themeToggle" aria-label="Basculer le thème clair/sombre">🌓</button>
+        </header>
+
+        <div class="page">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <div class="scrim" id="scrim" aria-hidden="true"></div>
+
+    <!-- Command palette (Ctrl+K). Its page list is read from the sidebar tree
+         above, so it can never drift out of sync with the navigation. -->
+    <div class="palette" id="palette" hidden>
+        <div class="palette-box" role="dialog" aria-modal="true" aria-label="Palette de commandes">
+            <input type="text" id="paletteInput" autocomplete="off" spellcheck="false"
+                   placeholder="Aller à une page, rechercher, exécuter…">
+            <ul class="palette-list" id="paletteList" role="listbox"></ul>
+            <p class="palette-hint">
+                <span><kbd>↑</kbd><kbd>↓</kbd> naviguer</span>
+                <span><kbd>↵</kbd> ouvrir</span>
+                <span><kbd>Esc</kbd> fermer</span>
+            </p>
+        </div>
+    </div>
+
+    <script>
+      (function () {
+        var root = document.documentElement;
+        function setNav(collapsed) {
+          root.classList.toggle('nav-collapsed', collapsed);
+          try { localStorage.setItem('nav', collapsed ? 'collapsed' : 'open'); } catch (e) {}
+        }
+        document.getElementById('navToggle').addEventListener('click', function () {
+          setNav(!root.classList.contains('nav-collapsed'));
+        });
+        document.getElementById('scrim').addEventListener('click', function () { setNav(true); });
+
+        var widthToggle = document.getElementById('widthToggle');
+        function syncWidth() {
+          if (widthToggle) {
+            widthToggle.setAttribute('aria-pressed', String(root.classList.contains('reading-wide')));
+          }
+        }
+        function toggleWidth() {
+          var wide = root.classList.toggle('reading-wide');
+          try { localStorage.setItem('reading', wide ? 'wide' : 'narrow'); } catch (e) {}
+          syncWidth();
+        }
+        // The button only exists on content pages; the palette command below
+        // is wired unconditionally, so guard the listener, not the function.
+        if (widthToggle) { syncWidth(); widthToggle.addEventListener('click', toggleWidth); }
+
+        function toggleTheme() {
+          var stored = localStorage.getItem('theme');
+          var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var showingDark = stored ? stored === 'dark' : systemDark;
+          var theme = showingDark ? 'light' : 'dark';
+          root.style.colorScheme = theme;
+          try { localStorage.setItem('theme', theme); } catch (e) {}
+        }
+        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+        // --- Command palette (Ctrl+K) ---------------------------------------
+        var palette = document.getElementById('palette');
+        var input = document.getElementById('paletteInput');
+        var list = document.getElementById('paletteList');
+
+        // Accent-insensitive matching, mirroring the server-side search: typing
+        // "systeme" has to find "système" here too.
+        function fold(s) {
+          return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        }
+
+        // The sidebar is the single source of truth for what pages exist.
+        var PAGES = [...document.querySelectorAll('.tree li a')].map(function (a) {
+          return { title: a.textContent.trim(), url: a.getAttribute('href') };
+        });
+        var ACTIONS = [
+          { title: 'Nouvelle page', url: '/nouvelle/' },
+          { title: 'Basculer le thème clair/sombre', run: toggleTheme },
+          { title: 'Basculer la largeur de lecture', run: toggleWidth },
+          { title: 'Afficher ou masquer le menu', run: function () {
+              setNav(!root.classList.contains('nav-collapsed')); } },
+          { title: 'Accueil', url: '/' }
+        ];
+
+        var items = [], cursor = 0, timer = null, token = 0;
+
+        function render() {
+          list.innerHTML = '';
+          if (!items.length) {
+            var li = document.createElement('li');
+            li.className = 'palette-empty';
+            li.textContent = 'Aucun résultat.';
+            list.append(li);
+            return;
+          }
+          items.forEach(function (it, i) {
+            var li = document.createElement('li');
+            li.setAttribute('role', 'option');
+            li.className = 'palette-item' + (i === cursor ? ' is-active' : '');
+            var label = document.createElement('span');
+            label.textContent = it.title;
+            li.append(label);
+            if (it.hint) {
+              var hint = document.createElement('span');
+              hint.className = 'palette-kind';
+              hint.textContent = it.hint;
+              li.append(hint);
+            }
+            li.addEventListener('mousemove', function () {
+              if (cursor !== i) { cursor = i; render(); }
+            });
+            li.addEventListener('click', function () { run(it); });
+            list.append(li);
+          });
+        }
+
+        function refresh() {
+          var q = fold(input.value.trim());
+          var found = [];
+          if (!q) {
+            found = PAGES.slice(0, 8).map(function (p) {
+              return { title: p.title, url: p.url, hint: 'page' }; });
+          } else {
+            PAGES.forEach(function (p) {
+              if (fold(p.title).includes(q)) found.push({ title: p.title, url: p.url, hint: 'page' });
+            });
+            ACTIONS.forEach(function (a) {
+              if (fold(a.title).includes(q)) found.push(Object.assign({ hint: 'action' }, a));
+            });
+          }
+          items = found;
+          cursor = 0;
+          render();
+
+          // Titles match instantly above; the full text needs the server. The
+          // token guards against a slow response overwriting a newer query.
+          clearTimeout(timer);
+          if (input.value.trim().length < 3) return;
+          var mine = ++token;
+          timer = setTimeout(function () {
+            var query = input.value.trim();
+            fetch('/search/?q=' + encodeURIComponent(query))
+              .then(function (r) { return r.json(); })
+              .then(function (data) {
+                if (mine !== token || palette.hidden) return;
+                var known = new Set(items.map(function (i) { return i.url; }));
+                data.results.forEach(function (r) {
+                  if (!known.has(r.url)) {
+                    items.push({ title: r.title, url: r.url, hint: 'texte' });
+                  }
+                });
+                render();
+              })
+              .catch(function () {});
+          }, 180);
+        }
+
+        function run(it) {
+          close();
+          if (it.url) window.location.href = it.url;
+          else if (it.run) it.run();
+        }
+        function open() {
+          palette.hidden = false;
+          input.value = '';
+          refresh();
+          input.focus();
+        }
+        function close() { palette.hidden = true; }
+
+        input.addEventListener('input', refresh);
+        palette.addEventListener('click', function (e) { if (e.target === palette) close(); });
+        input.addEventListener('keydown', function (e) {
+          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (!items.length) return;
+            cursor = (cursor + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+            render();
+            var active = list.querySelector('.is-active');
+            if (active) active.scrollIntoView({ block: 'nearest' });
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (items[cursor]) run(items[cursor]);
+          } else if (e.key === 'Escape') {
+            close();
+          }
+        });
+        document.addEventListener('keydown', function (e) {
+          if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+            e.preventDefault();
+            window.location.href = '/nouvelle/';
+          } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+            e.preventDefault();
+            palette.hidden ? open() : close();
+          } else if (e.key === 'Escape' && !palette.hidden) {
+            close();
+          }
+        });
+      })();
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

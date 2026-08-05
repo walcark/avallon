@@ -1,28 +1,53 @@
 [project]
-authors = [{name = "walcark", email = "kevin.walcarius@cnes.fr"}]
-dependencies = []
-name = "mysite"
+name = "avallon"
+version = "0.1.0.dev0"
+description = "A personal note site backed by a git repository of Markdown"
+readme = "README.md"
 requires-python = ">= 3.11"
-version = "0.1.0"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{name = "walcark", email = "kevin.walcarius@gmail.com"}]
+keywords = ["notes", "markdown", "wiki", "django", "git"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Web Environment",
+    "Framework :: Django",
+    "Intended Audience :: End Users/Desktop",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Text Processing :: Markup :: Markdown",
+]
+dependencies = [
+    "django>=6.0,<7",
+    "django-markdownify",
+    "python-frontmatter",
+    "pymdown-extensions>=11,<12",
+    "pygments>=2.20,<3",
+    "uvicorn[standard]",
+    "python-docx>=1.2,<2",
+    "pyyaml",
+]
+
+[project.urls]
+Homepage = "https://github.com/walcark/avallon"
+Source = "https://github.com/walcark/avallon"
+
+[project.scripts]
+avallon = "avallon.cli:main"
 
 [build-system]
 build-backend = "hatchling.build"
 requires = ["hatchling"]
 
 [tool.hatch.build.targets.wheel]
-# This layout has no single package named after the project: src/ is the
-# import root and holds several top-level packages (config, pages, ...).
-# Ship all of src/ and strip the prefix so they import by their bare name
-# (import config / import pages).
-only-include = ["src"]
-sources = ["src"]
+# One top-level name, `avallon`, so the wheel claims nothing it does not own.
+packages = ["src/avallon"]
 
 [tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["linux-64"]
 
 [tool.pixi.pypi-dependencies]
-mysite = { path = ".", editable = true }
+avallon = { path = ".", editable = true }
 django-markdownify = "*"
 python-frontmatter = "*"
 uvicorn = { version = "*", extras = ["standard"] }
@@ -34,29 +59,29 @@ migrate = "python manage.py migrate"
 runserver = "python manage.py runserver"
 # ASGI server: required for the live-reload SSE stream to actually stream
 # (the WSGI runserver buffers async responses instead of streaming them).
-serve = { cmd = "uvicorn config.asgi:application --reload --reload-include '*.html' --reload-include '*.css' --host 127.0.0.1 --port 8000", cwd = "src" }
+serve = "uvicorn avallon.settings.asgi:application --reload --reload-dir src --reload-include '*.html' --reload-include '*.css' --host 127.0.0.1 --port 8000"
 # Fill any missing date/updated in content frontmatter (from git dates / mtime).
-stamp = "python scripts/stamp_dates.py --backfill"
+stamp = "python -m avallon.notes.stamp --backfill"
 # Content location (notes + taxonomy.toml), stored in ~/.config/mysite/.
-content-where = "python scripts/content_repo.py where"        # print active dir
-content-init = "python scripts/content_repo.py init"          # create/adopt <path>
-content-set = "python scripts/content_repo.py set"            # activate <path>
+content-where = "python -m avallon.notes.repo where"        # print active dir
+content-init = "python -m avallon.notes.repo init"          # create/adopt <path>
+content-set = "python -m avallon.notes.repo set"            # activate <path>
 # Sync the content repo: pull (rebase), commit, push if an origin exists.
 # Consecutive edits fold into one commit for 15 min (MYSITE_SYNC_WINDOW).
-sync = "python scripts/sync.py"
+sync = "python -m avallon.notes.sync"
 # Scaffold a new page (interactive: domaine/type from taxonomy.toml, free tags).
-new = "python scripts/new_page.py"
+new = "python -m avallon.notes.scaffold"
 # Re-file a page under another domaine/type (its directory moves; slug kept).
-move = "python scripts/move_page.py"
+move = "python -m avallon.notes.move"
 # Export a note to Word (.docx) or PDF, styled by a reference document.
 export = "python manage.py export"
 # Rebuild the demo company reference document used by `export`.
 make-reference = "python scripts/make_reference_docx.py"
 # Extend the taxonomy vocabulary (edits taxonomy.toml and commits it).
-add-domain = "python scripts/taxonomy.py add-domain"
-add-type = "python scripts/taxonomy.py add-type"
+add-domain = "python -m avallon.notes.taxonomy add-domain"
+add-type = "python -m avallon.notes.taxonomy add-type"
 # Verify every existing page sits under a declared domaine/type.
-check-taxo = "python scripts/taxonomy.py check"
+check-taxo = "python -m avallon.notes.taxonomy check"
 
 [tool.pixi.dependencies]
 django = ">=6.0.6,<7"
@@ -82,7 +107,7 @@ fmt = "ruff format ."
 fmt-check = "ruff format --check ."
 lint = "ruff check src scripts tests"
 type-check = "mypy src scripts"
-test = "pytest -q --cov=pages --cov=scripts --cov-report=term-missing --cov-report=xml"
+test = "pytest -q --cov=avallon --cov-report=term-missing --cov-report=xml"
 all = { depends-on = ["fmt", "lint", "type-check", "test"] }
 
 [tool.pixi.environments]
@@ -98,7 +123,7 @@ exclude = [".pixi"]
 select = ["E", "F", "I", "UP", "B", "TID"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["pages", "config"]
+known-first-party = ["avallon"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -106,13 +131,11 @@ strict = false
 ignore_missing_imports = true
 namespace_packages = true
 explicit_package_bases = true
-# scripts/ is put on sys.path at runtime (see config.settings), so it is a
-# source root here too rather than a package to import through its folder.
-mypy_path = "src:scripts"
+mypy_path = "src"
 exclude = "^(\\.pixi|scripts/make_reference_docx\\.py)$"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-DJANGO_SETTINGS_MODULE = "config.settings"
-pythonpath = ["src", "scripts"]
+DJANGO_SETTINGS_MODULE = "avallon.settings.settings"
+pythonpath = ["src"]
 addopts = "--import-mode=importlib"
