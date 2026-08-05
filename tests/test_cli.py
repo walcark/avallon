@@ -50,3 +50,18 @@ def test_a_subcommand_forwards_its_arguments(
 def test_init_without_a_target_refuses(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(SystemExit):
         cli.main(["init"])
+
+
+def test_an_unconfigured_install_says_what_to_run(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """No notes repository is an error, never a directory inside the install."""
+    from avallon.notes import config
+
+    monkeypatch.delenv(config.ENV_VAR, raising=False)
+    monkeypatch.delenv(config.LEGACY_ENV_VAR, raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.setattr(config.Path, "home", staticmethod(lambda: tmp_path))
+
+    with pytest.raises(config.NotConfigured, match="avallon init"):
+        config.resolve_content_dir()

@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
-"""Where the content lives: a user-configurable, non-versioned pointer.
+"""Where the notes live: a machine-local, non-versioned pointer.
 
-Mirrors pytodo. A *local* config file (``~/.config/mysite/config.toml``,
-honoring ``$XDG_CONFIG_HOME``) stores ``content_dir``: the path of the external
-content repo that holds the Markdown tree **and** ``taxonomy.toml``. It is read
-by both Django (to serve the site) and the scripts (to scaffold/stamp pages).
+This is the *only* per-machine state. A local config file
+(``~/.config/avallon/config.toml``, honoring ``$XDG_CONFIG_HOME``) stores
+``content_dir``: the path of the notes repository holding the Markdown tree
+**and** ``taxonomy.toml``. Everything else that configures the site for a given
+set of notes lives inside that repository, and is therefore versioned and
+shared across devices.
 
 Resolution order (first hit wins):
 
-    1. ``$MYSITE_CONTENT_DIR``        env override, handy for tests / CI
-    2. ``content_dir`` in the config  the configured external repo
-    3. the in-repo ``content/``       dev fallback, so a fresh clone still runs
+    1. ``$AVALLON_CONTENT_DIR``       env override, handy for tests and CI
+    2. ``content_dir`` in the config  the configured notes repository
+
+There is no third rule. Falling back to a directory inside the installation
+would have a user write notes into their own site-packages and lose them at
+the next upgrade, so an unconfigured install is an error, not a default.
 
 Stdlib only: the git pre-commit hook imports nothing from the project env.
 """
@@ -21,31 +26,42 @@ import os
 import tomllib
 from pathlib import Path
 
-APP_NAME = "mysite"
-ENV_VAR = "MYSITE_CONTENT_DIR"
+APP_NAME = "avallon"
+ENV_VAR = "AVALLON_CONTENT_DIR"
 
-# scripts/ -> repo root -> repo/content (the dev fallback location).
-_REPO_ROOT = Path(__file__).resolve().parent.parent
-_DEV_FALLBACK = _REPO_ROOT / "content"
+# Read (never written) so an install predating the rename keeps working.
+LEGACY_APP_NAME = "mysite"
+LEGACY_ENV_VAR = "MYSITE_CONTENT_DIR"
 
 TAXONOMY_NAME = "taxonomy.toml"
 
 
-def local_config_path() -> Path:
+class NotConfigured(RuntimeError):
+    """No notes repository is configured yet."""
+
+
+def local_config_path(app_name: str = APP_NAME) -> Path:
     """Path of the local (non-versioned) config file."""
     base = os.environ.get("XDG_CONFIG_HOME")
     root = Path(base).expanduser() if base else Path.home() / ".config"
-    return root / APP_NAME / "config.toml"
+    return root / app_name / "config.toml"
+
+
+def _read(path: Path) -> Path | None:
+    """The ``content_dir`` recorded in *path*, or None."""
+    if not path.exists():
+        return None
+    try:
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
+        return None
+    raw = data.get("content_dir")
+    return Path(str(raw)).expanduser() if raw else None
 
 
 def read_content_dir() -> Path | None:
     """The configured ``content_dir``, or ``None`` if unset."""
-    path = local_config_path()
-    if not path.exists():
-        return None
-    data = tomllib.loads(path.read_text(encoding="utf-8"))
-    raw = data.get("content_dir")
-    return Path(raw).expanduser() if raw else None
+    return _read(local_config_path()) or _read(local_config_path(LEGACY_APP_NAME))
 
 
 def write_content_dir(content_dir: Path) -> Path:
@@ -56,28 +72,42 @@ def write_content_dir(content_dir: Path) -> Path:
     return path
 
 
+def content_dir_env() -> str | None:
+    """The env override, if any, new name first."""
+    return os.environ.get(ENV_VAR) or os.environ.get(LEGACY_ENV_VAR)
+
+
 def resolve_content_dir() -> Path:
-    """The active content directory, following the resolution order above."""
-    env = os.environ.get(ENV_VAR)
+    """The active notes directory, following the resolution order above.
+
+    Raises
+    ------
+    NotConfigured
+        Nothing points at a notes repository yet.
+    """
+    env = content_dir_env()
     if env:
         return Path(env).expanduser().resolve()
     configured = read_content_dir()
     if configured:
         return configured.resolve()
-    return _DEV_FALLBACK.resolve()
+    raise NotConfigured(
+        "Aucun dépôt de notes configuré.\n"
+        "  avallon init <chemin|url>   pour en créer ou en adopter un"
+    )
 
 
 def content_source() -> str:
-    """Which rule produced the active dir ('env' / 'config' / 'fallback')."""
-    if os.environ.get(ENV_VAR):
+    """Which rule produced the active dir ('env' / 'config' / 'aucun')."""
+    if content_dir_env():
         return "env"
     if read_content_dir():
         return "config"
-    return "fallback"
+    return "aucun"
 
 
 def taxonomy_path(content_dir: Path | None = None) -> Path:
-    """Path of ``taxonomy.toml`` inside the (active) content dir."""
+    """Path of ``taxonomy.toml`` inside the (active) notes dir."""
     return (content_dir or resolve_content_dir()) / TAXONOMY_NAME
 
 

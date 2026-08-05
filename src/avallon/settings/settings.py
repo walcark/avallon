@@ -33,9 +33,9 @@ from avallon.web.mdx import fences as _fences  # noqa: E402
 # from the listings, the navigation, the search *and* their own URL (404), so
 # publishing the site cannot leak them by a direct link.
 #
-# Default: shown locally, hidden anywhere else. Set MYSITE_SHOW_PRIVATE=1/0 to
+# Default: shown locally, hidden anywhere else. Set AVALLON_SHOW_PRIVATE=1/0 to
 # force it either way (deployments should leave it unset, or set it to 0).
-_show_private = os.environ.get("MYSITE_SHOW_PRIVATE")
+_show_private = os.environ.get("AVALLON_SHOW_PRIVATE")
 
 
 # Quick-start development settings - unsuitable for production

@@ -45,7 +45,7 @@ BATCH_TRAILER = "mysite-batch"
 # How long consecutive edits keep folding into the same commit. Saving a page
 # twelve times in ten minutes should read as one change, not twelve.
 DEFAULT_WINDOW = 900  # 15 minutes
-WINDOW_ENV = "MYSITE_SYNC_WINDOW"
+WINDOW_ENV = "AVALLON_SYNC_WINDOW"
 
 
 def sync_window() -> int:

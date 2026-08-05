@@ -1,50 +1,48 @@
 #!/usr/bin/env python3
-"""Manage where the site's content lives (notes + taxonomy.toml).
+"""Manage where the notes live (the Markdown tree + taxonomy.toml).
 
-Like pytodo's ``init`` / ``repo``: point the site at an external content repo,
-create or adopt it, and make it active. The active path is stored in the local
-config (see content_config.py); nothing here is versioned in the app repo.
+Point the site at a notes repository, create or adopt it, and make it active.
+The active path is stored in the machine-local config (see config.py); nothing
+here is versioned in the application repository.
 
-    content_repo.py where              # print the active content dir + source
-    content_repo.py init <path>        # create/adopt <path>, migrate, activate
-    content_repo.py set  <path>        # activate an existing content dir
+    avallon repo               # print the active notes dir and its source
+    avallon init <path>        # create or adopt <path>, then activate it
+    avallon repo <path>        # activate an existing notes dir
 
-`init` will, if the in-repo ``content/`` still holds pages, offer to move them
-(and taxonomy.toml) into <path> so the switch is seamless. Stdlib only.
+Stdlib only.
 """
 
 from __future__ import annotations
 
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 from avallon.notes import config as cc
 
-STAMP_SCRIPT = cc._REPO_ROOT / "scripts" / "stamp_dates.py"
+# The hook runs outside any environment we control, so it names the very
+# interpreter that installed it. Reinstalling (`avallon init`) is what moves it
+# to another one.
+STAMP_CMD = f'"{sys.executable}" -m avallon.notes.stamp'
 
 _HOOK = """#!/usr/bin/env sh
-# Auto-stamp `updated:` (fill `date:` if missing) on staged content pages, then
-# re-stage them. Installed by mysite (`pixi run content-init`).
+# Auto-stamp `updated:` (fill `date:` if missing) on staged pages, then re-stage
+# them. Installed by avallon (`avallon init`).
 staged=$(git diff --cached --name-only --diff-filter=ACM \\
   | grep -E 'index\\.md$' || true)
 [ -z "$staged" ] && exit 0
-if ! command -v python3 >/dev/null 2>&1; then
-    echo "pre-commit: python3 introuvable, dates non tamponnees" >&2
+# Never block a commit: an unstamped date is a detail, a commit one cannot make
+# is not. A missing interpreter or package only costs a warning.
+{stamp} --today $staged 2>/dev/null || {{
+    echo "pre-commit: avallon introuvable, dates non tamponnees" >&2
     exit 0
-fi
-python3 "{stamp}" --today $staged || exit 1
+}}
 echo "$staged" | xargs git add
 """
 
 
 def _run(args: list[str], cwd: Path) -> subprocess.CompletedProcess:
     return subprocess.run(args, cwd=str(cwd), check=True)
-
-
-def _has_pages(root: Path) -> bool:
-    return root.exists() and any(root.glob("*/*/*/index.md"))
 
 
 def _ensure_git(target: Path) -> bool:
@@ -59,7 +57,7 @@ def _ensure_git(target: Path) -> bool:
 def _install_hook(target: Path) -> None:
     hook = target / ".git" / "hooks" / "pre-commit"
     hook.parent.mkdir(parents=True, exist_ok=True)
-    hook.write_text(_HOOK.format(stamp=STAMP_SCRIPT), encoding="utf-8")
+    hook.write_text(_HOOK.format(stamp=STAMP_CMD), encoding="utf-8")
     hook.chmod(0o755)
 
 
@@ -69,31 +67,12 @@ def _ensure_taxonomy(target: Path) -> None:
         return
     taxo.write_text(
         "# Vocabulaire autorisé pour les pages du site.\n"
-        "# Édité par `pixi run add-domain <nom>` / `pixi run add-type <nom>`.\n"
+        "# Édité par `avallon add-domain <nom>` / `avallon add-type <nom>`.\n"
         "# Chaque page vit dans <domaine>/<type>/<slug>/.\n\n"
         "domains = []\n"
         "types = []\n",
         encoding="utf-8",
     )
-
-
-def _migrate(src: Path, target: Path) -> list[str]:
-    """Move the page tree + taxonomy.toml from *src* into *target*. Only runs
-    when *target* has no pages yet, to avoid clobbering an adopted repo."""
-    moved: list[str] = []
-    if src.resolve() == target.resolve() or not src.exists():
-        return moved
-    if _has_pages(target):
-        return moved  # adopting a populated repo: don't touch it
-    for child in sorted(src.iterdir()):
-        if child.name.startswith("."):
-            continue
-        dest = target / child.name
-        if dest.exists():
-            continue
-        shutil.move(str(child), str(dest))
-        moved.append(child.name)
-    return moved
 
 
 def _confirm(prompt: str) -> bool:
@@ -104,11 +83,15 @@ def _confirm(prompt: str) -> bool:
 
 
 def cmd_where() -> int:
-    active = cc.resolve_content_dir()
+    try:
+        active = cc.resolve_content_dir()
+    except cc.NotConfigured as exc:
+        print(exc)
+        return 1
     print(f"content_dir : {active}")
     print(
         f"source      : {cc.content_source()}  "
-        f"(env {cc.ENV_VAR} > {cc.local_config_path()} > repli in-repo)"
+        f"(env {cc.ENV_VAR} > {cc.local_config_path()})"
     )
     taxo = cc.taxonomy_path(active)
     print(f"taxonomy    : {taxo}  {'✓' if taxo.exists() else '(absent)'}")
@@ -123,12 +106,6 @@ def cmd_init(path: str) -> int:
     target.mkdir(parents=True, exist_ok=True)
 
     created_repo = _ensure_git(target)
-
-    fallback = cc._DEV_FALLBACK
-    moved: list[str] = []
-    if _has_pages(fallback) and fallback.resolve() != target and not _has_pages(target):
-        if _confirm(f"Déplacer le contenu de {fallback} vers {target} ?"):
-            moved = _migrate(fallback, target)
 
     _ensure_taxonomy(target)
     _install_hook(target)
@@ -145,11 +122,9 @@ def cmd_init(path: str) -> int:
     print(f"✓ content_dir actif : {target}")
     if created_repo:
         print("  - dépôt git initialisé")
-    if moved:
-        print(f"  - déplacés : {', '.join(moved)}")
     print("  - hook pre-commit (tampon des dates) installé")
     print(f"  - config écrite : {cc.local_config_path()}")
-    print("  ↻ redémarre le serveur (pixi run serve) pour qu'il serve ce dossier.")
+    print("  ↻ redémarre le serveur pour qu'il serve ce dossier.")
     return 0
 
 
@@ -157,7 +132,7 @@ def cmd_set(path: str) -> int:
     target = Path(path).expanduser().resolve()
     if not target.exists():
         sys.exit(
-            f"Dossier introuvable : {target}  (utilise `content-init` pour le créer)"
+            f"Dossier introuvable : {target}  (utilise `avallon init` pour le créer)"
         )
     cc.write_content_dir(target)
     if cc.is_git_root(target):
@@ -165,7 +140,7 @@ def cmd_set(path: str) -> int:
     _ensure_taxonomy(target)
     print(f"✓ content_dir actif : {target}")
     print(f"  - config écrite : {cc.local_config_path()}")
-    print("  ↻ redémarre le serveur (pixi run serve) pour qu'il serve ce dossier.")
+    print("  ↻ redémarre le serveur pour qu'il serve ce dossier.")
     return 0
 
 
@@ -177,7 +152,7 @@ def main(argv: list[str]) -> int:
         return cmd_where()
     if cmd in ("init", "set"):
         if not rest:
-            sys.exit(f"usage : content_repo.py {cmd} <path>")
+            sys.exit(f"usage : avallon {cmd} <path>")
         return cmd_init(rest[0]) if cmd == "init" else cmd_set(rest[0])
     sys.exit(f"commande inconnue : {cmd}  (where | init <path> | set <path>)")
 
