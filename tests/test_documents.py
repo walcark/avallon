@@ -96,3 +96,52 @@ def test_the_document_date_is_kept_apart_from_the_filing_date(
     text = (target / "index.md").read_text(encoding="utf-8")
     assert "doc_date: 2019-03-14" in text
     assert "date: 2019-03-14" not in text.replace("doc_date: 2019-03-14", "")
+
+
+def test_a_query_can_render_as_a_gallery(notes: Path) -> None:
+    """A collection of scans is recognized by its thumbnails, not by titles."""
+    from avallon.web.mdx import fences
+
+    write_page(
+        notes, "administratif/fiche/a", title="Carte", file="a.png", tags="[identité]"
+    )
+    write_page(
+        notes,
+        "administratif/fiche/b",
+        title="Passeport",
+        file="b.pdf",
+        tags="[identité]",
+    )
+
+    html = fences.query_fence("tag: identité\nas: gallery", None, "", {}, None)
+
+    assert 'class="tiles"' in html
+    assert "/administratif/fiche/a/a.png" in html  # the image itself
+    assert "/thumb/administratif/fiche/b/" in html  # the PDF's first page
+
+
+def test_a_query_can_render_as_a_list(notes: Path) -> None:
+    from avallon.web.mdx import fences
+
+    write_page(
+        notes,
+        "administratif/fiche/a",
+        title="Carte",
+        tags="[identité]",
+        summary="Recto verso.",
+    )
+
+    html = fences.query_fence("tag: identité\nas: list", None, "", {}, None)
+
+    assert 'class="query-list"' in html
+    assert "Recto verso." in html
+
+
+def test_a_query_still_defaults_to_a_table(notes: Path) -> None:
+    from avallon.web.mdx import fences
+
+    write_page(notes, "administratif/fiche/a", title="Carte", tags="[identité]")
+
+    html = fences.query_fence("tag: identité", None, "", {}, None)
+
+    assert "query-table" in html or "<table" in html

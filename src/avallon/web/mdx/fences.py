@@ -231,6 +231,7 @@ def query_fence(source: str, language, css_class, options, md, **kwargs) -> str:
         order: desc                 # asc | desc (default desc)
         limit: 10                   # cap the number of rows
         fields: [title, type, updated, tags]   # columns (title is a link)
+        as: gallery                 # table (default) | list | gallery
 
     Notes are read through ``content.all_pages()``, so private pages stay
     hidden and the table always reflects what is on disk.
@@ -279,6 +280,15 @@ def query_fence(source: str, language, css_class, options, md, **kwargs) -> str:
 
     if not pages:
         return '<p class="query-empty">No page matches this query.</p>'
+
+    # The same three shapes the explorer offers, for the same reason: a
+    # collection of scans recognized by its thumbnails should not render as a
+    # column of titles. A stored query is a selection someone chose to name.
+    shape = str(config.get("as", "table")).lower()
+    if shape == "gallery":
+        return _query_gallery(pages)
+    if shape == "list":
+        return _query_list(pages)
 
     _labels = {
         "title": "Title",
@@ -344,6 +354,38 @@ def _series(config: dict[str, Any]) -> list[dict[str, Any]]:
     if config.get("y") is not None:
         return [{"y": config["y"]}]
     return []
+
+
+def _query_gallery(pages: list[Any]) -> str:
+    """Render matching pages as tiles, the thumbnail being the point."""
+    cells = []
+    for page in pages:
+        src = page.file_url if page.kind == "image" else f"/thumb/{page.relpath}/"
+        cells.append(
+            '<li class="tile">'
+            f'<a href="{_attr(page.url)}">'
+            f'<img class="tile-media" src="{_attr(src)}" '
+            f'alt="{_attr(page.title)}" loading="lazy">'
+            f'<span class="tile-title">{html.escape(page.title)}</span>'
+            "</a></li>"
+        )
+    return '<ul class="tiles">' + "".join(cells) + "</ul>"
+
+
+def _query_list(pages: list[Any]) -> str:
+    """Render matching pages as a plain list of links, with their summary."""
+    items = []
+    for page in pages:
+        summary = (
+            f' <span class="query-summary">{html.escape(page.summary)}</span>'
+            if page.summary
+            else ""
+        )
+        items.append(
+            f'<li><a href="{_attr(page.url)}">{html.escape(page.title)}</a>'
+            f"{summary}</li>"
+        )
+    return '<ul class="query-list">' + "".join(items) + "</ul>"
 
 
 def plot_fence(source: str, language, css_class, options, md, **kwargs) -> str:

@@ -1435,3 +1435,8 @@ html:has(.page.is-editing) { overflow: hidden; }
     color: var(--muted);
 }
 .attachment-name { font-family: "Roboto Mono", monospace; }
+
+/* A named collection renders like a selection does: same tiles, same list. */
+.query-list { list-style: none; margin: 1.4rem 0; padding: 0; }
+.query-list li { margin: 0.45rem 0; }
+.query-summary { color: var(--muted); font-size: 0.9rem; }
