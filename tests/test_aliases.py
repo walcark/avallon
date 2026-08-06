@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from avallon.web import content
@@ -96,8 +97,7 @@ def test_changing_a_title_records_the_old_one(notes: Path) -> None:
 
     response = Client().post(
         "/save/",
-        data='{"path": "informatique/fiche/p", "text": %s}'
-        % __import__("json").dumps(body),
+        data=json.dumps({"path": "informatique/fiche/p", "text": body}),
         content_type="application/json",
     )
 
@@ -115,8 +115,7 @@ def test_saving_without_a_title_change_adds_nothing(notes: Path) -> None:
 
     Client().post(
         "/save/",
-        data='{"path": "informatique/fiche/p", "text": %s}'
-        % __import__("json").dumps(body),
+        data=json.dumps({"path": "informatique/fiche/p", "text": body}),
         content_type="application/json",
     )
 
