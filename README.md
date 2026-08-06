@@ -134,6 +134,34 @@ visibility: private         # local only, never served elsewhere (optional)
 ---
 ```
 
+### Documents
+
+A file worth looking for on its own becomes a page, with `avallon add-file`:
+
+```
+administratif/doc/carte-identite/
+├── index.md          # title, tags, doc_date, and `file:`
+└── carte.png
+```
+
+The page shows the file above the notes about it. What it shows is decided by
+the extension, never by the type: a `cr` carrying a scan displays it exactly as
+a `doc` would.
+
+| `kind` | From | Shown as |
+| --- | --- | --- |
+| `note` | no `file:` | the body alone, as always |
+| `image` | png, jpg, webp, svg | the image |
+| `pdf` | pdf | an inline viewer, thumbnail in grids |
+| `text` | txt, md, csv, code | download |
+| `office`, `archive` | docx, zip… | download |
+
+`kind` is derived, never typed: the type says what a page *is* and nobody can
+check it, while the medium is already written in the file name.
+
+The test for promoting a file: **would I look for it on its own?** If not, leave
+it as an illustration next to the page that uses it.
+
 ### Dossiers
 
 A dossier is not a new kind of object: **it is an ordinary page**, the one that
@@ -175,6 +203,7 @@ Every page shows what cites it, so a note is never a dead end.
 | `avallon init <path\|url>` | Initialize or adopt a notes repository, make it active. |
 | `avallon repo [path]` | Print or switch the active repository. |
 | `avallon new` | Scaffold a page (domain and type picked from the taxonomy). |
+| `avallon add-file <path>` | Promote a file to a page of its own. |
 | `avallon move <page>` | Re-file a page under another domain/type. |
 | `avallon sync` | Pull, commit, push. `--local` commits without the network. |
 | `avallon export <page>` | Export a page to `.docx` or `.pdf` (needs pandoc). |
@@ -236,6 +265,34 @@ on a timer so pages written on another device show up without a restart.
 | `AVALLON_ALLOWED_HOSTS` | loopback | Comma separated names the site answers to. |
 | `AVALLON_SECRET_KEY` | *(generated per process)* | Django secret key. `avallon setup` writes a fixed one. |
 | `AVALLON_DEBUG` | `0` | Debug mode. Never on when exposed. |
+
+## Finding things again
+
+The home page is one **selection**, not a listing with a search box beside it.
+Facets and text narrow the same set, and the URL says what is on screen:
+
+```
+/?domain=administratif&kind=image        every administrative image, as a grid
+/?domain=administratif&kind=image&q=id   the same grid, narrowed by typing
+/?dossier=recours-batterie               one dossier
+```
+
+Every facet shows how many pages each value would leave, and a facet that
+cannot divide the current selection is not shown at all. A selection whose
+pages all carry a thumbnail renders as a grid; `&view=cards` or `&view=grid`
+overrides the guess.
+
+A stored query renders the same three ways:
+
+````markdown
+```query
+tag: identité
+as: gallery      # table (default) | list | gallery
+```
+````
+
+So an "identity documents" page is one query, and it stays correct when a
+passport is added tomorrow.
 
 ## On a phone
 

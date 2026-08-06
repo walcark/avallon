@@ -339,20 +339,21 @@ the current selection does not show up.**
 
 ## 9. Order of work
 
-1. ~~**Search performance**~~ **done**: ripgrep now runs, folding is 30x
-   cheaper, 1 144 ms → 97 ms at 500 pages.
-2. **Server-side selection**: facets and text resolved together, one URL, only
-   the selection rendered. This is the keystone. It closes the scoped-search
-   gap, it fixes the home page's growth, and nothing below is worth building
-   on the current split between a list and a floating panel.
-3. **`file:` and the viewers** (`documents.md` step 3), which gives a document
-   its own identity, plus the derived `kind` that comes free with it.
-4. **Grid view and thumbnails**, the payoff of 2 and 3 together: filter on
-   images, see images.
-5. **`as: gallery|list` on queries**, so a named collection renders like a
-   selection does.
-6. **Per-type templates**, `recueil` and `galerie` first.
+1. ~~**Search performance**~~ **done**: ripgrep runs, folding is 30x cheaper,
+   1 144 ms → 97 ms at 500 pages.
+2. ~~**Server-side selection**~~ **done**: facets and text resolved together,
+   one URL, only the selection rendered, counts on every facet value, and a
+   facet that cannot divide the selection is not shown.
+3. ~~**`file:`, the derived `kind` and the viewers**~~ **done**, with
+   `avallon add-file` to promote a file, and PDF thumbnails cached on mtime.
+4. ~~**Grid view**~~ **done**: guessed when every result has a thumbnail,
+   overridable with `view=`.
+5. ~~**`as: gallery|list` on queries**~~ **done**.
+6. **Per-type templates**, `recueil` and `galerie`. Left out on purpose: the
+   grid and the query shapes already cover what those templates were for, so
+   this now needs a real use case before it earns its complexity.
 
-Step 2 is the one to do first and alone: it is the only one that changes the
-shape of the application, and every other step is easier once a selection is a
-first-class thing rather than a filter applied in a browser.
+What is left open, and deliberately: text extraction from PDFs (`pdftotext` at
+import, then OCR only for pure scans), which is what would make a document's
+*content* searchable rather than just its metadata. It is the next thing worth
+measuring.
