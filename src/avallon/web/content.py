@@ -622,7 +622,7 @@ def _page_from(index_md: Path, post: frontmatter.Post | None = None) -> Page:
         project=str(post.get("project", "") or "").strip(),
         status=str(post.get("status", "") or "").strip().lower(),
         file=str(post.get("file", "") or "").strip(),
-        aliases=[str(a).strip() for a in (post.get("aliases") or []) if str(a).strip()],
+        aliases=[a for a in _tag_list(post.get("aliases")) if a.strip()],
     )
 
 

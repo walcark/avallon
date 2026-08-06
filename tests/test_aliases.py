@@ -15,7 +15,7 @@ def test_a_page_answers_to_its_alias(notes: Path) -> None:
         notes,
         "informatique/fiche/nouveau-titre",
         title="Nouveau titre",
-        aliases="[ancien-slug, \"Ancien titre\"]",
+        aliases='[ancien-slug, "Ancien titre"]',
     )
     page = content.load_page(index)
 
@@ -26,7 +26,7 @@ def test_a_page_answers_to_its_alias(notes: Path) -> None:
 def test_an_alias_matches_however_it_is_written(notes: Path) -> None:
     """Same rule as titles: the link reads like prose, not like a folder name."""
     index = write_page(
-        notes, "informatique/fiche/p", title="P", aliases="[\"Ancien Titre\"]"
+        notes, "informatique/fiche/p", title="P", aliases='["Ancien Titre"]'
     )
     page = content.load_page(index)
 
@@ -36,8 +36,10 @@ def test_an_alias_matches_however_it_is_written(notes: Path) -> None:
 
 def test_a_link_to_an_old_title_still_renders(notes: Path) -> None:
     write_page(
-        notes, "informatique/fiche/cible", title="Titre actuel",
-        aliases="[\"Titre d'avant\"]",
+        notes,
+        "informatique/fiche/cible",
+        title="Titre actuel",
+        aliases='["Titre d\'avant"]',
     )
     source = write_page(notes, "informatique/cr/source", title="Source")
     source.write_text(
@@ -66,12 +68,12 @@ def test_a_backlink_follows_an_alias(notes: Path) -> None:
 
 def test_a_dossier_keeps_its_members_after_a_rename(notes: Path) -> None:
     write_page(
-        notes, "administratif/recueil/dossier", title="Dossier",
+        notes,
+        "administratif/recueil/dossier",
+        title="Dossier",
         aliases="[ancien-dossier]",
     )
-    write_page(
-        notes, "administratif/cr/piece", title="Pièce", project="ancien-dossier"
-    )
+    write_page(notes, "administratif/cr/piece", title="Pièce", project="ancien-dossier")
 
     index = content.load_page(notes / "administratif/recueil/dossier/index.md")
     assert [p.slug for p in content.project_members(index)] == ["piece"]
