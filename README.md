@@ -277,6 +277,11 @@ Facets and text narrow the same set, and the URL says what is on screen:
 /?dossier=recours-batterie               one dossier
 ```
 
+Search takes words or phrases: `batterie mesure` narrows on both words wherever
+they appear, `"batterie non conforme"` requires the run as written. Without
+quotes, pages that do contain the run are ranked first anyway. Accents,
+apostrophes and dashes are folded, so `l'etiquette` finds `l’étiquette`.
+
 Every facet shows how many pages each value would leave, and a facet that
 cannot divide the current selection is not shown at all. A selection whose
 pages all carry a thumbnail renders as a grid; `&view=cards` or `&view=grid`

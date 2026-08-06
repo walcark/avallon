@@ -144,3 +144,61 @@ def test_the_snippet_marks_the_term_in_its_original_spelling(notes: Path) -> Non
     (hit,) = content.search("systeme")
 
     assert "<mark>système</mark>" in hit.snippet
+
+
+def test_quotes_make_a_phrase_one_term(notes: Path) -> None:
+    from avallon.web.content import parse_query
+
+    assert parse_query('jardin "je m\'appelle kevin"') == [
+        "je m'appelle kevin",
+        "jardin",
+    ]
+    assert parse_query("batterie mesure") == ["batterie", "mesure"]
+
+
+def test_a_quoted_phrase_must_appear_as_written(notes: Path) -> None:
+    exact = write_page(notes, "informatique/fiche/a", title="A")
+    exact.write_text(
+        exact.read_text(encoding="utf-8") + "\nIci je m'appelle kevin, voilà.\n",
+        encoding="utf-8",
+    )
+    scattered = write_page(notes, "informatique/fiche/b", title="B")
+    scattered.write_text(
+        scattered.read_text(encoding="utf-8") + "\nkevin ne s'appelle pas je.\n",
+        encoding="utf-8",
+    )
+
+    hits = content.search('"je m\'appelle kevin"')
+
+    assert [h.page.slug for h in hits] == ["a"]
+
+
+def test_without_quotes_the_exact_run_ranks_first(notes: Path) -> None:
+    """Adding a word usually means narrowing, so the run ranks, never filters."""
+    scattered = write_page(notes, "informatique/fiche/b", title="B", date="2026-08-05")
+    scattered.write_text(
+        scattered.read_text(encoding="utf-8")
+        + "\nkevin, m'appelle-t-on. Je le crois.\n",
+        encoding="utf-8",
+    )
+    exact = write_page(notes, "informatique/fiche/a", title="A", date="2026-01-01")
+    exact.write_text(
+        exact.read_text(encoding="utf-8") + "\nIci je m'appelle kevin, voilà.\n",
+        encoding="utf-8",
+    )
+
+    hits = content.search("je m'appelle kevin")
+
+    assert len(hits) == 2  # both still found
+    assert hits[0].page.slug == "a"  # but the sentence comes first, despite dates
+
+
+def test_a_curly_apostrophe_matches_a_straight_one(notes: Path) -> None:
+    """Text pasted from a website carries typography a keyboard cannot type."""
+    index = write_page(notes, "informatique/fiche/a", title="A")
+    index.write_text(
+        index.read_text(encoding="utf-8") + "\nl’étiquette de retour\n",
+        encoding="utf-8",
+    )
+
+    assert [h.page.slug for h in content.search('"l\'etiquette"')] == ["a"]

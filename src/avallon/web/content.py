@@ -157,10 +157,20 @@ def _recency_key(page: Page) -> str:
     return _as_date_str(page.updated) or _as_date_str(page.date)
 
 
-def _sort_hits(hits: list[SearchHit]) -> None:
-    """Order search hits like the home page: most recent first, then by title."""
+def _sort_hits(hits: list[SearchHit], query: str = "") -> None:
+    """Order hits: exact runs of the query first, then most recent, then title.
+
+    Someone typing several words often remembers a sentence. Requiring the run
+    would be wrong (adding a word usually means narrowing, not quoting), and
+    ignoring it entirely buries the page they were thinking of, so it ranks
+    instead of filtering. Quotes remain the way to *require* it.
+    """
     hits.sort(key=lambda h: h.page.title)
     hits.sort(key=lambda h: _recency_key(h.page), reverse=True)
+
+    run = _fold_text(" ".join(query.replace('"', " ").split()))
+    if " " in run:
+        hits.sort(key=lambda h: run not in _fold_text(h.blob))
 
 
 @dataclass(frozen=True)
@@ -169,6 +179,7 @@ class SearchHit:
 
     page: Page
     snippet: str  # safe HTML, matched terms wrapped in <mark>
+    blob: str = ""  # the readable text it matched, kept for ranking
 
 
 # --------------------------------------------------------------------------- #
@@ -1045,7 +1056,25 @@ def _build_fold_table() -> dict[int, str]:
     a string. That is what lets the highlighter use the same indices on the
     folded and the original text, instead of carrying a map between them.
     """
-    table: dict[int, str] = {}
+    # Typography a keyboard cannot easily type, mapped to what it does type.
+    # A note pasted from a website carries curly quotes; a search box does not.
+    table: dict[int, str] = {
+        0x2018: "'",
+        0x2019: "'",
+        0x201A: "'",
+        0x201B: "'",  # curly single
+        0x201C: '"',
+        0x201D: '"',
+        0x201E: '"',  # curly double
+        0x00AB: '"',
+        0x00BB: '"',  # guillemets
+        0x2013: "-",
+        0x2014: "-",
+        0x2212: "-",  # dashes
+        0x00A0: " ",
+        0x202F: " ",
+        0x2009: " ",  # hard spaces
+    }
     for code in range(ord("A"), 0x2100):
         char = chr(code)
         stripped = "".join(
@@ -1054,7 +1083,7 @@ def _build_fold_table() -> dict[int, str]:
             if not unicodedata.combining(c)
         )
         base = stripped.lower()
-        if len(base) == 1 and base != char:
+        if len(base) == 1 and base != char and code not in table:
             table[code] = base
     return table
 
@@ -1157,22 +1186,32 @@ def _hit_for(index_md: Path, terms: list[str]) -> SearchHit | None:
     folded = _fold_text(blob)
     if not all(_fold_text(t) in folded for t in terms):
         return None
-    return SearchHit(page=page, snippet=_highlight(blob, terms, folded=folded))
+    return SearchHit(
+        page=page, snippet=_highlight(blob, terms, folded=folded), blob=blob
+    )
 
 
-def _search_python(terms: list[str]) -> list[SearchHit]:
+def _search_python(terms: list[str], query: str = "") -> list[SearchHit]:
     """Dependency-free fallback used when ripgrep is unavailable."""
     hits = []
     for index_md in sorted(CONTENT_DIR.glob(_PAGE_GLOB)):
         hit = _hit_for(index_md, terms)
         if hit is not None:
             hits.append(hit)
-    _sort_hits(hits)
+    _sort_hits(hits, query)
     return hits
 
 
-# Accented spellings each unaccented letter must also match, so the ripgrep
-# shortlist stays accent-insensitive like the Python check that follows it.
+# Spellings each typed character must also match, so the ripgrep shortlist stays
+# as forgiving as the Python check that follows it. rg reads the file as it is
+# written, while the check runs on folded text, so anything the fold flattens
+# has to be widened back here or the shortlist drops files the check would keep.
+_EQUIVALENTS = {
+    "'": "'\u2018\u2019\u201a\u201b",
+    '"': '"\u201c\u201d\u201e\u00ab\u00bb',
+    "-": "-\u2013\u2014\u2212",
+}
+
 _ACCENTS = {
     "a": "àáâãäå",
     "c": "ç",
@@ -1190,20 +1229,55 @@ def _rg_pattern(term: str) -> str:
     accented forms, e.g. "systeme" -> "s[yýÿ]st[eèéêë]m[eèéêë]"."""
     out = []
     for char in term:
-        variants = _ACCENTS.get(char)
-        out.append(f"[{char}{variants}]" if variants else re.escape(char))
+        variants = _ACCENTS.get(char) or _EQUIVALENTS.get(char)
+        if variants:
+            # The typed character itself belongs in the class: _ACCENTS lists
+            # only the accented spellings.
+            out.append(f"[{re.escape(char + variants)}]")
+        elif char == " ":
+            # A phrase can be broken by a line wrap in the file even though the
+            # flattened text reads as one line.
+            out.append(r"\s+")
+        else:
+            out.append(re.escape(char))
     return "".join(out)
 
 
+_QUOTED = re.compile(r'"([^"]+)"')
+
+
+def parse_query(query: str) -> list[str]:
+    """Split *query* into terms, keeping quoted runs whole.
+
+    ``jardin "je m'appelle kevin"`` is two terms: a word, and a phrase that must
+    appear as written. Without quotes the words are independent, which is what
+    someone means when they add a word to narrow a search; with them they are a
+    sequence, which is what someone means when they remember a sentence.
+    """
+    phrases = [m.group(1).strip() for m in _QUOTED.finditer(query)]
+    phrases = [p for p in phrases if p]
+    rest = _QUOTED.sub(" ", query)
+    return phrases + rest.split()
+
+
+def _shortlist_term(terms: list[str]) -> str:
+    """The term to hand ripgrep: the longest *word* in the query.
+
+    A phrase cannot be used as-is: the page's text is flattened before matching
+    (a phrase may span two lines in the file), while rg reads the file itself.
+    So the shortlist narrows on the most selective single word, and the phrase
+    is checked afterwards on the flattened text.
+    """
+    words = [w for term in terms for w in term.split()]
+    return max(words, key=len) if words else ""
+
+
 def search(query: str) -> list[SearchHit]:
-    """Full-text search over the content tree. Uses ripgrep for speed and
-    falls back to a pure-Python scan if rg is missing or errors out."""
-    terms = query.split()
+    """Full-text search over the content tree. Uses ripgrep to shortlist files
+    and falls back to a pure-Python scan if rg is missing or errors out."""
+    terms = parse_query(query)
     if not terms:
         return []
-    # rg shortlists on the first term (any single term is a necessary condition
-    # for the AND); _hit_for then enforces that *all* terms are present and
-    # builds the snippet. Both run against the cleaned, accent-folded text.
     try:
         proc = subprocess.run(
             [
@@ -1216,7 +1290,7 @@ def search(query: str) -> list[SearchHit]:
                 "--glob",
                 "*.md",
                 "--",
-                _rg_pattern(_fold_text(terms[0])),
+                _rg_pattern(_fold_text(_shortlist_term(terms))),
                 str(CONTENT_DIR),
             ],
             capture_output=True,
@@ -1224,10 +1298,10 @@ def search(query: str) -> list[SearchHit]:
             timeout=10,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
-        return _search_python(terms)
+        return _search_python(terms, query)
     # rg exit codes: 0 = matches, 1 = no matches, >=2 = real error.
     if proc.returncode >= 2:
-        return _search_python(terms)
+        return _search_python(terms, query)
 
     hits = []
     for line in proc.stdout.splitlines():
@@ -1241,5 +1315,5 @@ def search(query: str) -> list[SearchHit]:
         hit = _hit_for(path, terms)
         if hit is not None:
             hits.append(hit)
-    _sort_hits(hits)
+    _sort_hits(hits, query)
     return hits

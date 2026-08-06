@@ -11,6 +11,9 @@
         <input type="search" class="search" id="q" value="{{ query }}"
                placeholder="{{ "Search the notes…"|t }}" autocomplete="off"
                aria-label="{{ "Search the notes…"|t }}">
+        <!-- Shown on focus only: quoting is worth knowing, not worth a
+             permanent line of instructions above one's own notes. -->
+        <p class="search-hint">{{ "Words narrow; \"a quoted phrase\" must appear as written."|t }}</p>
 
         <!-- Facets, count and results. Replaced wholesale as the selection
              narrows, by the very fragment the server rendered here. -->
@@ -85,9 +88,8 @@
             next.append(param, value);
           }
 
-          // A view guessed for images makes no sense once the selection
-          // changes: let the server guess again.
-          next.delete('view');
+          // `view` is kept: it is only ever set by the switch, so its presence
+          // means the reader chose, and a choice must survive the next click.
           apply(next);
         });
       })();

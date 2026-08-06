@@ -1,7 +1,7 @@
 {% load taxonomy %}{% load lang %}
-{# The explorer: facets, count and results. Rendered whole by the home page and
-   swapped in by the browser as the selection narrows, so both paths render the
-   same markup and there is no second implementation in JavaScript. #}
+<!-- The explorer: facets, count and results. Rendered whole by the home page
+     and swapped in by the browser as the selection narrows, so both paths
+     render the same markup and there is no second implementation in JS. -->
 <div class="facets">
     {% for facet in facets %}
     {% if facet.values %}

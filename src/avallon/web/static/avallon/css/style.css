@@ -1507,3 +1507,14 @@ a.card-project:hover { text-decoration: underline; }
 .query-list { list-style: none; margin: 1.4rem 0; padding: 0; }
 .query-list li { margin: 0.45rem 0; }
 .query-summary { color: var(--muted); font-size: 0.9rem; }
+
+/* Only while the box has focus: quoting is worth knowing, not worth a
+   permanent instruction above one's own notes. */
+.search-hint {
+    margin: 0.35rem 0 0;
+    font-size: 0.8rem;
+    color: var(--muted);
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+.search:focus + .search-hint { opacity: 1; }
