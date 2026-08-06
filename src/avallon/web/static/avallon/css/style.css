@@ -1518,3 +1518,26 @@ a.card-project:hover { text-decoration: underline; }
     transition: opacity 0.12s ease;
 }
 .search:focus + .search-hint { opacity: 1; }
+
+/* A document shown inside a note: the file lives in its own page, this is a
+   view of it. Clicking the picture goes to the document, not to the raw file. */
+.prose .embed { margin: 1.8rem 0; }
+.prose .embed img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+}
+.prose .embed figcaption {
+    margin-top: 0.4rem;
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+.prose .embed-file { font-weight: 600; }
+
+/* An embed is a block element born inside a paragraph, so the HTML parser
+   closes that paragraph early and leaves an empty one behind. Hiding empty
+   paragraphs removes its margin without touching the markdown pipeline. */
+.prose p:empty { display: none; }

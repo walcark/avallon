@@ -31,6 +31,12 @@ from markdown.treeprocessors import Treeprocessor
 # [[ target ]] with an optional | label. Targets/labels may not contain ] or |.
 WIKILINK_RE = r"\[\[\s*([^\]|]+?)\s*(?:\|\s*([^\]]+?)\s*)?\]\]"
 
+# `![[…]]`: show a document here instead of linking to it. The file stays in
+# the one page that owns it, so a scan used by three notes has one copy, one
+# set of tags and one URL. Copying it into each note is what this exists to
+# avoid.
+EMBED_RE = r"!\[\[\s*([^\]|]+?)\s*(?:\|\s*([^\]]+?)\s*)?\]\]"
+
 # A target ending in a short extension is read as a filename, not a slug. Slugs
 # and relpaths use hyphens and slashes, never a dotted suffix, so this cannot
 # swallow a real page reference; and a dotted target is only treated as a file
@@ -138,6 +144,56 @@ class WikiLinkInlineProcessor(InlineProcessor):
         return el, m.start(0), m.end(0)
 
 
+class EmbedInlineProcessor(InlineProcessor):
+    """Render ``![[doc]]`` as the document's own file, captioned and linked."""
+
+    def handleMatch(self, m, data):
+        target = m.group(1).strip()
+        caption = (m.group(2) or "").strip()
+
+        # `![[doc/file.png]]` picks one file out of a multi-file document.
+        page_ref, _, inner = target.partition("/")
+        page = _resolve(page_ref if inner else target)
+        if page is None or not (page.file or inner):
+            el = etree.Element("span")
+            el.set("class", "wikilink wikilink-missing")
+            el.set("title", f"Cible introuvable : {target}")
+            el.text = caption or target
+            return el, m.start(0), m.end(0)
+
+        name = inner or page.file
+        src = f"{page.url}{name}"
+        kind = page.kind if not inner else _kind_of(name)
+
+        figure = etree.Element("figure")
+        figure.set("class", "embed")
+        if kind == "image":
+            link = etree.SubElement(figure, "a")
+            link.set("href", page.url)
+            img = etree.SubElement(link, "img")
+            img.set("src", src)
+            img.set("alt", caption or page.title)
+            img.set("loading", "lazy")
+        else:
+            # Anything not an image is announced rather than shown: a viewer
+            # inside a paragraph would take over the note it illustrates.
+            link = etree.SubElement(figure, "a")
+            link.set("href", page.url)
+            link.set("class", "embed-file")
+            link.text = caption or page.title
+        legend = etree.SubElement(figure, "figcaption")
+        legend.text = caption or page.title
+        return figure, m.start(0), m.end(0)
+
+
+def _kind_of(name: str) -> str:
+    """The kind of a bare file name, for `![[doc/file.png]]`."""
+    from avallon.web import content
+
+    suffix = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+    return content.KIND_BY_EXTENSION.get(suffix, content.KIND_OTHER)
+
+
 class NewTabTreeprocessor(Treeprocessor):
     """Open every content link in a new tab.
 
@@ -160,6 +216,11 @@ class WikiLinkExtension(Extension):
     def extendMarkdown(self, md):
         # Priority 175 > the built-in `link` (160), so `[[...]]` is consumed
         # here before the standard `[...]( )` link parser sees the brackets.
+        # Above the wikilink, so `![[…]]` is consumed as an embed rather than
+        # as a `!` followed by a link.
+        md.inlinePatterns.register(
+            EmbedInlineProcessor(EMBED_RE, md), "wikilink_embed", 176
+        )
         md.inlinePatterns.register(
             WikiLinkInlineProcessor(WIKILINK_RE, md), "wikilink", 175
         )

@@ -162,6 +162,10 @@ check it, while the medium is already written in the file name.
 The test for promoting a file: **would I look for it on its own?** If not, leave
 it as an illustration next to the page that uses it.
 
+A file used by several notes is a document by definition: promote it once, then
+show it where it is needed with `![[slug]]`. One copy, one set of tags, one URL,
+and updating it updates every note that shows it.
+
 ### Dossiers
 
 A dossier is not a new kind of object: **it is an ordinary page**, the one that
@@ -186,6 +190,9 @@ Standard Markdown, plus:
 | --- | --- |
 | `[[slug]]`, `[[slug\|label]]` | link another page, by slug, path or title |
 | `[[figure.pdf]]` | link a file sitting next to the page |
+| `![[carte-identite]]` | show a document here; the file stays in its own page |
+| `![[carte-identite\|Recto]]` | the same, with a caption |
+| `![[dossier/verso.png]]` | one file of a multi-file document |
 | ` ```python ` | syntax-highlighted code (Pygments) |
 | `!!! note` / `!!! warning` | admonition cards |
 | `$…$`, `$$…$$` | LaTeX math (MathJax) |
