@@ -211,7 +211,13 @@ def page_history(request):
         {
             "dirty": content.is_dirty(relpath),
             "revisions": [
-                {"sha": r.sha, "when": r.when, "subject": r.subject} for r in revisions
+                {
+                    "sha": r.sha,
+                    "when": r.when,
+                    "subject": r.subject,
+                    "saves": r.saves,
+                }
+                for r in revisions
             ],
         }
     )

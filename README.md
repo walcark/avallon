@@ -232,6 +232,17 @@ keeps one continuous story, reconstructed by git rather than recorded by hand.
 A page edited and not yet committed says so, instead of pretending the last
 commit is what is on screen.
 
+**Sessions, not saves.** Commits on the same page less than
+`AVALLON_HISTORY_WINDOW` seconds apart (an hour by default) read as one state:
+fixing three typos in an afternoon should not spend the whole menu. The entry
+shows how many saves it stands for, and opens the last of them, which is what
+the session ended on. Nothing is rewritten, git keeps every commit; only the
+menu groups them.
+
+Times are shown in the machine's timezone, not in the one each commit recorded.
+Notes written from a laptop and from a server in UTC would otherwise read two
+hours apart when they were saved at the same moment.
+
 Next to it, a download button, adapted to what the page holds: **the file
 itself** when the frontmatter carries a `file:`, the **page as a PDF**
 otherwise. The PDF is rendered by the machine running the site, so it is the
@@ -306,6 +317,8 @@ on a timer so pages written on another device show up without a restart.
 | `AVALLON_LANGUAGE` | `en` | Interface language: `en` or `fr`. |
 | `AVALLON_SHOW_PRIVATE` | on in debug | Serve pages marked `visibility: private`. |
 | `AVALLON_SYNC_WINDOW` | `900` (`0` from `avallon setup`) | Seconds during which consecutive edits fold into one commit. |
+| `AVALLON_HISTORY_WINDOW` | `3600` | Seconds under which two commits on a page read as one state. `0` shows every commit. |
+| `AVALLON_TIME_ZONE` | the machine's | Zone the dates are displayed in. |
 | `AVALLON_POLL_INTERVAL` | `120` | Seconds between two pulls; `0` disables the poller. |
 | `AVALLON_ALLOWED_HOSTS` | loopback | Comma separated names the site answers to. |
 | `AVALLON_SECRET_KEY` | *(generated per process)* | Django secret key. `avallon setup` writes a fixed one. |
@@ -366,10 +379,10 @@ ten commits behind. Only commits the tool made itself are amended, recognized
 by their trailer.
 
 `avallon setup` writes `AVALLON_SYNC_WINDOW=0` instead, which turns batching
-off: the history panel offers a page's last five states, and folding a day of
-edits into one commit would leave most pages with a single entry. Batching is
-the better default for a repository one reads through `git log`; a commit per
-save is the better one for a site whose pages carry their own history.
+off. Nothing is lost by it: the history panel groups a page's commits back into
+sessions when it displays them (`AVALLON_HISTORY_WINDOW`), so recording every
+save costs a longer `git log` and buys a history that can be regrouped later,
+whereas an amended commit is gone for good.
 
 **Polling.** A long-running server is one more git writer among the devices, so
 it pulls on a timer to reflect what was written elsewhere.

@@ -222,7 +222,14 @@
             .then(r => r.json())
             .then(function (data) {
               const rows = data.revisions.map(function (r) {
-                return '<a href="?at=' + r.sha + '">' + r.when + '</a>';
+                // Say when a line stands for a session rather than a single
+                // save, otherwise the count of states looks wrong against the
+                // number of times the page was actually written.
+                const many = r.saves > 1
+                  ? ' <span class="history-count">' + r.saves + ' ' +
+                    '{{ "saves"|t|escapejs }}</span>'
+                  : '';
+                return '<a href="?at=' + r.sha + '">' + r.when + many + '</a>';
               });
               if (data.dirty) {
                 rows.unshift('<span class="history-dirty">{{ "modified, not recorded yet"|t|escapejs }}</span>');

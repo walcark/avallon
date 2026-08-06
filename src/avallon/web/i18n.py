@@ -63,6 +63,7 @@ FRENCH: dict[str, str] = {
     "back to the current version": "revenir à la version actuelle",
     "modified, not recorded yet": "modifié, pas encore enregistré",
     "no recorded state yet": "aucun état enregistré",
+    "saves": "enregistrements",
     "Download": "Télécharger",
     "Download the file": "Télécharger le fichier",
     "Download as PDF": "Télécharger en PDF",

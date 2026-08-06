@@ -23,7 +23,7 @@ import tempfile
 import tomllib
 import unicodedata
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -912,13 +912,41 @@ def nav_tree() -> list[dict[str, Any]]:
 # continuous story without anything being written when it moved.
 
 
+# Commits closer together than this, on the same page, read as one editing
+# session rather than as distinct states. Fixing a typo three times in an hour
+# is one modification to whoever opens the menu.
+MERGE_WINDOW = 3600  # 1 hour
+MERGE_WINDOW_ENV = "AVALLON_HISTORY_WINDOW"
+
+# How far back to look before folding. A burst can be long, and folding only
+# what a first `-5` returned would show fewer than five states.
+_SCAN_FACTOR = 20
+_SCAN_CAP = 200
+
+
+def merge_window() -> int:
+    """The seconds under which two commits on a page fold into one state."""
+    raw = os.environ.get(MERGE_WINDOW_ENV)
+    if raw is None:
+        return MERGE_WINDOW
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        return MERGE_WINDOW
+
+
 @dataclass(frozen=True)
 class Revision:
-    """One recorded state of a page."""
+    """One recorded state of a page.
+
+    Possibly several commits: *saves* says how many folded into it, and *sha*
+    is the last of them, so opening it gives the state the session ended on.
+    """
 
     sha: str
     when: str  # YYYY/MM/DD-hh:mm, the form the menu shows
     subject: str
+    saves: int = 1
 
 
 def _git(args: list[str], root: Path | None = None) -> subprocess.CompletedProcess:
@@ -937,15 +965,20 @@ def history(relpath: str, limit: int = 5) -> list[Revision]:
     Empty when the notes are not a git repository, or the page was never
     committed: both are ordinary, and neither is an error worth showing.
     """
+    limit = max(1, limit)
     target = f"{relpath.strip('/')}/index.md"
     try:
         out = _git(
             [
                 "log",
-                f"-{max(1, limit)}",
+                f"-{min(limit * _SCAN_FACTOR, _SCAN_CAP)}",
                 "--follow",
-                "--format=%h\t%ad\t%s",
-                "--date=format:%Y/%m/%d-%H:%M",
+                "--format=%h\t%at\t%ad\t%s",
+                # -local, not the offset each commit recorded: notes are
+                # written from several machines, and a state committed from a
+                # server in UTC must not read as two hours before one written
+                # here at the same moment.
+                "--date=format-local:%Y/%m/%d-%H:%M",
                 "--",
                 target,
             ]
@@ -955,12 +988,35 @@ def history(relpath: str, limit: int = 5) -> list[Revision]:
     if out.returncode != 0:
         return []
 
-    revisions = []
+    commits = []
     for line in out.stdout.splitlines():
-        parts = line.split("\t", 2)
-        if len(parts) == 3:
-            revisions.append(Revision(sha=parts[0], when=parts[1], subject=parts[2]))
-    return revisions
+        parts = line.split("\t", 3)
+        if len(parts) == 4 and parts[1].isdigit():
+            commits.append((int(parts[1]), Revision(parts[0], parts[2], parts[3])))
+    return _fold_bursts(commits, merge_window())[:limit]
+
+
+def _fold_bursts(commits: list[tuple[int, Revision]], window: int) -> list[Revision]:
+    """Collapse commits less than *window* apart into one state each.
+
+    *commits* comes newest first, each paired with its unix time. The first of
+    a burst is therefore its end, which is the state worth opening: nobody
+    wants the page as it was three saves into a session of fixing typos.
+
+    The gap is measured against the previous commit, not against the start of
+    the burst, so an afternoon of steady editing reads as one session rather
+    than as one state per hour.
+    """
+    folded: list[Revision] = []
+    previous = 0
+    for when, revision in commits:
+        if folded and window and previous - when < window:
+            head = folded[-1]
+            folded[-1] = replace(head, saves=head.saves + 1)
+        else:
+            folded.append(revision)
+        previous = when
+    return folded
 
 
 def at_revision(relpath: str, sha: str, name: str = "index.md") -> bytes | None:

@@ -186,3 +186,48 @@ Both are ordinary, and both would otherwise look like a bug.
 
 Next to it, the download button: the file when the page carries one, the page
 as a PDF otherwise.
+
+## 7. Where the granularity was finally settled
+
+Section 3 said the choice was readable history against fine history, and set it
+on the write side. That was the wrong side to decide it on.
+
+Amending is destructive: a commit folded into another cannot be taken apart, so
+choosing a window at write time throws away detail forever to make a menu
+readable today. Folding at read time costs nothing and is reversible, and the
+same `git log` that answers the panel in 4 ms can group its own output.
+
+So both, in opposite directions:
+
+- **`AVALLON_SYNC_WINDOW=0`** on a deployment: every save is a commit, and the
+  repository keeps everything that happened.
+- **`AVALLON_HISTORY_WINDOW=3600`** in the panel: commits on the same page less
+  than an hour apart become one entry, showing how many saves it stands for and
+  opening the last of them.
+
+The gap is measured between consecutive commits rather than from the start of a
+burst, so an afternoon of steady writing is one session rather than one state
+per hour. That chains, deliberately: someone editing every fifty minutes for
+six hours is having one long session, not seven.
+
+Two consequences worth stating:
+
+- **The menu can no longer be read as "the last five commits."** It is the last
+  five *sessions*, and the count on each line is what says so.
+- **A folded entry opens the end of its session**, never a page halfway through
+  someone fixing typos. Opening the start would show a state nobody ever
+  considered finished.
+
+### The timezone, found by looking
+
+The dates came from `--date=format:`, which renders each commit in the offset
+it recorded. The notes repository holds commits in `+0000` (from the server)
+and `+0200` (from here), so two states 2h40 apart displayed as 40 minutes
+apart, and the folding, which uses true instants, disagreed with what was on
+screen for good reason.
+
+`--date=format-local:` fixes the display, and then Django's `TIME_ZONE = "UTC"`
+became the visible problem, since it exports `TZ` for the whole process: a note
+saved at 14:39 in Paris showed 12:39 in its own history. `TIME_ZONE` now
+defaults to the machine's zone, read from `/etc/localtime`, and
+`AVALLON_TIME_ZONE` overrides it.

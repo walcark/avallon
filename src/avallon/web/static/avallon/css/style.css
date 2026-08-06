@@ -1580,6 +1580,7 @@ a.card-project:hover { text-decoration: underline; }
 }
 .history-menu a:hover { background: var(--code-bg); color: var(--accent); }
 .history-dirty { padding: 0.4rem 0.5rem; color: var(--muted); font-size: 0.82rem; }
+.history-count { color: var(--muted); font-size: 0.75rem; }
 
 /* Reading the past: stated once, at the top, with the way back. */
 .revision-banner {
