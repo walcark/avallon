@@ -59,6 +59,32 @@ hierarchy is a naming convention, not a feature: `banque-contrat` and
 tag tree would double the model to save typing a prefix. If a real hierarchy is
 ever needed, it belongs to the query language, not to the storage.
 
+### The driving question, answered in full
+
+```
+administratif/doc/carte-identite/          tags: [identité, officiel]
+    index.md                               no project: it outlives every dossier
+    carte-identite-recto.jpg
+    carte-identite-verso.jpg
+
+administratif/recueil/papiers-identite/    the collection, five lines:
+    index.md                               ```query
+                                           tag: identité
+                                           as: gallery
+                                           ```
+
+administratif/recueil/contrat-bancaire/    a dossier, this time:
+    index.md                               project of the pages filed under it
+```
+
+Three ways in, all correct at once: the card has its own URL and is found by
+search; the identity page lists it without naming it, so adding a passport
+tomorrow updates it; and the rental dossier cites `[[carte-identite]]` without
+owning it.
+
+What makes this work is that **nothing is written twice**. The only hand-written
+thing is the tag on the document. Every listing derives from it.
+
 ## 3. Decision: display follows the shape, not the label
 
 Two independent things decide what a page looks like, and conflating them is
@@ -109,59 +135,61 @@ added, because nothing was written by hand.
 This is deliberately the *same* mechanism as the dossier contents (derived, not
 maintained). Two ways of listing pages would drift apart.
 
-## 5. Search: measured before touched
+## 5. Search: measured, then fixed
 
-Numbers first, on synthetic corpora, current implementation:
+Numbers first, on synthetic corpora, before touching anything:
 
-| Corpus | `all_pages()` | search, 1 term | search, 2 terms | backlinks |
+| Corpus | `all_pages()` | search, 1 term | search, no match | backlinks |
 | --- | --- | --- | --- | --- |
-| 50 pages | 3 ms | 117 ms | 114 ms | 6 ms |
-| 500 pages | 29 ms | **1 144 ms** | 1 138 ms | 65 ms |
-| 2 000 pages | 129 ms | **4 739 ms** | 4 886 ms | 249 ms |
+| 50 pages | 3 ms | 117 ms | 66 ms | 6 ms |
+| 500 pages | 29 ms | **1 144 ms** | 636 ms | 65 ms |
+| 2 000 pages | 129 ms | **4 739 ms** | 2 510 ms | 249 ms |
 
 The home page debounces at 180 ms and searches as you type. At 500 pages the
-answer arrives six times later than the next keystroke: the feature is already
+answer arrived six times later than the next keystroke: the feature was already
 past its budget, on a corpus this site will reach.
 
-A profile says where it goes, and it is not where one would guess:
+Profiling found two defects, neither of them where one would look.
 
-```
-6.35 s  search
-6.34 s  └─ _hit_for (500 calls)
-6.10 s     └─ _fold (2001 calls, 3M unicodedata.normalize)
-3.10 s        └─ _highlight → _fold_text again
-```
+**ripgrep never ran.** The command placed `--glob '*.md'` *after* the `--`
+separator, where rg reads it as a path to open. It printed the right matches,
+then exited 2 for the two files it could not find, and the code treats
+`returncode >= 2` as a failure and falls back to the pure-Python scan. So every
+search on this site has scanned every file in Python since the day the shortlist
+was written, while also paying for an rg process. The fix is moving one argument.
 
-**96 % of the time is accent folding**, character by character, in Python. Not
-YAML, not disk I/O, not the regex. Two defects, both cheap to fix:
+**Accent folding was 96% of the rest.** `_fold` normalized one character at a
+time, and built an index map because folding could change a string's length.
+A precomputed one-to-one `translate` table does the same work in C and cannot
+change the length, which makes the map unnecessary: the same offsets index the
+folded and the original text. Measured in isolation, 1.931 ms → 0.058 ms on a
+6 540-character sample. The blob was also folded twice per hit, once to test the
+terms and once to highlight; it is folded once now.
 
-1. `_fold` normalizes one character at a time and rebuilds an index map. A
-   precomputed `str.translate` table does the same job in C. Measured on a
-   6 540-character sample: **1.931 ms → 0.058 ms, 33x**, identical output, and
-   the length is preserved, which makes the index map the identity and deletes
-   the code that maintains it.
-2. The same blob is folded twice, once to test the terms and once to highlight.
+After both fixes:
 
-A third, invisible until it bites: **ripgrep is not a dependency**. It is
-optional by design, the pure-Python fallback exists, and that fallback is what
-ran in every measurement above, because `rg` is not in the project environment.
-On a deployment started by systemd, with a minimal `PATH`, the same will be
-true. Either it is a real dependency, or the fallback must be fast enough to be
-the normal path. Given the fix above, the second is now defensible.
+| Corpus | search, 1 term | search, no match |
+| --- | --- | --- |
+| 50 pages | 117 → **13 ms** | 66 → **4 ms** |
+| 500 pages | 1 144 → **97 ms** | 636 → **7 ms** |
+| 2 000 pages | 4 739 → **374 ms** | 2 510 → **10 ms** |
 
-Order, by return on effort:
+That buys the time this site needs. What remains, in order of return:
 
 | Fix | Effort | Expected |
 | --- | --- | --- |
-| `translate` table in `_fold` | 20 lines | ~30x on the dominant cost |
-| Fold the blob once, reuse for highlight | 10 lines | ~2x on what remains |
-| `ripgrep` as a declared dependency | 1 line | shortlist before Python runs |
-| Cache the folded text per file mtime | 30 lines | repeated searches free |
+| Cache the folded text per file mtime | ~30 lines | repeated searches nearly free |
+| `ripgrep` as a declared dependency | 1 line | the fallback stops being the norm on a minimal PATH |
+| Narrow the shortlist to the rarest term | ~10 lines | fewer files to open on multi-term queries |
 | Inverted index on disk | days | only past ~5 000 pages |
 
 The last line is the one to *not* do now. An index is a second source of truth
-that can disagree with the tree, and the tree is the product. Revisit when the
-first four are in and a measurement still hurts.
+that can disagree with the tree, and the tree is the product. The measurements
+say it buys nothing before a corpus this site does not have.
+
+**The lesson worth keeping:** the two defects had been in place for months,
+invisible, because a fallback path is by definition the one nobody notices.
+Anything that silently degrades needs a measurement, not a comment.
 
 ## 6. Scoped search
 
@@ -173,7 +201,49 @@ first and offers "search everywhere" as one click.
 It composes with the rest: the same parameter serves a domain or a type, and
 the facets on the home page already speak that language.
 
-## 7. What not to do
+## 7. What breaks at three hundred pages
+
+The question is about arranging documents, so the entry point matters as much
+as the pages. Measured on synthetic corpora:
+
+| Corpus | Home page | Weight | Cards in the HTML | One page |
+| --- | --- | --- | --- | --- |
+| 44 pages (today) | 32 ms | 67 Ko | 45 | 32 ms |
+| 300 pages | 96 ms | 280 Ko | 301 | 58 ms |
+| 1 000 pages | 305 ms | 864 Ko | 1 001 | 196 ms |
+
+Nothing is slow enough to break, and that is the trap: the home page will not
+fail, it will just stop being useful. It renders **every** card, and the
+filtering is client-side on the whole corpus. At three hundred pages it is a
+wall of cards; at a thousand it is a megabyte of HTML to say "here is
+everything".
+
+The same holds for the two other places that list everything: the sidebar tree
+and the command palette, which reads its list from that tree.
+
+Three answers, in the order I would take them:
+
+**Make the home page an entry, not a dump.** What a reader wants on arrival is
+recent work, unfinished dossiers, and the search box. Rendering the twenty most
+recent cards plus the facets covers it, and the rest is one filter away. The
+weight of the page stops growing with the corpus, and the facets stay accurate
+because they are computed server-side from all pages regardless.
+
+**Give the sidebar the same treatment as the dossier navigation.** Inside a
+dossier it already shows the dossier instead of the whole tree, which is the
+right instinct: show the neighbourhood, not the world. Outside one, the tree can
+stay folded to domains and open on demand.
+
+**Leave the palette alone.** It is keyboard-driven and prefix-filtered, which is
+exactly the tool for a large corpus; it only needs its list to arrive by fetch
+rather than by reading a DOM that no longer contains everything.
+
+**The objection to pagination:** a "load more" button on a personal site is
+usually a symptom of a missing filter. That is why the answer above is *recency
+plus facets*, not paging: nobody scrolls to page 7 of their own notes, they
+filter or they search.
+
+## 8. What not to do
 
 - **A database.** The tree is the product: readable, diffable, syncable by git.
   An index is acceptable as a derived cache, never as the source.
@@ -187,18 +257,20 @@ the facets on the home page already speak that language.
   ("would I look for this file on its own?"), and it is the rule that keeps the
   repository small.
 
-## 8. Order of work
+## 9. Order of work
 
-1. **Search performance** (`_fold`, single fold, ripgrep). Independent of
-   everything else, and the only item that is already hurting.
-2. **Scoped search**, which is one parameter and closes the "dossier as a place
-   you search from" gap.
-3. **`file:` and the viewers** (`documents.md` step 3). This is what gives a
+1. ~~**Search performance**~~ **done**: ripgrep now runs, folding is 30x
+   cheaper, searches went from 1 144 ms to 97 ms at 500 pages.
+2. **Scoped search**, one parameter, closes "a dossier is a place you search
+   from".
+3. **The home page as an entry** (recent plus facets), before the corpus makes
+   it moot.
+4. **`file:` and the viewers** (`documents.md` step 3): this is what gives a
    document its own identity, and nothing about collections works before it.
-4. **`as: gallery|list` on queries**, which turns tags into readable
+5. **`as: gallery|list` on queries**, which turns tags into readable
    collections.
-5. **Per-type templates**, `recueil` and `galerie` first.
+6. **Per-type templates**, `recueil` and `galerie` first.
 
-Steps 1 and 2 are worth doing whatever happens to the rest. Steps 3 to 5 only
-pay off together: a collection of documents needs documents to exist and a view
+Steps 2 and 3 are worth doing whatever happens to the rest. Steps 4 to 6 only
+pay off together: a collection of documents needs documents to exist, and a view
 to show them.
