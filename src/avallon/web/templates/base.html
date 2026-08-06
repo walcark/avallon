@@ -102,17 +102,21 @@
         <header class="topbar">
             <button type="button" class="icon-btn" id="navToggle" aria-label="{{ "Show or hide the menu"|t }}">☰</button>
             <span class="topbar-title">{% block topbar %}{% endblock %}</span>
-            {% block topbar_actions %}{% endblock %}
-            <!-- In base.html, not next to the editor in index.html: creating a
-                 page is just as useful from the home page or a search. -->
-            <a class="icon-btn" href="/nouvelle/" id="newPage"
-               aria-label="{{ "Create a new page"|t }}" title="{{ "New page"|t }} (Ctrl+N)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                     stroke-linecap="round" aria-hidden="true">
-                    <path d="M12 5v14M5 12h14"/>
-                </svg>
-            </a>
-            <button type="button" class="icon-btn" id="themeToggle" aria-label="{{ "Toggle the light/dark theme"|t }}">🌓</button>
+            <!-- Grouped so a phone can move the whole lot within thumb reach
+                 (see the bottom bar rule in the stylesheet). -->
+            <div class="topbar-actions">
+                {% block topbar_actions %}{% endblock %}
+                <!-- In base.html, not next to the editor in index.html: creating
+                     a page is just as useful from the home page or a search. -->
+                <a class="icon-btn" href="/nouvelle/" id="newPage"
+                   aria-label="{{ "Create a new page"|t }}" title="{{ "New page"|t }} (Ctrl+N)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" aria-hidden="true">
+                        <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                </a>
+                <button type="button" class="icon-btn" id="themeToggle" aria-label="{{ "Toggle the light/dark theme"|t }}">🌓</button>
+            </div>
         </header>
 
         <div class="page">
@@ -148,6 +152,31 @@
           setNav(!root.classList.contains('nav-collapsed'));
         });
         document.getElementById('scrim').addEventListener('click', function () { setNav(true); });
+
+        // Swipe from the left edge opens the drawer, swipe left closes it.
+        // Only on a coarse pointer: a trackpad's inertial scroll would trip
+        // the same thresholds and open the menu while the reader scrolls.
+        if (window.matchMedia('(pointer: coarse)').matches) {
+          var EDGE = 24;      // px from the left edge that arm an opening swipe
+          var TRAVEL = 60;    // px of horizontal travel before it counts
+          var sx = 0, sy = 0, armed = false;
+          document.addEventListener('touchstart', function (e) {
+            if (e.touches.length !== 1) { armed = false; return; }
+            sx = e.touches[0].clientX;
+            sy = e.touches[0].clientY;
+            // Opening is edge-only; closing works anywhere over the drawer.
+            armed = sx <= EDGE || !root.classList.contains('nav-collapsed');
+          }, { passive: true });
+          document.addEventListener('touchend', function (e) {
+            if (!armed) return;
+            armed = false;
+            var t = e.changedTouches[0];
+            var dx = t.clientX - sx;
+            // Ignore anything more vertical than horizontal: that is a scroll.
+            if (Math.abs(dx) < TRAVEL || Math.abs(t.clientY - sy) > Math.abs(dx)) return;
+            setNav(dx < 0);
+          }, { passive: true });
+        }
 
         var widthToggle = document.getElementById('widthToggle');
         function syncWidth() {

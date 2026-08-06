@@ -1325,3 +1325,34 @@ html:has(.page.is-editing) { overflow: hidden; }
         border-right: none;
     }
 }
+
+/* The actions, grouped so they can travel. On a desktop they sit at the right
+   of the top bar, which is where the pointer already is. */
+.topbar-actions { display: flex; align-items: center; gap: 0.6rem; margin-left: auto; }
+
+@media (max-width: 640px) {
+    /* On a phone the top of the screen is the hardest place to reach, and it
+       is exactly where five buttons were. They move to a bottom bar, thumb
+       height, leaving the top bar to say where you are. */
+    .topbar-actions {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 30;
+        margin: 0;
+        justify-content: space-around;
+        gap: 0;
+        padding: 0.35rem 0.5rem;
+        /* Home indicator on iOS, gesture bar on Android. */
+        padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
+        background: var(--topbar-bg);
+        border-top: 1px solid var(--border);
+        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px);
+    }
+    /* Room for the bar, so the last line of a note is never under it. */
+    .page { padding-bottom: 5rem; }
+    /* While editing, the editor's own bar owns the bottom: stack them. */
+    .editor-bar { padding-bottom: 3.75rem; }
+}
