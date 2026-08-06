@@ -71,13 +71,23 @@
           const param = chip.dataset.param;
           const value = chip.dataset.value;
           const current = next.getAll(param);
+          const wasActive = current.includes(value);
           next.delete(param);
-          // Toggling a facet value off is how a reader widens again.
-          current.filter(v => v !== value).forEach(v => next.append(param, v));
-          if (!current.includes(value)) next.append(param, value);
+
+          if (param === 'tag') {
+            // Tags accumulate: they answer "about what?", and asking about two
+            // subjects at once is a legitimate question.
+            current.filter(v => v !== value).forEach(v => next.append(param, v));
+            if (!wasActive) next.append(param, value);
+          } else if (!wasActive) {
+            // Everything else is single-valued: clicking another domain moves
+            // there rather than adding to it. Clicking the active one clears it.
+            next.append(param, value);
+          }
+
           // A view guessed for images makes no sense once the selection
           // changes: let the server guess again.
-          if (!chip.dataset.view) next.delete('view');
+          next.delete('view');
           apply(next);
         });
       })();

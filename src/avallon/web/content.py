@@ -845,44 +845,71 @@ class Selection:
         return bool(self.pages) and all(p.is_visual for p in self.pages)
 
 
-def _facet_counts(
-    pages: list[Page], membership: dict[str, Page]
-) -> dict[str, list[tuple[str, int]]]:
-    """Count each facet value over *pages*, dropping what does not divide them.
+# Which facet each argument of `select` filters on, so a facet's own values can
+# be counted against everything *except* itself.
+_FACET_FIELDS = {
+    "domains": "domain",
+    "types": "type",
+    "kinds": "kind",
+    "statuses": "status",
+    "projects": "project",
+    "tags": "tag",
+}
 
-    A facet offering a single value cannot narrow anything: it is chrome. This
-    is what keeps six axes bearable on a small corpus, where `kind` simply does
-    not appear until files exist.
+
+def _value_of(page: Page, facet: str, membership_map: dict[str, Page]) -> list[str]:
+    """The values *page* holds for *facet* (a list, because of tags)."""
+    if facet == "domain":
+        return [page.domain]
+    if facet == "type":
+        return [page.type]
+    if facet == "kind":
+        return [page.kind]
+    if facet == "status":
+        return [page.status] if page.status else []
+    if facet == "project":
+        dossier = membership_map.get(page.relpath)
+        return [dossier.slug] if dossier is not None else []
+    return page.tags
+
+
+def _facet_values(
+    pages: list[Page],
+    facet: str,
+    active: Sequence[str],
+    membership_map: dict[str, Page],
+) -> list[tuple[str, int]]:
+    """Count *facet* over *pages*, keeping what is worth offering.
+
+    Two rules, and the second exists because the first alone made the explorer
+    a one-way door. A value that would leave the selection unchanged is chrome,
+    so it is dropped; but a value that is *active* always stays, otherwise
+    picking a domain removes the very chip needed to unpick it.
     """
-    counters: dict[str, dict[str, int]] = {
-        "domain": {},
-        "type": {},
-        "kind": {},
-        "status": {},
-        "project": {},
-        "tag": {},
-    }
+    counts: dict[str, int] = {}
     for page in pages:
-        counters["domain"][page.domain] = counters["domain"].get(page.domain, 0) + 1
-        counters["type"][page.type] = counters["type"].get(page.type, 0) + 1
-        counters["kind"][page.kind] = counters["kind"].get(page.kind, 0) + 1
-        if page.status:
-            counters["status"][page.status] = counters["status"].get(page.status, 0) + 1
-        dossier = membership.get(page.relpath)
-        if dossier is not None:
-            counters["project"][dossier.slug] = (
-                counters["project"].get(dossier.slug, 0) + 1
-            )
-        for tag in page.tags:
-            counters["tag"][tag] = counters["tag"].get(tag, 0) + 1
+        for value in _value_of(page, facet, membership_map):
+            counts[value] = counts.get(value, 0) + 1
 
-    out: dict[str, list[tuple[str, int]]] = {}
-    for name, counts in counters.items():
-        keep = {k: n for k, n in counts.items() if len(counts) > 1}
-        if name == "tag":
-            keep = {k: n for k, n in keep.items() if n >= TAG_FACET_MIN}
-        out[name] = sorted(keep.items())
-    return out
+    if facet == "tag":
+        counts = {v: n for v, n in counts.items() if n >= TAG_FACET_MIN or v in active}
+    if len(counts) < 2:
+        # Nothing to divide. Keep the active values so they can be undone.
+        counts = {v: n for v, n in counts.items() if v in active}
+    return sorted(counts.items())
+
+
+def _matches(
+    page: Page, facet: str, values: Sequence[str], membership_map: dict[str, Page]
+) -> bool:
+    """Whether *page* satisfies *values* for *facet* (empty means no constraint)."""
+    if not values:
+        return True
+    held = _value_of(page, facet, membership_map)
+    if facet == "tag":
+        # Tags are AND'd with each other: adding one always narrows.
+        return all(v in held for v in values)
+    return any(v in held for v in values)
 
 
 def select(
@@ -914,23 +941,47 @@ def select(
 
     wanted_tags = [_normalize_tag(t) for t in tags if t.strip()]
 
-    def keeps(page: Page) -> bool:
-        if domains and page.domain not in domains:
-            return False
-        if types and page.type not in types:
-            return False
-        if kinds and page.kind not in kinds:
-            return False
-        if statuses and page.status not in statuses:
-            return False
-        if projects:
-            dossier = membership_map.get(page.relpath)
-            if dossier is None or dossier.slug not in projects:
-                return False
-        return all(t in page.tags for t in wanted_tags)
+    kept = [
+        page
+        for page in pages
+        if all(
+            _matches(page, facet, values, membership_map)
+            for facet, values in {
+                "domain": domains,
+                "type": types,
+                "kind": kinds,
+                "status": statuses,
+                "project": projects,
+                "tag": wanted_tags,
+            }.items()
+        )
+    ]
 
-    kept = [page for page in pages if keeps(page)]
-    facets = _facet_counts(kept, membership_map)
+    # Each facet is counted against the selection narrowed by *every other*
+    # facet, never by itself. Counting on the final selection would show a
+    # domain its own count of one and hide every alternative, which is how a
+    # faceted search stops being able to widen.
+    chosen = {
+        "domain": domains,
+        "type": types,
+        "kind": kinds,
+        "status": statuses,
+        "project": projects,
+        "tag": wanted_tags,
+    }
+    facets = {}
+    for facet, active in chosen.items():
+        others = [
+            page
+            for page in pages
+            if all(
+                _matches(page, other, values, membership_map)
+                for other, values in chosen.items()
+                if other != facet
+            )
+        ]
+        facets[facet] = _facet_values(others, facet, active, membership_map)
+
     total = len(kept)
     if limit is not None and limit > 0:
         kept = kept[:limit]

@@ -105,11 +105,21 @@ def test_the_explorer_fragment_is_what_the_page_embeds(dossier: Path) -> None:
     assert "Mail du 01/08" in fragment
 
 
-def test_a_facet_offering_one_value_is_not_shown(dossier: Path) -> None:
-    """A facet that cannot divide the selection is chrome."""
-    body = Client().get("/", {"domain": "administratif"}).content.decode()
+def test_a_facet_that_cannot_divide_anything_is_not_shown(dossier: Path) -> None:
+    """`kind` is chrome on a corpus of notes: every page holds the same value."""
+    body = Client().get("/search/").content.decode()
 
-    assert 'data-facet="domain"' not in body
+    assert 'data-facet="kind"' not in body
+
+
+def test_a_chosen_facet_keeps_its_alternatives(dossier: Path) -> None:
+    """Otherwise picking a domain removes the chip needed to unpick it."""
+    body = Client().get("/search/", {"domain": "administratif"}).content.decode()
+
+    assert 'data-facet="domain"' in body
+    assert 'data-value="administratif"' in body
+    assert 'data-value="informatique"' in body  # switching stays possible
+    assert 'aria-pressed="true"' in body
 
 
 def test_a_selection_of_images_renders_as_a_grid(notes: Path) -> None:
@@ -199,3 +209,29 @@ def test_writes_are_never_replayed_from_the_cache(dossier: Path) -> None:
     worker = P("src/avallon/web/static/avallon/pwa/sw.js").read_text(encoding="utf-8")
 
     assert "request.method !== 'GET'" in worker
+
+
+def test_a_facet_counts_against_the_other_facets_only(dossier: Path) -> None:
+    """Counting on the final selection would hide every alternative at once."""
+    from avallon.web import content
+
+    selection = content.select(domains=["administratif"])
+    domains = dict(selection.facets["domain"])
+
+    # The domain facet still offers the whole corpus, so switching is possible.
+    assert set(domains) == {"administratif", "informatique"}
+    # While the other facets describe the narrowed set.
+    assert "cr" in dict(selection.facets["type"])
+
+
+def test_tags_narrow_together(notes: Path) -> None:
+    """Two tags ask for pages carrying both, which is what adding words means."""
+    from .conftest import write_page as wp
+
+    wp(notes, "informatique/fiche/a", title="A", tags="[python, pixi]")
+    wp(notes, "informatique/fiche/b", title="B", tags="[python]")
+
+    from avallon.web import content
+
+    assert content.select(tags=["python"]).total == 2
+    assert content.select(tags=["python", "pixi"]).total == 1

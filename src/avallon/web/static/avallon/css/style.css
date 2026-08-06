@@ -1311,19 +1311,6 @@ html:has(.page.is-editing) { overflow: hidden; }
     .facet-group::-webkit-scrollbar { display: none; }
     .facet-label { min-width: 4.5rem; }
     .chip { flex: none; }
-
-    /* Results take the screen instead of floating in a panel sized for a
-       laptop: under the facets there was no room left to show any. */
-    .results-panel {
-        position: fixed;
-        inset: auto 0 0 0;
-        top: 3.25rem;
-        margin: 0;
-        max-height: none;
-        border-radius: 0;
-        border-left: none;
-        border-right: none;
-    }
 }
 
 /* The actions, grouped so they can travel. On a desktop they sit at the right
@@ -1358,19 +1345,124 @@ html:has(.page.is-editing) { overflow: hidden; }
 }
 
 /* --------------------------------------------------------------------------
-   Explorer: facets, counts, tiles
+   Explorer: search, facets, cards, tiles
    -------------------------------------------------------------------------- */
 
-/* How many pages a facet value would leave: it turns a guess into a decision. */
+.home { max-width: var(--measure-wide); margin: 0 auto; }
+.home h1 { font-size: 1.75rem; letter-spacing: -0.02em; margin-top: 0.5rem; }
+
+.search {
+    width: 100%;
+    font: inherit;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 0.6rem;
+    background: var(--surface);
+    color: var(--ink);
+}
+.search:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.facets {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1rem 0 1.5rem;
+}
+.facet-group { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem; }
+.facet-label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    min-width: 5.5rem;
+}
+.chip {
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+}
+.chip:hover { border-color: var(--accent); color: var(--ink); }
+.chip[aria-pressed="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+/* How many pages a value would leave: it turns a guess into a decision. */
 .chip-count {
     margin-left: 0.4rem;
     font-size: 0.75em;
     opacity: 0.65;
     font-variant-numeric: tabular-nums;
 }
+
+.count {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin: 0 0 0.75rem;
+}
 .count-capped { color: var(--muted); }
 .view-switch { margin-left: auto; display: inline-flex; gap: 0.3rem; }
-.count { display: flex; align-items: center; gap: 0.5rem; }
+
+.cards { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.85rem; }
+.card {
+    padding: 0.9rem 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.7rem;
+    background: var(--surface);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.card:hover { border-color: var(--accent); box-shadow: 0 2px 12px var(--shadow-sm); }
+.card-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--ink);
+}
+.card-title:hover { text-decoration: underline; }
+/* The dossier a card belongs to, under its title: page titles are short inside
+   a project, and this is what says where they come from. */
+.card-project {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.85rem;
+    color: var(--accent);
+    text-decoration: none;
+}
+a.card-project:hover { text-decoration: underline; }
+.card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+    margin: 0.35rem 0;
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+.card-path, .card-date { font-family: "Roboto Mono", monospace; }
+.card-date::before { content: "· "; }
+.tag {
+    padding: 0.05rem 0.5rem;
+    border-radius: 999px;
+    background: var(--code-bg);
+    color: var(--muted);
+}
+.card-summary, .card-snippet { margin: 0.35rem 0 0; color: var(--ink); }
+.card-snippet { font-size: 0.92rem; color: var(--muted); }
+.card-snippet mark {
+    background: var(--mark-bg);
+    color: var(--mark-ink);
+    padding: 0 0.1em;
+    border-radius: 0.2em;
+}
+.empty { color: var(--muted); }
 
 /* A selection of images renders as pictures, not as a list of titles. */
 .tiles {
@@ -1410,31 +1502,6 @@ html:has(.page.is-editing) { overflow: hidden; }
     color: var(--accent);
     text-decoration: none;
 }
-
-/* An attached file, shown above the notes about it: the document is the
-   subject, the Markdown is the commentary. */
-.attachment { margin: 0 0 2rem; }
-.attachment-image img,
-.attachment embed {
-    display: block;
-    width: 100%;
-    max-width: 100%;
-    border: 1px solid var(--border);
-    border-radius: 0.5rem;
-    background: var(--surface);
-}
-.attachment embed { height: min(80vh, 46rem); }
-.attachment-image img { height: auto; }
-.attachment-meta {
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    margin: 0.6rem 0 0;
-    font-family: var(--font-ui);
-    font-size: 0.85rem;
-    color: var(--muted);
-}
-.attachment-name { font-family: "Roboto Mono", monospace; }
 
 /* A named collection renders like a selection does: same tiles, same list. */
 .query-list { list-style: none; margin: 1.4rem 0; padding: 0; }
