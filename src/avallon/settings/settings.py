@@ -23,7 +23,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Root of the Markdown content tree (<domaine>/<type>/<slug>/index.md), plus
 # taxonomy.toml. Its location is user-configurable and lives *outside* this
 # repo (see avallon.notes.config): the env var, else the config pointer.
-from avallon.notes.config import resolve_content_dir, resolve_language  # noqa: E402
+from avallon.notes.config import (  # noqa: E402
+    resolve_content_dir,
+    resolve_language,
+    system_time_zone,
+)
 
 CONTENT_DIR = resolve_content_dir()
 
@@ -229,7 +233,11 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+# Django exports this as TZ for the whole process, which is what renders the
+# dates read back from git. Left at UTC, a note saved at 14:39 in Paris shows
+# up as 12:39 in its own history, so the machine's zone is the better default
+# for a site one person reads where they live.
+TIME_ZONE = os.environ.get("AVALLON_TIME_ZONE") or system_time_zone()
 
 USE_I18N = True
 

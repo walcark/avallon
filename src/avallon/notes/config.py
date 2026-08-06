@@ -118,6 +118,30 @@ def resolve_language() -> str:
     return chosen.strip().lower() if chosen else DEFAULT_LANGUAGE
 
 
+def system_time_zone() -> str:
+    """The machine's IANA zone, or ``UTC`` when it cannot be read.
+
+    There is no stdlib call for this. ``/etc/localtime`` is a symlink into the
+    zoneinfo database on every systemd distribution, which is where this runs,
+    and ``/etc/timezone`` covers the Debian family when it is a copy instead.
+    A wrong guess would only shift displayed times, so failure falls back
+    rather than raising.
+    """
+    link = Path("/etc/localtime")
+    try:
+        if link.is_symlink():
+            parts = link.resolve().parts
+            if "zoneinfo" in parts:
+                return "/".join(parts[parts.index("zoneinfo") + 1 :]) or "UTC"
+    except OSError:
+        pass
+    try:
+        name = Path("/etc/timezone").read_text(encoding="utf-8").strip()
+    except OSError:
+        return "UTC"
+    return name or "UTC"
+
+
 def content_dir_env() -> str | None:
     """The env override, if any, new name first."""
     return os.environ.get(ENV_VAR) or os.environ.get(LEGACY_ENV_VAR)
