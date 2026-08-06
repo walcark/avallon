@@ -68,20 +68,68 @@ def test_a_page_outside_a_dossier_keeps_the_whole_tree(dossier: Path) -> None:
     assert "tree-all" not in body  # the tree is not folded away
 
 
-def test_the_home_page_lists_every_page_with_its_dossier(dossier: Path) -> None:
+def test_the_home_page_shows_the_selection_with_its_dossier(dossier: Path) -> None:
     body = Client().get("/").content.decode()
 
-    assert 'data-project="recours-batterie"' in body
+    assert "Recours batterie" in body
     assert 'class="card-project"' in body
 
 
-def test_the_search_endpoint_returns_the_dossier_of_a_hit(dossier: Path) -> None:
-    payload = Client().get("/search/", {"q": "Mail"}).json()
+def test_facets_and_text_narrow_the_same_selection(dossier: Path) -> None:
+    """The point of the explorer: filter, then type, without losing the filter.
 
-    (hit,) = [r for r in payload["results"] if r["title"] == "Mail du 01/08"]
-    assert hit["project"] == "recours-batterie"
-    assert hit["project_title"] == "Recours batterie"
-    assert hit["status"] == "en cours"
+    Read on the fragment, not on the page: the sidebar lists the whole tree, so
+    a title showing up there says nothing about the selection.
+    """
+    filtered = Client().get("/search/", {"domain": "administratif"}).content.decode()
+    assert "Mail du 01/08" in filtered
+    assert "Garantie légale" not in filtered
+
+    narrowed = (
+        Client()
+        .get("/search/", {"domain": "administratif", "q": "Mail"})
+        .content.decode()
+    )
+    assert "Mail du 01/08" in narrowed
+    # Same filter, fewer results. Counted on the cards: a dossier's title also
+    # appears under the pages that belong to it.
+    assert narrowed.count('class="card-title"') < filtered.count('class="card-title"')
+
+
+def test_the_explorer_fragment_is_what_the_page_embeds(dossier: Path) -> None:
+    """One markup, two paths: the browser swaps in what the server rendered."""
+    fragment = Client().get("/search/", {"q": "Mail"}).content.decode()
+
+    assert "<html" not in fragment
+    assert 'class="facets"' in fragment
+    assert "Mail du 01/08" in fragment
+
+
+def test_a_facet_offering_one_value_is_not_shown(dossier: Path) -> None:
+    """A facet that cannot divide the selection is chrome."""
+    body = Client().get("/", {"domain": "administratif"}).content.decode()
+
+    assert 'data-facet="domain"' not in body
+
+
+def test_a_selection_of_images_renders_as_a_grid(notes: Path) -> None:
+    from .conftest import write_page as wp
+
+    for i in range(2):
+        wp(notes, f"administratif/fiche/scan-{i}", title=f"Scan {i}", file="scan.png")
+    body = Client().get("/", {"kind": "image"}).content.decode()
+
+    assert 'class="tiles"' in body
+    assert 'class="cards"' not in body
+
+
+def test_the_view_can_be_forced(notes: Path) -> None:
+    from .conftest import write_page as wp
+
+    wp(notes, "administratif/fiche/scan", title="Scan", file="scan.png")
+    body = Client().get("/", {"kind": "image", "view": "cards"}).content.decode()
+
+    assert 'class="cards"' in body
 
 
 def test_a_private_page_404s_when_private_pages_are_off(

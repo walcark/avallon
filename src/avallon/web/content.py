@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import contextvars
 import datetime
+import hashlib
 import html
 import os
 import re
@@ -21,6 +22,7 @@ import subprocess
 import tempfile
 import tomllib
 import unicodedata
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -46,6 +48,28 @@ _PAGE_GLOB = "*/*/*/index.md"
 # still a `cr` or a `fiche`, so progress lives in the frontmatter and can change
 # without moving the page (and thus without changing its URL).
 STATUSES = ("en cours", "terminé", "abandonné")
+
+# What a page's attached file is, derived from its extension and never typed.
+# The type says what a page *is* and cannot be checked; the medium is already
+# written in the file name, so declaring it a second time only invites the two
+# to disagree.
+KIND_BY_EXTENSION = {
+    **dict.fromkeys(("png", "jpg", "jpeg", "webp", "svg", "gif", "avif"), "image"),
+    "pdf": "pdf",
+    **dict.fromkeys(
+        ("txt", "md", "csv", "tsv", "py", "sh", "toml", "yaml", "yml", "json"), "text"
+    ),
+    **dict.fromkeys(("docx", "xlsx", "pptx", "odt", "ods", "odp"), "office"),
+    **dict.fromkeys(("zip", "tar", "gz", "xz", "7z", "rar", "epub"), "archive"),
+}
+
+# A page with no file is a note: the kind stays a complete partition, so it can
+# be a facet without a hole in it.
+KIND_NOTE = "note"
+KIND_OTHER = "other"
+
+# Kinds a grid can show a picture of. The rest fall back to cards.
+VISUAL_KINDS = ("image", "pdf")
 
 # A tag earns a place in the home page's facets once this many pages carry it.
 # Below that it filters nothing a search would not find, while crowding out the
@@ -86,6 +110,7 @@ class Page:
     visibility: str  # "public" (default) or "private"
     project: str  # slug of the page that indexes the project, or ""
     status: str  # one of STATUSES, or "" when the question is moot
+    file: str  # attached file, co-located with index.md, or ""
 
     @property
     def url(self) -> str:
@@ -94,6 +119,24 @@ class Page:
     @property
     def is_private(self) -> bool:
         return self.visibility == "private"
+
+    @property
+    def kind(self) -> str:
+        """What this page holds: note, image, pdf, text, office, archive."""
+        if not self.file:
+            return KIND_NOTE
+        suffix = self.file.rsplit(".", 1)[-1].lower() if "." in self.file else ""
+        return KIND_BY_EXTENSION.get(suffix, KIND_OTHER)
+
+    @property
+    def file_url(self) -> str:
+        """URL of the attached file, which sits next to the page."""
+        return f"{self.url}{self.file}" if self.file else ""
+
+    @property
+    def is_visual(self) -> bool:
+        """Whether a grid can show a picture of this page."""
+        return self.kind in VISUAL_KINDS
 
     @property
     def display_date(self) -> str:
@@ -566,6 +609,7 @@ def _page_from(index_md: Path, post: frontmatter.Post | None = None) -> Page:
         visibility=str(post.get("visibility", "public")).strip().lower(),
         project=str(post.get("project", "") or "").strip(),
         status=str(post.get("status", "") or "").strip().lower(),
+        file=str(post.get("file", "") or "").strip(),
     )
 
 
@@ -773,6 +817,171 @@ def nav_tree() -> list[dict[str, Any]]:
         }
         for domain in sorted(grouped)
     ]
+
+
+# --------------------------------------------------------------------------- #
+# Selection                                                                   #
+# --------------------------------------------------------------------------- #
+#
+# One selection, not a listing plus a search box. Facets and text narrow the
+# same set, server-side, so a filtered view can be typed into and an URL says
+# exactly what is on screen. Rendering the whole tree and filtering it in the
+# browser could not compose the two: results replaced the list instead of
+# narrowing it.
+
+
+@dataclass(frozen=True)
+class Selection:
+    """Pages matching a query, and what the facets should offer next."""
+
+    pages: list[Page]
+    snippets: dict[str, str]  # relpath -> highlighted excerpt, when text was used
+    total: int  # before the display cap
+    facets: dict[str, list[tuple[str, int]]]  # facet -> [(value, count)]
+
+    @property
+    def is_visual(self) -> bool:
+        """Whether every page can show a thumbnail, so a grid makes sense."""
+        return bool(self.pages) and all(p.is_visual for p in self.pages)
+
+
+def _facet_counts(
+    pages: list[Page], membership: dict[str, Page]
+) -> dict[str, list[tuple[str, int]]]:
+    """Count each facet value over *pages*, dropping what does not divide them.
+
+    A facet offering a single value cannot narrow anything: it is chrome. This
+    is what keeps six axes bearable on a small corpus, where `kind` simply does
+    not appear until files exist.
+    """
+    counters: dict[str, dict[str, int]] = {
+        "domain": {},
+        "type": {},
+        "kind": {},
+        "status": {},
+        "project": {},
+        "tag": {},
+    }
+    for page in pages:
+        counters["domain"][page.domain] = counters["domain"].get(page.domain, 0) + 1
+        counters["type"][page.type] = counters["type"].get(page.type, 0) + 1
+        counters["kind"][page.kind] = counters["kind"].get(page.kind, 0) + 1
+        if page.status:
+            counters["status"][page.status] = counters["status"].get(page.status, 0) + 1
+        dossier = membership.get(page.relpath)
+        if dossier is not None:
+            counters["project"][dossier.slug] = (
+                counters["project"].get(dossier.slug, 0) + 1
+            )
+        for tag in page.tags:
+            counters["tag"][tag] = counters["tag"].get(tag, 0) + 1
+
+    out: dict[str, list[tuple[str, int]]] = {}
+    for name, counts in counters.items():
+        keep = {k: n for k, n in counts.items() if len(counts) > 1}
+        if name == "tag":
+            keep = {k: n for k, n in keep.items() if n >= TAG_FACET_MIN}
+        out[name] = sorted(keep.items())
+    return out
+
+
+def select(
+    *,
+    query: str = "",
+    domains: Sequence[str] = (),
+    types: Sequence[str] = (),
+    kinds: Sequence[str] = (),
+    statuses: Sequence[str] = (),
+    projects: Sequence[str] = (),
+    tags: Sequence[str] = (),
+    limit: int | None = None,
+) -> Selection:
+    """Resolve facets and text together into one set of pages.
+
+    Values inside a facet are OR'd (two domains widen), facets are AND'd, and
+    tags are AND'd with each other: picking two tags asks for pages carrying
+    both, which is what a reader means when they keep adding words.
+    """
+    membership_map = membership()
+
+    if query.strip():
+        hits = search(query)
+        pages = [hit.page for hit in hits]
+        snippets = {hit.page.relpath: hit.snippet for hit in hits}
+    else:
+        pages = all_pages()
+        snippets = {}
+
+    wanted_tags = [_normalize_tag(t) for t in tags if t.strip()]
+
+    def keeps(page: Page) -> bool:
+        if domains and page.domain not in domains:
+            return False
+        if types and page.type not in types:
+            return False
+        if kinds and page.kind not in kinds:
+            return False
+        if statuses and page.status not in statuses:
+            return False
+        if projects:
+            dossier = membership_map.get(page.relpath)
+            if dossier is None or dossier.slug not in projects:
+                return False
+        return all(t in page.tags for t in wanted_tags)
+
+    kept = [page for page in pages if keeps(page)]
+    facets = _facet_counts(kept, membership_map)
+    total = len(kept)
+    if limit is not None and limit > 0:
+        kept = kept[:limit]
+    return Selection(pages=kept, snippets=snippets, total=total, facets=facets)
+
+
+def thumbnail_path(source: Path, width: int = 320) -> Path | None:
+    """Render the first page of *source* to a cached JPEG; None if impossible.
+
+    Cached outside the notes repository, keyed on the file's mtime and size:
+    a thumbnail is derived data, and derived data has no business being
+    committed next to the document it came from.
+    """
+    stat = source.stat()
+    key = hashlib.sha256(
+        f"{source}|{stat.st_mtime_ns}|{stat.st_size}|{width}".encode()
+    ).hexdigest()[:32]
+    base = os.environ.get("XDG_CACHE_HOME")
+    root = Path(base).expanduser() if base else Path.home() / ".cache"
+    cached = root / "avallon" / "thumbs" / f"{key}.jpg"
+    if cached.is_file():
+        return cached
+
+    cached.parent.mkdir(parents=True, exist_ok=True)
+    stem = cached.with_suffix("")
+    try:
+        subprocess.run(
+            [
+                "pdftoppm",
+                "-jpeg",
+                "-scale-to",
+                str(width),
+                "-f",
+                "1",
+                "-l",
+                "1",
+                str(source),
+                str(stem),
+            ],
+            capture_output=True,
+            timeout=15,
+            check=True,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None  # poppler missing, or a PDF it cannot read
+    # pdftoppm appends the page number to the prefix it was given.
+    produced = next(stem.parent.glob(f"{stem.name}-*.jpg"), None)
+    if produced is None:
+        return None
+    produced.replace(cached)
+    return cached
 
 
 # --- Full-text search ------------------------------------------------------

@@ -1356,3 +1356,57 @@ html:has(.page.is-editing) { overflow: hidden; }
     /* While editing, the editor's own bar owns the bottom: stack them. */
     .editor-bar { padding-bottom: 3.75rem; }
 }
+
+/* --------------------------------------------------------------------------
+   Explorer: facets, counts, tiles
+   -------------------------------------------------------------------------- */
+
+/* How many pages a facet value would leave: it turns a guess into a decision. */
+.chip-count {
+    margin-left: 0.4rem;
+    font-size: 0.75em;
+    opacity: 0.65;
+    font-variant-numeric: tabular-nums;
+}
+.count-capped { color: var(--muted); }
+.view-switch { margin-left: auto; display: inline-flex; gap: 0.3rem; }
+.count { display: flex; align-items: center; gap: 0.5rem; }
+
+/* A selection of images renders as pictures, not as a list of titles. */
+.tiles {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+    gap: 0.9rem;
+}
+.tile a { text-decoration: none; color: var(--ink); display: block; }
+.tile-media {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    display: block;
+}
+.tile a:hover .tile-media { border-color: var(--accent); }
+.tile-title {
+    display: block;
+    margin-top: 0.4rem;
+    font-size: 0.88rem;
+    line-height: 1.3;
+    /* Two lines then ellipsis: a ragged grid is harder to scan than a clipped
+       title, and the full one is one hover away. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.tile-project {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--accent);
+    text-decoration: none;
+}

@@ -1,301 +1,85 @@
 {% extends "base.html" %}
-{% load taxonomy %}
 {% load lang %}
 
 {% block title %}{{ "Home"|t }}{% endblock %}
 {% block topbar %}{{ "Home"|t }}{% endblock %}
 
-{% block head %}
-    <style>
-      .home { max-width: var(--measure-wide); margin: 0 auto; }
-      .home h1 { font-size: 1.75rem; letter-spacing: -0.02em; margin-top: 0.5rem; }
-
-      .search { width: 100%; font: inherit; padding: 0.7rem 0.9rem;
-                border: 1px solid var(--border); border-radius: 0.6rem;
-                background: var(--surface); color: var(--ink); }
-      .search:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-
-      .facets { display: flex; flex-direction: column; gap: 0.5rem; margin: 1rem 0 1.5rem; }
-      .facet-group { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem; }
-      .facet-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em;
-                     color: var(--muted); min-width: 5.5rem; }
-      .chip { font: inherit; font-size: 0.85rem; cursor: pointer;
-              padding: 0.2rem 0.65rem; border-radius: 999px;
-              border: 1px solid var(--border); background: var(--surface); color: var(--muted); }
-      .chip:hover { border-color: var(--accent); color: var(--ink); }
-      .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
-
-      .count { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.75rem; }
-
-      .cards { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.85rem; }
-      /* A `display` on a class is an author rule, so it beats the browser's
-         `[hidden] { display: none }` (a UA rule): a hidden .cards list would
-         stay laid out. Restate the hide with matching specificity so toggling
-         `hidden` actually hides it. */
-      .cards[hidden] { display: none; }
-
-      /* Search results overlay: a panel that drops under the facets and floats
-         over the browse list while the box has text. */
-      .search-area { position: relative; }
-      .results-panel { position: absolute; left: 0; right: 0; top: 100%; z-index: 20;
-              margin-top: 0.5rem; padding: 0.9rem 1rem;
-              background: var(--bg); border: 1px solid var(--border);
-              border-radius: 0.7rem; box-shadow: 0 12px 34px var(--shadow-lg);
-              max-height: 72vh; overflow-y: auto; }
-      .results-panel[hidden] { display: none; }
-      .results-head { margin: 0 0 0.7rem; font-size: 0.82rem; font-weight: 600;
-              text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
-      /* While results float on top, fade the browse list so the eye stays on them. */
-      .home.searching #pages,
-      .home.searching #count { opacity: 0.3; pointer-events: none; }
-      .card { padding: 0.9rem 1.1rem; border: 1px solid var(--border);
-              border-radius: 0.7rem; background: var(--surface);
-              transition: border-color 0.15s ease, box-shadow 0.15s ease; }
-      .card:hover { border-color: var(--accent); box-shadow: 0 2px 12px var(--shadow-sm); }
-      .card.is-hidden { display: none; }
-      .card-title { font-size: 1.05rem; font-weight: 600; text-decoration: none; color: var(--ink); }
-      .card-title:hover { text-decoration: underline; }
-      /* The dossier a card belongs to, sitting under its title: page titles are
-         short inside a project, this is what says where they come from. */
-      .card-project { display: block; margin-top: 0.15rem; font-size: 0.85rem;
-                      color: var(--accent); text-decoration: none; }
-      a.card-project:hover { text-decoration: underline; }
-      .card-meta { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center;
-                   margin: 0.35rem 0; font-size: 0.8rem; color: var(--muted); }
-      .card-path { font-family: "Roboto Mono", monospace; }
-      .card-date { font-family: "Roboto Mono", monospace; }
-      .card-date::before { content: "· "; }
-      .tag { padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--code-bg); color: var(--muted); }
-      .card-summary, .card-snippet { margin: 0.35rem 0 0; color: var(--ink); }
-      .card-snippet { font-size: 0.92rem; color: var(--muted); }
-      .card-snippet mark { background: var(--mark-bg); color: var(--mark-ink); padding: 0 0.1em; border-radius: 0.2em; }
-      .empty { color: var(--muted); }
-    </style>
-{% endblock %}
-
 {% block content %}
     <main class="home">
         <h1>{{ "Contents"|t }}</h1>
 
-        <div class="search-area">
-            <input type="search" class="search" id="q" placeholder="{{ "Search the notes…"|t }}" autocomplete="off">
+        <input type="search" class="search" id="q" value="{{ query }}"
+               placeholder="{{ "Search the notes…"|t }}" autocomplete="off"
+               aria-label="{{ "Search the notes…"|t }}">
 
-            <div class="facets">
-                <div class="facet-group" data-facet="domain">
-                    <span class="facet-label">{{ "Domain"|t }}</span>
-                    {% for d in domains %}<button type="button" class="chip" aria-pressed="false" data-value="{{ d }}">{{ d|label }}</button>{% endfor %}
-                </div>
-                <div class="facet-group" data-facet="type">
-                    <span class="facet-label">{{ "Type"|t }}</span>
-                    {% for t in types %}<button type="button" class="chip" aria-pressed="false" data-value="{{ t }}">{{ t|label }}</button>{% endfor %}
-                </div>
-                <div class="facet-group" data-facet="project">
-                    <span class="facet-label">{{ "Dossier"|t }}</span>
-                    {% for p in projects %}<button type="button" class="chip" aria-pressed="false" data-value="{{ p.slug }}">{{ p.title }}</button>{% endfor %}
-                </div>
-                <div class="facet-group" data-facet="status">
-                    <span class="facet-label">{{ "State"|t }}</span>
-                    {% for s in statuses %}<button type="button" class="chip" aria-pressed="false" data-value="{{ s }}">{{ s }}</button>{% endfor %}
-                </div>
-                <div class="facet-group" data-facet="tag">
-                    <span class="facet-label">{{ "Tags"|t }}</span>
-                    {% for t in tags %}<button type="button" class="chip" aria-pressed="false" data-value="{{ t }}">{{ t }}</button>{% endfor %}
-                </div>
-            </div>
-
-            <!-- Full-text results float here, over the browse list, while the
-                 search box has text (JS toggles the [hidden] attribute). -->
-            <div class="results-panel" id="panel" hidden>
-                <header class="results-head" id="resultsHead"></header>
-                <ul class="cards" id="results"></ul>
-            </div>
-        </div>
-
-        <p class="count" id="count"></p>
-
-        <!-- Server-rendered browse list, always in place; results float above it. -->
-        <ul class="cards" id="pages">
-            {% for c in cards %}
-            <li class="card" data-domain="{{ c.page.domain }}" data-type="{{ c.page.type }}"
-                data-tags="{{ c.page.tags|join:'||' }}" data-status="{{ c.page.status }}"
-                data-project="{% if c.project %}{{ c.project.slug }}{% endif %}">
-                <a class="card-title" href="{{ c.page.url }}">{{ c.page.title }}</a>
-                {# A title written inside a project is short on purpose; out of
-                   context, the dossier is what makes it findable. #}
-                {% if c.project %}<a class="card-project" href="{{ c.project.url }}">{{ c.project.title }}</a>{% endif %}
-                <div class="card-meta">
-                    <span class="card-path">{{ c.page.domain_label }} / {{ c.page.type_label }}</span>
-                    {% if c.page.display_date %}<span class="card-date">{{ c.page.display_date }}</span>{% endif %}
-                    {% if c.page.status %}<span class="badge-status" data-status="{{ c.page.status }}">{{ c.page.status }}</span>{% endif %}
-                    {% for t in c.page.tags %}<span class="tag">{{ t }}</span>{% endfor %}
-                </div>
-                {% if c.page.summary %}<p class="card-summary">{{ c.page.summary }}</p>{% endif %}
-            </li>
-            {% endfor %}
-        </ul>
+        <!-- Facets, count and results. Replaced wholesale as the selection
+             narrows, by the very fragment the server rendered here. -->
+        <div id="explorer">{% include "_explorer.html" %}</div>
     </main>
 {% endblock %}
 
 {% block scripts %}
     <script>
       (function () {
-        const qInput = document.getElementById('q');
-        const pagesEl = document.getElementById('pages');
-        const resultsEl = document.getElementById('results');
-        const countEl = document.getElementById('count');
-        const panel = document.getElementById('panel');
-        const resultsHead = document.getElementById('resultsHead');
-        const home = document.querySelector('.home');
+        const input = document.getElementById('q');
+        const explorer = document.getElementById('explorer');
 
-        function parseTags(str) { return str ? str.split('||') : []; }
-
-        // Corpus snapshot from the server-rendered cards; used both to browse
-        // and to decide which facet chips are still relevant.
-        const PAGES = [...pagesEl.querySelectorAll('.card')].map(c => ({
-          domain: c.dataset.domain, type: c.dataset.type, tags: parseTags(c.dataset.tags),
-          project: c.dataset.project, status: c.dataset.status,
-        }));
-
-        // Active facet values, per facet kind. Empty set = no constraint.
-        const active = {
-          domain: new Set(), type: new Set(), project: new Set(),
-          status: new Set(), tag: new Set(),
-        };
-
-        function passDomainType(it) {
-          if (active.domain.size && !active.domain.has(it.domain)) return false;
-          if (active.type.size && !active.type.has(it.type)) return false;
-          if (active.project.size && !active.project.has(it.project)) return false;
-          if (active.status.size && !active.status.has(it.status)) return false;
-          return true;
-        }
-        function matchFacets(it) {
-          if (!passDomainType(it)) return false;
-          // Tags combine with AND: a card must carry every selected tag.
-          if (active.tag.size && ![...active.tag].every(t => it.tags.includes(t))) return false;
-          return true;
+        // The URL is the selection: every interaction edits it, the server
+        // answers with the fragment, and the address bar keeps saying what is
+        // on screen. No second filtering implementation lives here.
+        function params() {
+          return new URLSearchParams(location.search);
         }
 
-        // Keep only the facet chips still reachable under the current selection:
-        // types follow the chosen domain, tags follow domain+type *and* the
-        // tags already picked (so only co-selectable tags remain, matching the
-        // AND semantics). Any active value that just became unreachable is
-        // dropped, and an empty row hides.
-        function updateChips(dataset) {
-          const inDomain = dataset.filter(it => !active.domain.size || active.domain.has(it.domain));
-          toggleChips('type', new Set(inDomain.map(it => it.type)));
-          toggleChips('project', new Set(inDomain.map(it => it.project).filter(Boolean)));
-          toggleChips('status', new Set(inDomain.map(it => it.status).filter(Boolean)));
-          const inScope = dataset.filter(matchFacets);
-          toggleChips('tag', new Set(inScope.flatMap(it => it.tags)));
-        }
-        function toggleChips(kind, available) {
-          const group = document.querySelector(`.facet-group[data-facet="${kind}"]`);
-          let anyVisible = false;
-          group.querySelectorAll('.chip').forEach(chip => {
-            const ok = available.has(chip.dataset.value);
-            chip.hidden = !ok;
-            anyVisible = anyVisible || ok;
-            if (!ok && active[kind].has(chip.dataset.value)) {
-              active[kind].delete(chip.dataset.value);
-              chip.setAttribute('aria-pressed', 'false');
-            }
-          });
-          group.hidden = !anyVisible;
+        let pending = null;
+        function apply(next) {
+          const qs = next.toString();
+          const url = qs ? '?' + qs : location.pathname;
+          history.replaceState(null, '', url);
+          if (pending) pending.abort();
+          pending = new AbortController();
+          fetch('/search/?' + qs, { signal: pending.signal })
+            .then(r => r.text())
+            .then(html => { explorer.innerHTML = html; })
+            .catch(() => {});
         }
 
-        function showPages() {
-          panel.hidden = true;
-          home.classList.remove('searching');
-          updateChips(PAGES);
-          let n = 0;
-          pagesEl.querySelectorAll('.card').forEach(card => {
-            const ok = matchFacets({
-              domain: card.dataset.domain, type: card.dataset.type, tags: parseTags(card.dataset.tags),
-              project: card.dataset.project, status: card.dataset.status,
-            });
-            card.classList.toggle('is-hidden', !ok);
-            if (ok) n++;
-          });
-          countEl.textContent = n + ' ' + (n > 1 ? '{{ "pages"|t|escapejs }}' : '{{ "page"|t|escapejs }}');
-        }
-
-        function showResults(results, q) {
-          updateChips(results);
-          const kept = results.filter(matchFacets);
-          const noun = kept.length > 1
-            ? '{{ "results"|t|escapejs }}' : '{{ "result"|t|escapejs }}';
-          resultsHead.textContent = kept.length
-            ? `${kept.length} ${noun} : ${q}`
-            : `{{ "No result for"|t|escapejs }} : ${q}`;
-          resultsEl.innerHTML = kept.map(r => `
-            <li class="card">
-              <a class="card-title" href="${r.url}">${escapeHtml(r.title)}</a>
-              ${r.project_title ? `<span class="card-project">${escapeHtml(r.project_title)}</span>` : ''}
-              <div class="card-meta">
-                <span class="card-path">${escapeHtml(r.domain_label || r.domain)} / ${escapeHtml(r.type_label || r.type)}</span>
-                ${r.date ? `<span class="card-date">${escapeHtml(r.date)}</span>` : ''}
-                ${r.status ? `<span class="badge-status" data-status="${escapeHtml(r.status)}">${escapeHtml(r.status)}</span>` : ''}
-                ${r.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}
-              </div>
-              <p class="card-snippet">${r.snippet}</p>
-            </li>`).join('');
-          panel.hidden = false;
-          home.classList.add('searching');
-        }
-
-        function escapeHtml(s) {
-          return s.replace(/[&<>"']/g, c => (
-            { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
-          ));
-        }
-
-        // Full-text search: debounced call to /search/, cached per query.
-        let timer = null, lastResults = null, lastQuery = null;
-        function refresh() {
-          const q = qInput.value.trim();
-          if (!q) { lastQuery = null; showPages(); return; }
-          if (q === lastQuery) { showResults(lastResults, q); return; }
+        let timer = null;
+        input.addEventListener('input', function () {
           clearTimeout(timer);
-          timer = setTimeout(() => {
-            fetch('/search/?q=' + encodeURIComponent(q))
-              .then(r => r.json())
-              .then(data => { lastQuery = q; lastResults = data.results; showResults(data.results, q); });
+          timer = setTimeout(function () {
+            const next = params();
+            const value = input.value.trim();
+            value ? next.set('q', value) : next.delete('q');
+            apply(next);
           }, 180);
-        }
-
-        qInput.addEventListener('input', refresh);
-        // Escape clears the box, which closes the overlay and restores the list.
-        qInput.addEventListener('keydown', e => {
-          if (e.key === 'Escape' && qInput.value) { qInput.value = ''; refresh(); }
         });
 
-        document.querySelectorAll('.facet-group').forEach(group => {
-          const kind = group.dataset.facet;
-          group.addEventListener('click', e => {
-            const chip = e.target.closest('.chip');
-            if (!chip) return;
-            const on = chip.getAttribute('aria-pressed') === 'true';
-            chip.setAttribute('aria-pressed', String(!on));
-            active[kind][on ? 'delete' : 'add'](chip.dataset.value);
-            refresh();
-          });
-        });
+        // Delegated: the fragment is replaced on every change, so listeners
+        // bound to its children would die with the first one.
+        explorer.addEventListener('click', function (e) {
+          const chip = e.target.closest('.chip');
+          if (!chip) return;
+          const next = params();
 
-        // Pre-select facets from the URL (?domaine=… / ?type=… / ?tag=…), so a
-        // sidebar or breadcrumb link like /?domaine=travail lands pre-filtered.
-        const params = new URLSearchParams(location.search);
-        [['domaine', 'domain'], ['type', 'type'], ['tag', 'tag'],
-         ['dossier', 'project'], ['etat', 'status']].forEach(([param, kind]) => {
-          params.getAll(param).forEach(val => {
-            active[kind].add(val);
-            const chip = document.querySelector(
-              `.facet-group[data-facet="${kind}"] .chip[data-value="${CSS.escape(val)}"]`);
-            if (chip) chip.setAttribute('aria-pressed', 'true');
-          });
-        });
+          if (chip.dataset.view) {
+            next.set('view', chip.dataset.view);
+            apply(next);
+            return;
+          }
 
-        refresh();
+          const param = chip.dataset.param;
+          const value = chip.dataset.value;
+          const current = next.getAll(param);
+          next.delete(param);
+          // Toggling a facet value off is how a reader widens again.
+          current.filter(v => v !== value).forEach(v => next.append(param, v));
+          if (!current.includes(value)) next.append(param, value);
+          // A view guessed for images makes no sense once the selection
+          // changes: let the server guess again.
+          if (!chip.dataset.view) next.delete('view');
+          apply(next);
+        });
       })();
     </script>
 {% endblock %}

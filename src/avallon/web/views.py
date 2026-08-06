@@ -25,70 +25,151 @@ from . import content, exporter, security
 POLL_INTERVAL = 0.3
 
 
-def home(request):
-    """Central page: lists every page in the content tree and exposes the
-    facet values (domains, types, projects, statuses, tags) used by the
-    client-side filters. The full-text search box calls the `search` endpoint
-    below.
+# Query parameters, English first. The French spellings are still read, since
+# they are baked into breadcrumb links of pages already written.
+_FACET_PARAMS = {
+    "domains": ("domain", "domaine"),
+    "types": ("type",),
+    "kinds": ("kind",),
+    "statuses": ("state", "etat"),
+    "projects": ("dossier", "project"),
+    "tags": ("tag",),
+}
 
-    Each card carries the project it belongs to, so a title written inside a
-    project ("Mail retour") still says which dossier it comes from once it is
-    read out of context.
-    """
-    pages = content.all_pages()
-    projects = content.all_projects()
+# How many results a page renders. Beyond that the answer is "narrow it down",
+# not "scroll": nobody pages through their own notes.
+PAGE_SIZE = 60
+
+
+def _active_facets(request):
+    """The facet values the request asks for, per facet name."""
+    return {
+        name: [v for key in keys for v in request.GET.getlist(key) if v]
+        for name, keys in _FACET_PARAMS.items()
+    }
+
+
+def _explorer_context(request):
+    """Everything the explorer needs: the selection, its view mode, the echo."""
+    active = _active_facets(request)
+    selection = content.select(
+        query=request.GET.get("q", ""), limit=PAGE_SIZE, **active
+    )
     membership = content.membership()
-    return render(
-        request,
-        "home.html",
+
+    view = request.GET.get("view", "")
+    if view not in ("grid", "cards"):
+        # Guessed from what was selected: a set of images should not render as
+        # a list of titles. An explicit `view=` always wins.
+        view = "grid" if selection.is_visual else "cards"
+
+    facets = [
         {
-            "cards": [{"page": p, "project": membership.get(p.relpath)} for p in pages],
-            "domains": sorted({p.domain for p in pages}),
-            "types": sorted({p.type for p in pages}),
-            "projects": projects,
-            "statuses": [
-                s for s in content.STATUSES if any(p.status == s for p in pages)
-            ],
-            # Only tags that group several pages: see content.facet_tags.
-            "tags": content.facet_tags(pages),
+            "param": "domain",
+            "label": "Domain",
+            "values": selection.facets["domain"],
+            "active": active["domains"],
+            "translate": False,
         },
-    )
-
-
-def search(request):
-    """JSON full-text search over the content tree (`?q=<query>`). Facet
-    filtering is applied client-side on the returned results."""
-    hits = content.search(request.GET.get("q", ""))
-    projects = content.membership()
-    return JsonResponse(
         {
-            "results": [
-                {
-                    "url": h.page.url,
-                    "title": h.page.title,
-                    # Both forms travel: the bare names drive the facet filters
-                    # client-side, the labels are what gets displayed.
-                    "domain": h.page.domain,
-                    "type": h.page.type,
-                    "domain_label": h.page.domain_label,
-                    "type_label": h.page.type_label,
-                    "tags": h.page.tags,
-                    "date": h.page.display_date,
-                    "snippet": h.snippet,
-                    "status": h.page.status,
-                    # Slug for the facet, title to show the dossier a page
-                    # named "Mail retour" comes from.
-                    "project": projects[h.page.relpath].slug
-                    if h.page.relpath in projects
-                    else "",
-                    "project_title": projects[h.page.relpath].title
-                    if h.page.relpath in projects
-                    else "",
-                }
-                for h in hits
-            ]
-        }
-    )
+            "param": "type",
+            "label": "Type",
+            "values": selection.facets["type"],
+            "active": active["types"],
+            "translate": False,
+        },
+        {
+            "param": "kind",
+            "label": "Kind",
+            "values": selection.facets["kind"],
+            "active": active["kinds"],
+            "translate": True,
+        },
+        {
+            "param": "dossier",
+            "label": "Dossier",
+            "values": selection.facets["project"],
+            "active": active["projects"],
+            "translate": False,
+        },
+        {
+            "param": "state",
+            "label": "State",
+            "values": selection.facets["status"],
+            "active": active["statuses"],
+            "translate": True,
+        },
+        {
+            "param": "tag",
+            "label": "Tags",
+            "values": selection.facets["tag"],
+            "active": active["tags"],
+            "translate": False,
+        },
+    ]
+
+    return {
+        "selection": selection,
+        "facets": facets,
+        "view": view,
+        "query": request.GET.get("q", ""),
+        "active": active,
+        "cards": [
+            {
+                "page": page,
+                "project": membership.get(page.relpath),
+                "snippet": selection.snippets.get(page.relpath, ""),
+            }
+            for page in selection.pages
+        ],
+    }
+
+
+def home(request):
+    """The explorer: one selection, narrowed by facets and by text alike.
+
+    Both are resolved server-side and rendered together, so filtering on a kind
+    and then typing narrows the same set instead of replacing it, and the URL
+    says exactly what is on screen.
+    """
+    return render(request, "home.html", _explorer_context(request))
+
+
+def explore(request):
+    """The explorer fragment alone, for the browser to swap in as you type."""
+    return render(request, "_explorer.html", _explorer_context(request))
+
+
+# A generic sheet, served when a thumbnail cannot be produced. Inline rather
+# than a static file: it is the fallback, so it must not depend on anything.
+_SHEET_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 64">'
+    '<rect x="4" y="2" width="40" height="60" rx="3" fill="#e8e3d9"/>'
+    '<path d="M12 18h24M12 28h24M12 38h16" stroke="#a9a091" stroke-width="3"/>'
+    "</svg>"
+)
+
+
+def thumbnail(request, relpath):
+    """A page's thumbnail: the first page of its PDF, cached on disk.
+
+    Images are their own thumbnail and never reach here. Anything else, and any
+    machine without poppler, gets a generic sheet: the grid must not depend on
+    a binary being installed.
+    """
+    index_md = content.safe_resolve(relpath) / "index.md"
+    if not index_md.is_file():
+        raise Http404("Page not found")
+    page = content.load_page(index_md)
+    source = index_md.parent / page.file if page.file else None
+
+    if page.kind != "pdf" or source is None or not source.is_file():
+        return HttpResponse(_SHEET_SVG, content_type="image/svg+xml")
+
+    cached = content.thumbnail_path(source)
+    if cached is None:
+        return HttpResponse(_SHEET_SVG, content_type="image/svg+xml")
+    return FileResponse(open(cached, "rb"), content_type="image/jpeg")
 
 
 def manifest(request):
