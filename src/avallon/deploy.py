@@ -72,6 +72,10 @@ def render_env(
         f"AVALLON_ALLOWED_HOSTS={','.join(sorted(hosts))}",
         "AVALLON_DEBUG=0",
         "AVALLON_SHOW_PRIVATE=0",
+        # One commit per save rather than one per quarter of an hour: the
+        # history panel offers a page's last five states, and folding a day of
+        # edits into a single commit would leave most pages with one.
+        "AVALLON_SYNC_WINDOW=0",
     ]
     if content_dir is not None:
         lines.append(f"AVALLON_CONTENT_DIR={content_dir}")

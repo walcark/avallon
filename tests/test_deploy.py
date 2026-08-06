@@ -34,6 +34,8 @@ def test_a_deployment_never_serves_private_pages_nor_debug() -> None:
 
     assert "AVALLON_DEBUG=0" in env
     assert "AVALLON_SHOW_PRIVATE=0" in env
+    # Each save is its own state, otherwise the history panel has nothing to list.
+    assert "AVALLON_SYNC_WINDOW=0" in env
 
 
 def test_a_generated_token_is_long_enough_to_be_one() -> None:
