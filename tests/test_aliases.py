@@ -125,7 +125,10 @@ def test_saving_without_a_title_change_adds_nothing(notes: Path) -> None:
 
 def test_the_frontmatter_keeps_its_shape(notes: Path) -> None:
     """A YAML round-trip would reorder and requote what was written by hand."""
-    text = '---\ntitle: T\ndate: 2026-01-01\ntags: [a, b]\nsummary: "Une phrase."\n---\n\nCorps.\n'
+    text = (
+        '---\ntitle: T\ndate: 2026-01-01\ntags: [a, b]\n'
+        'summary: "Une phrase."\n---\n\nCorps.\n'
+    )
 
     out = content.add_alias(text, "vieux")
 
