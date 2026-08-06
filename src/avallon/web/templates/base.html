@@ -12,6 +12,13 @@
          The glyph is the one in the sidebar's brand. -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext x='16' y='24' font-size='24' text-anchor='middle' fill='%232a5d8f'%3E%E2%97%86%3C/text%3E%3C/svg%3E">
 
+    <!-- Installable: the manifest gives the home-screen icon and the
+         standalone display, the theme colour tints the system bars. -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#faf9f6" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#191714" media="(prefers-color-scheme: dark)">
+    <link rel="apple-touch-icon" href="{% static 'avallon/pwa/icon-192.png' %}">
+
     <link rel="stylesheet" href="{% static 'avallon/css/fonts.css' %}">
     <link rel="stylesheet" href="{% static 'avallon/css/style.css' %}">
     {% block head %}{% endblock %}
@@ -344,5 +351,15 @@
       })();
     </script>
     {% block scripts %}{% endblock %}
+
+    <script>
+      // Registered last, and only where a service worker is allowed at all
+      // (https, or localhost during development).
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js').catch(function () {});
+        });
+      }
+    </script>
 </body>
 </html>

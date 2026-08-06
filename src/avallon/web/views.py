@@ -91,6 +91,35 @@ def search(request):
     )
 
 
+def manifest(request):
+    """The web app manifest, rendered so its name follows the language."""
+    return render(
+        request,
+        "manifest.webmanifest",
+        {
+            # Matches the stylesheet's --bg / --accent in the light theme, so
+            # the splash screen does not flash a different colour.
+            "background": "#faf9f6",
+            "theme": "#2a5d8f",
+        },
+        content_type="application/manifest+json",
+    )
+
+
+def service_worker(request):
+    """Serve the worker from the root.
+
+    A worker only controls what sits under its own URL, so one served from
+    /static/ would control /static/ and nothing else.
+    """
+    path = Path(__file__).resolve().parent / "static" / "avallon" / "pwa" / "sw.js"
+    return FileResponse(
+        open(path, "rb"),
+        content_type="application/javascript",
+        headers={"Service-Worker-Allowed": "/"},
+    )
+
+
 def serve_content(request, relpath):
     """Resolve a hierarchical URL to either a Markdown page or a co-located
     asset (image, etc.) sitting next to it in the content tree."""

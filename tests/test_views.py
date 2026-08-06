@@ -114,3 +114,40 @@ def test_the_creation_form_offers_the_declared_taxonomy(dossier: Path) -> None:
     assert 'value="informatique"' in body
     assert 'value="recueil"' in body
     assert 'value="chantier"' not in body  # not declared in this tree
+
+
+def test_the_manifest_is_valid_json_and_follows_the_language(
+    dossier: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import json
+
+    from django.conf import settings
+
+    monkeypatch.setattr(settings, "LANGUAGE", "fr")
+    response = Client().get("/manifest.webmanifest")
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == "application/manifest+json"
+    payload = json.loads(response.content)
+    assert payload["name"] == "Mes notes"
+    assert payload["display"] == "standalone"
+    assert {icon["sizes"] for icon in payload["icons"]} == {"192x192", "512x512"}
+
+
+def test_the_service_worker_is_served_from_the_root(dossier: Path) -> None:
+    """A worker only controls what sits under its own URL."""
+    response = Client().get("/sw.js")
+
+    assert response.status_code == 200
+    assert response["Service-Worker-Allowed"] == "/"
+    body = b"".join(response.streaming_content)
+    assert b"addEventListener('fetch'" in body
+
+
+def test_writes_are_never_replayed_from_the_cache(dossier: Path) -> None:
+    """A POST silently succeeding later would corrupt a note."""
+    from pathlib import Path as P
+
+    worker = P("src/avallon/web/static/avallon/pwa/sw.js").read_text(encoding="utf-8")
+
+    assert "request.method !== 'GET'" in worker
