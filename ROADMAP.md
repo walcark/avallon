@@ -65,20 +65,21 @@ handing the notes to whoever finds the port.
 
 ## v0.2.0, portable
 
-The site is read on a phone as much as on a desktop, and today it is only
-usable on one of the two.
+The site is read on a phone as much as on a desktop, and it used to be usable
+on only one of the two. Interface language moved here too: the project ships
+publicly, so it defaults to English and `avallon language` switches it.
 
-- [ ] **CSS audit at 390 px** and the fixes it turns up: tables need their own
+- [x] **CSS audit at 390 px** and the fixes it turns up: tables need their own
       horizontal scroll container, touch targets need 44 px, the editor toolbar
       and the virtual keyboard have to coexist.
-- [ ] **Navigation**: the drawer opens on a swipe from the edge, actions move
+- [x] **Navigation**: the drawer opens on a swipe from the edge, actions move
       within thumb reach, search goes full screen instead of floating in a
       panel sized for a laptop.
-- [ ] **PWA**: manifest, icons and a service worker. That is what gives the
+- [x] **PWA**: manifest, icons and a service worker. That is what gives the
       icon on the home screen, full screen without the address bar, and
       offline reading. This, not a rewrite in React, is what makes it feel like
       an app.
-- [ ] Reference for these choices: Obsidian mobile, which solves the same
+- [x] Reference for these choices: Obsidian mobile, which solves the same
       problem (a tree, linked notes, long reading, Markdown editing on a small
       screen).
 

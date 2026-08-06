@@ -181,6 +181,7 @@ Every page shows what cites it, so a note is never a dead end.
 | `avallon add-domain <name>` | Extend the taxonomy. |
 | `avallon add-type <name>` | Extend the taxonomy. |
 | `avallon check` | Verify every page sits under a declared domain/type. |
+| `avallon language [en\|fr]` | Print or switch the interface language. |
 | `avallon stamp` | Fill missing `date:` / `updated:` in the frontmatter. |
 | `avallon setup` | Write the deployment env file (address, port, token). |
 | `avallon install` | Install and start the systemd user unit. |
@@ -228,12 +229,23 @@ on a timer so pages written on another device show up without a restart.
 | `AVALLON_CONTENT_DIR` | the configured repository | Override the notes location. |
 | `AVALLON_TOKEN` | *(none)* | Bearer token required for every request. |
 | `AVALLON_HOST` / `AVALLON_PORT` | `127.0.0.1` / `8000` | Bind address. |
+| `AVALLON_LANGUAGE` | `en` | Interface language: `en` or `fr`. |
 | `AVALLON_SHOW_PRIVATE` | on in debug | Serve pages marked `visibility: private`. |
 | `AVALLON_SYNC_WINDOW` | `900` | Seconds during which consecutive edits fold into one commit. |
 | `AVALLON_POLL_INTERVAL` | `120` | Seconds between two pulls; `0` disables the poller. |
 | `AVALLON_ALLOWED_HOSTS` | loopback | Comma separated names the site answers to. |
 | `AVALLON_SECRET_KEY` | *(generated per process)* | Django secret key. `avallon setup` writes a fixed one. |
 | `AVALLON_DEBUG` | `0` | Debug mode. Never on when exposed. |
+
+## On a phone
+
+The site is installable: open it, then "Add to home screen". It runs full
+screen, without an address bar, and pages already read stay readable offline
+(the notes are cached as you go; writing still needs the network).
+
+The drawer opens on a swipe from the left edge and closes on a swipe left, the
+actions sit in a bottom bar within thumb reach, and search takes the screen
+rather than floating in a panel sized for a laptop.
 
 ## Sync model
 
