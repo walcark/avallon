@@ -27,7 +27,8 @@ FRENCH: dict[str, str] = {
     # Home page
     "Search the notes…": "Rechercher dans le contenu…",
     'Words narrow; "a quoted phrase" must appear as written.': (
-        'Les mots affinent ; "une phrase entre guillemets" doit apparaître telle quelle.'
+        'Les mots affinent ; "une phrase entre guillemets" doit apparaître '
+        "telle quelle."
     ),
     "Domain": "Domaine",
     "Type": "Type",
