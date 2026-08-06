@@ -25,6 +25,7 @@ avallon <command> [options]
   serve                 run the site
   init <path|url>       create or adopt a notes repository, and activate it
   repo [path]           print or switch the active repository
+  language [en|fr]      print or switch the interface language
   new                   create a page
   move                  re-file a page under another domain/type
   sync                  pull, commit, push
@@ -209,6 +210,33 @@ def _start_service() -> bool:
     return True
 
 
+def _language(argv: Sequence[str]) -> int:
+    """Print or switch the interface language."""
+    from avallon.notes import config
+
+    if not argv:
+        active = config.resolve_language()
+        source = (
+            "env"
+            if os.environ.get(config.LANGUAGE_ENV)
+            else ("config" if config.read_language() else "default")
+        )
+        print(f"language : {active}  ({source})")
+        print(f"available: {', '.join(config.LANGUAGES)}")
+        return 0
+
+    choice = argv[0].strip().lower()
+    if choice not in config.LANGUAGES:
+        sys.exit(
+            f"unknown language: {choice}  (available: {', '.join(config.LANGUAGES)})"
+        )
+    path = config.write_language(choice)
+    print(f"Interface language: {choice}")
+    print(f"  wrote {path}")
+    print("\nRestart the server for it to take effect.")
+    return 0
+
+
 def _django(command: list[str]) -> int:
     """Run a Django management command in-process."""
     from django.core.management import execute_from_command_line
@@ -250,6 +278,9 @@ def _dispatch(args: list[str]) -> int:
                 sys.exit("usage: avallon init <path|url>")
             return repo.main(["init", *rest])
         return repo.main(["set", *rest] if rest else ["where"])
+
+    if command == "language":
+        return _language(rest)
 
     if command == "new":
         from avallon.notes import scaffold

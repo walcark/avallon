@@ -6,6 +6,7 @@ without reading this file. `avallon setup` writes the env file that overrides
 them.
 
     AVALLON_CONTENT_DIR     the notes repository (else the config pointer)
+    AVALLON_LANGUAGE        interface language: en (default) or fr
     AVALLON_DEBUG           0 by default
     AVALLON_SECRET_KEY      generated per process when unset
     AVALLON_ALLOWED_HOSTS   comma separated, loopback by default
@@ -22,9 +23,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Root of the Markdown content tree (<domaine>/<type>/<slug>/index.md), plus
 # taxonomy.toml. Its location is user-configurable and lives *outside* this
 # repo (see avallon.notes.config): the env var, else the config pointer.
-from avallon.notes.config import resolve_content_dir  # noqa: E402
+from avallon.notes.config import resolve_content_dir, resolve_language  # noqa: E402
 
 CONTENT_DIR = resolve_content_dir()
+
+# Interface language: English unless the machine says otherwise. Read once, so
+# switching it takes a restart, like the notes directory.
+LANGUAGE = resolve_language()
 
 # Custom Markdown fences (gallery/plot/csv/query). Imported here because
 # SuperFences needs the actual callables in its config below, not import

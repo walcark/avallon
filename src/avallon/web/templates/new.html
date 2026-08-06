@@ -1,16 +1,17 @@
 {% extends "base.html" %}
 {% load taxonomy %}
+{% load lang %}
 
-{% block title %}Nouvelle page{% endblock %}
-{% block topbar %}Nouvelle page{% endblock %}
+{% block title %}{{ "New page"|t }}{% endblock %}
+{% block topbar %}{{ "New page"|t }}{% endblock %}
 
 {% block content %}
 <main class="prose">
     <header class="page-head">
-        <h1>Nouvelle page</h1>
+        <h1>{{ "New page"|t }}</h1>
         <p class="page-summary">
-            Le domaine et le type viennent de <code>taxonomy.toml</code>. La page
-            est créée vide et s'ouvre directement dans l'éditeur.
+            {{ "The domain and the type come from"|t }} <code>taxonomy.toml</code>.
+            {{ "The page is created empty and opens straight in the editor."|t }}
         </p>
     </header>
 
@@ -20,13 +21,13 @@
         {% csrf_token %}
 
         <div class="form-row">
-            <label for="f-title">Titre</label>
+            <label for="f-title">{{ "Title"|t }}</label>
             <input type="text" id="f-title" name="title" value="{{ form.title }}"
                    required autofocus autocomplete="off">
         </div>
 
         <div class="form-row">
-            <label for="f-domain">Domaine</label>
+            <label for="f-domain">{{ "Domain"|t }}</label>
             <select id="f-domain" name="domain" required>
                 <option value="" disabled {% if not form.domain %}selected{% endif %}>Choisir…</option>
                 {% for d in domains %}
@@ -36,7 +37,7 @@
         </div>
 
         <div class="form-row">
-            <label for="f-type">Type</label>
+            <label for="f-type">{{ "Type"|t }}</label>
             <select id="f-type" name="type" required>
                 <option value="" disabled {% if not form.type %}selected{% endif %}>Choisir…</option>
                 {% for t in types %}
@@ -47,40 +48,42 @@
                  It lives in taxonomy.toml too, but nobody opens that file at
                  the moment they need it. -->
             <p class="form-hint">
-                La première réponse « oui » gagne :
-                ça renvoie vers d'autres choses → <b>recueil</b> ·
-                ça a un état d'avancement → <b>chantier</b> ·
-                ça raconte un moment précis → <b>compte rendu</b> ·
-                sinon → <b>fiche</b>
+                {{ "The first \"yes\" wins:"|t }}
+                {{ "it points elsewhere rather than saying something"|t }} → <b>recueil</b> ·
+                {{ "it has a state of progress"|t }} → <b>chantier</b> ·
+                {{ "it tells about one precise moment"|t }} → <b>cr</b> ·
+                {{ "otherwise"|t }} → <b>fiche</b>
             </p>
         </div>
 
         {% if projects %}
         <div class="form-row">
-            <label for="f-project">Dossier</label>
+            <label for="f-project">{{ "Dossier"|t }}</label>
             <!-- A project is an ordinary page, so joining one is naming it.
                  Only pages archived with the dossier belong to it; a durable
                  note it merely cites stays out and is linked with [[…]]. -->
             <select id="f-project" name="project">
-                <option value="">Aucun</option>
+                <option value="">{{ "None"|t }}</option>
                 {% for p in projects %}
                 <option value="{{ p.slug }}" {% if form.project == p.slug %}selected{% endif %}>{{ p.title }}</option>
                 {% endfor %}
             </select>
             <p class="form-hint">
-                À remplir si la page sera <b>archivée avec le dossier</b>. Une
-                fiche réutilisable reste hors dossier, simplement citée.
+                {{ "Fill this in if the page will be"|t }}
+                <b>{{ "archived with the dossier"|t }}</b>.
+                {{ "A reusable note stays outside, merely cited."|t }}
             </p>
         </div>
         {% endif %}
 
         <div class="form-row">
-            <label for="f-tags">Tags</label>
+            <label for="f-tags">{{ "Tags"|t }}</label>
             <input type="text" id="f-tags" name="tags" value="{{ form.tags }}"
-                   autocomplete="off" placeholder="séparés par des virgules">
+                   autocomplete="off" placeholder="{{ "comma separated"|t }}">
             <p class="form-hint">
-                Le cadre d'écriture est un tag, pas un domaine : <b>travail</b> ou
-                <b>perso</b>, et les deux quand c'est vrai.
+                {{ "The writing context is a tag, not a domain:"|t }}
+                <b>{{ "work"|t }}</b> {{ "or"|t }} <b>{{ "personal"|t }}</b>,
+                {{ "and both when that is true."|t }}
             </p>
             {% if known_tags %}
             <!-- Existing tags: click to append, so a near-duplicate isn't
@@ -92,14 +95,14 @@
         </div>
 
         <div class="form-row">
-            <label for="f-summary">Résumé</label>
+            <label for="f-summary">{{ "Summary"|t }}</label>
             <input type="text" id="f-summary" name="summary" value="{{ form.summary }}"
-                   autocomplete="off" placeholder="une phrase, affichée sur l'accueil">
+                   autocomplete="off" placeholder="{{ "one sentence, shown on the home page"|t }}">
         </div>
 
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Créer et éditer</button>
-            <a class="btn" href="/">Annuler</a>
+            <button type="submit" class="btn btn-primary">{{ "Create and edit"|t }}</button>
+            <a class="btn" href="/">{{ "Cancel"|t }}</a>
         </div>
     </form>
 </main>

@@ -1,7 +1,8 @@
 {% extends "base.html" %}
+{% load lang %}
 
-{% block title %}Déverrouiller{% endblock %}
-{% block topbar %}Déverrouiller{% endblock %}
+{% block title %}{{ "Unlock"|t }}{% endblock %}
+{% block topbar %}{{ "Unlock"|t }}{% endblock %}
 
 {% block head %}
     <style>
@@ -18,17 +19,17 @@
 
 {% block content %}
     <main class="unlock">
-        <h1>Ces notes sont verrouillées</h1>
-        <p>Saisis le jeton d'accès pour ouvrir la session sur cet appareil.</p>
+        <h1>{{ "These notes are locked"|t }}</h1>
+        <p>{{ "Enter the access token to open a session on this device."|t }}</p>
         <form method="post">
             {% csrf_token %}
             <input type="hidden" name="next" value="{{ next }}">
             <!-- type=password so the token is not left readable on screen, and
                  autofocus because unlocking is the only thing to do here. -->
             <input type="password" name="token" autocomplete="current-password"
-                   autofocus aria-label="Jeton d'accès" placeholder="Jeton d'accès">
+                   autofocus aria-label="{{ "Access token"|t }}" placeholder="{{ "Access token"|t }}">
             {% if error %}<p class="error">{{ error }}</p>{% endif %}
-            <button type="submit" class="btn btn-primary">Déverrouiller</button>
+            <button type="submit" class="btn btn-primary">{{ "Unlock"|t }}</button>
         </form>
     </main>
 {% endblock %}

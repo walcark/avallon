@@ -35,6 +35,12 @@ LEGACY_ENV_VAR = "MYSITE_CONTENT_DIR"
 
 TAXONOMY_NAME = "taxonomy.toml"
 
+# Interface language. English is the default; the rest is a per-machine
+# preference, stored next to the notes directory pointer.
+LANGUAGE_ENV = "AVALLON_LANGUAGE"
+DEFAULT_LANGUAGE = "en"
+LANGUAGES = ("en", "fr")
+
 
 class NotConfigured(RuntimeError):
     """No notes repository is configured yet."""
@@ -47,29 +53,69 @@ def local_config_path(app_name: str = APP_NAME) -> Path:
     return root / app_name / "config.toml"
 
 
-def _read(path: Path) -> Path | None:
-    """The ``content_dir`` recorded in *path*, or None."""
-    if not path.exists():
-        return None
+def read_config(path: Path | None = None) -> dict[str, str]:
+    """Everything recorded in the local config file, as strings."""
+    target = path or local_config_path()
+    if not target.exists():
+        return {}
     try:
-        data = tomllib.loads(path.read_text(encoding="utf-8"))
+        data = tomllib.loads(target.read_text(encoding="utf-8"))
     except (OSError, tomllib.TOMLDecodeError):
-        return None
-    raw = data.get("content_dir")
-    return Path(str(raw)).expanduser() if raw else None
+        return {}
+    return {str(k): str(v) for k, v in data.items()}
+
+
+def write_config(**values: str) -> Path:
+    """Update the given keys in the local config, leaving the others alone.
+
+    Read-modify-write rather than overwrite: the file holds several unrelated
+    settings now, and choosing a language must not erase the notes directory.
+    """
+    path = local_config_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    merged = {**read_config(path), **values}
+    body = "".join(f'{key} = "{value}"\n' for key, value in sorted(merged.items()))
+    path.write_text(body, encoding="utf-8")
+    return path
 
 
 def read_content_dir() -> Path | None:
     """The configured ``content_dir``, or ``None`` if unset."""
-    return _read(local_config_path()) or _read(local_config_path(LEGACY_APP_NAME))
+    for candidate in (local_config_path(), local_config_path(LEGACY_APP_NAME)):
+        raw = read_config(candidate).get("content_dir")
+        if raw:
+            return Path(raw).expanduser()
+    return None
 
 
 def write_content_dir(content_dir: Path) -> Path:
     """Persist ``content_dir`` in the local config; return the config path."""
-    path = local_config_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(f'content_dir = "{content_dir}"\n', encoding="utf-8")
-    return path
+    return write_config(content_dir=str(content_dir))
+
+
+def read_language() -> str | None:
+    """The configured interface language, or ``None`` if unset."""
+    for candidate in (local_config_path(), local_config_path(LEGACY_APP_NAME)):
+        raw = read_config(candidate).get("language")
+        if raw:
+            return raw.strip().lower()
+    return None
+
+
+def write_language(language: str) -> Path:
+    """Persist the interface language; return the config path."""
+    return write_config(language=language)
+
+
+def resolve_language() -> str:
+    """The active interface language, English unless asked otherwise.
+
+    English is the default because the project ships to strangers; a French
+    reader says so once, and the choice follows the machine rather than the
+    notes (the same notes are read from several devices).
+    """
+    chosen = os.environ.get(LANGUAGE_ENV) or read_language()
+    return chosen.strip().lower() if chosen else DEFAULT_LANGUAGE
 
 
 def content_dir_env() -> str | None:

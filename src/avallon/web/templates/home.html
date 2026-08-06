@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% load taxonomy %}
+{% load lang %}
 
-{% block title %}Accueil{% endblock %}
-{% block topbar %}Accueil{% endblock %}
+{% block title %}{{ "Home"|t }}{% endblock %}
+{% block topbar %}{{ "Home"|t }}{% endblock %}
 
 {% block head %}
     <style>
@@ -74,30 +75,30 @@
 
 {% block content %}
     <main class="home">
-        <h1>Contenu</h1>
+        <h1>{{ "Contents"|t }}</h1>
 
         <div class="search-area">
-            <input type="search" class="search" id="q" placeholder="Rechercher dans le contenu…" autocomplete="off">
+            <input type="search" class="search" id="q" placeholder="{{ "Search the notes…"|t }}" autocomplete="off">
 
             <div class="facets">
                 <div class="facet-group" data-facet="domain">
-                    <span class="facet-label">Domaine</span>
+                    <span class="facet-label">{{ "Domain"|t }}</span>
                     {% for d in domains %}<button type="button" class="chip" aria-pressed="false" data-value="{{ d }}">{{ d|label }}</button>{% endfor %}
                 </div>
                 <div class="facet-group" data-facet="type">
-                    <span class="facet-label">Type</span>
+                    <span class="facet-label">{{ "Type"|t }}</span>
                     {% for t in types %}<button type="button" class="chip" aria-pressed="false" data-value="{{ t }}">{{ t|label }}</button>{% endfor %}
                 </div>
                 <div class="facet-group" data-facet="project">
-                    <span class="facet-label">Dossier</span>
+                    <span class="facet-label">{{ "Dossier"|t }}</span>
                     {% for p in projects %}<button type="button" class="chip" aria-pressed="false" data-value="{{ p.slug }}">{{ p.title }}</button>{% endfor %}
                 </div>
                 <div class="facet-group" data-facet="status">
-                    <span class="facet-label">État</span>
+                    <span class="facet-label">{{ "State"|t }}</span>
                     {% for s in statuses %}<button type="button" class="chip" aria-pressed="false" data-value="{{ s }}">{{ s }}</button>{% endfor %}
                 </div>
                 <div class="facet-group" data-facet="tag">
-                    <span class="facet-label">Tags</span>
+                    <span class="facet-label">{{ "Tags"|t }}</span>
                     {% for t in tags %}<button type="button" class="chip" aria-pressed="false" data-value="{{ t }}">{{ t }}</button>{% endfor %}
                 </div>
             </div>
@@ -216,15 +217,17 @@
             card.classList.toggle('is-hidden', !ok);
             if (ok) n++;
           });
-          countEl.textContent = n + (n > 1 ? ' pages' : ' page');
+          countEl.textContent = n + ' ' + (n > 1 ? '{{ "pages"|t|escapejs }}' : '{{ "page"|t|escapejs }}');
         }
 
         function showResults(results, q) {
           updateChips(results);
           const kept = results.filter(matchFacets);
+          const noun = kept.length > 1
+            ? '{{ "results"|t|escapejs }}' : '{{ "result"|t|escapejs }}';
           resultsHead.textContent = kept.length
-            ? `${kept.length} résultat${kept.length > 1 ? 's' : ''} pour « ${q} »`
-            : `Aucun résultat pour « ${q} »`;
+            ? `${kept.length} ${noun} : ${q}`
+            : `{{ "No result for"|t|escapejs }} : ${q}`;
           resultsEl.innerHTML = kept.map(r => `
             <li class="card">
               <a class="card-title" href="${r.url}">${escapeHtml(r.title)}</a>

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load lang %}
 {% load static %}
 {% load taxonomy %}
 
@@ -23,7 +24,7 @@
 
 {% block topbar_actions %}
     <button type="button" class="icon-btn" id="editToggle" aria-pressed="false"
-            aria-label="Éditer le Markdown de cette page" title="Éditer (Ctrl+E)">
+            aria-label="{{ "Edit the Markdown of this page"|t }}" title="{{ "Edit (Ctrl+E)"|t }}">
         <svg class="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 20h9"/>
@@ -36,8 +37,8 @@
         </svg>
     </button>
     <button type="button" class="icon-btn" id="widthToggle" aria-pressed="false"
-            aria-label="Basculer la largeur de lecture (restreint / étendu)"
-            title="Largeur de lecture">
+            aria-label="{{ "Toggle the reading width (narrow / wide)"|t }}"
+            title="{{ "Reading width"|t }}">
         <svg class="i-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/>
@@ -50,7 +51,7 @@
     <div class="export-menu" id="exportMenu">
         <button type="button" class="icon-btn" id="exportBtn" aria-haspopup="true"
                 aria-expanded="false" aria-controls="exportChoices"
-                aria-label="Exporter cette page" title="Exporter (Word ou PDF)">
+                aria-label="{{ "Export this page"|t }}" title="{{ "Export (Word or PDF)"|t }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -59,7 +60,7 @@
             </svg>
         </button>
         <div class="export-choices" id="exportChoices" role="menu" hidden>
-            <p class="export-choices-label">Exporter en</p>
+            <p class="export-choices-label">{{ "Export to"|t }}</p>
             <a class="export-item" role="menuitem" download
                href="/export/?path={{ relpath|urlencode }}&amp;format=docx">
                 <svg class="export-item-ico" viewBox="0 0 24 24" fill="none"
@@ -89,8 +90,8 @@
 {% block content %}
     <!-- Built client-side from the rendered headings, so it also survives the
          live-reload swap below. Hidden by CSS when the window is too narrow. -->
-    <nav class="toc" id="toc" aria-label="Sommaire" hidden>
-        <p class="toc-label">Sommaire</p>
+    <nav class="toc" id="toc" aria-label="{{ "Table of contents"|t }}" hidden>
+        <p class="toc-label">{{ "Table of contents"|t }}</p>
         <ul></ul>
     </nav>
 
@@ -100,7 +101,7 @@
                 <a href="/?domaine={{ page.domain|urlencode }}">{{ page.domain_label }}</a>
                 <span aria-hidden="true">/</span>
                 <a href="/?domaine={{ page.domain|urlencode }}&amp;type={{ page.type|urlencode }}">{{ page.type_label }}</a>
-                {% if page.is_private %}<span class="badge-private" title="Cette page n'est visible qu'en local">privé</span>{% endif %}
+                {% if page.is_private %}<span class="badge-private" title="{{ "This page is only visible locally"|t }}">{{ "private"|t }}</span>{% endif %}
             </p>
             {% if project %}
             <!-- Which dossier this page belongs to. Titles are written short
@@ -113,7 +114,7 @@
             {% if page.summary %}<p class="page-summary">{{ page.summary }}</p>{% endif %}
             <p class="page-meta">
                 {% if page.display_date %}<span>{{ page.display_date }}</span>{% endif %}
-                <span>{{ reading_minutes }} min de lecture</span>
+                <span>{{ reading_minutes }} {{ "min read"|t }}</span>
                 {% if page.status %}<span class="badge-status" data-status="{{ page.status }}">{{ page.status }}</span>{% endif %}
                 {% for t in page.tags %}<a class="tag" href="/?tag={{ t|urlencode }}">{{ t }}</a>{% endfor %}
             </p>
@@ -127,29 +128,29 @@
         <div class="editor" id="editor" hidden>
             {% csrf_token %}
             <textarea id="editorText" spellcheck="false" wrap="soft"
-                      aria-label="Source Markdown de la page"></textarea>
+                      aria-label="{{ "Markdown source of the page"|t }}"></textarea>
             <div class="editor-bar">
-                <button type="button" class="btn" id="editorSave">Enregistrer</button>
+                <button type="button" class="btn" id="editorSave">{{ "Save"|t }}</button>
                 <span class="editor-status" id="editorStatus" role="status"></span>
                 <!-- Re-file the page under another domain/type: the directory
                      moves on disk and the browser follows the new URL. -->
                 <div class="editor-move">
-                    <span class="editor-move-label">Déplacer vers</span>
-                    <select id="moveDomain" aria-label="Domaine de destination">
+                    <span class="editor-move-label">{{ "Move to"|t }}</span>
+                    <select id="moveDomain" aria-label="{{ "Destination domain"|t }}">
                         {% for d in domains %}<option value="{{ d }}"{% if d == page.domain %} selected{% endif %}>{{ d|label }}</option>{% endfor %}
                     </select>
                     <span aria-hidden="true">/</span>
-                    <select id="moveType" aria-label="Type de destination">
+                    <select id="moveType" aria-label="{{ "Destination type"|t }}">
                         {% for t in types %}<option value="{{ t }}"{% if t == page.type %} selected{% endif %}>{{ t|label }}</option>{% endfor %}
                     </select>
-                    <button type="button" class="btn" id="moveBtn">Déplacer</button>
+                    <button type="button" class="btn" id="moveBtn">{{ "Move"|t }}</button>
                 </div>
             </div>
         </div>
 
         {% if backlinks %}
         <aside class="backlinks">
-            <h2>Cité par</h2>
+            <h2>{{ "Cited by"|t }}</h2>
             <ul>
                 {% for b in backlinks %}
                 <li><a href="{{ b.url }}">{{ b.title }}</a>
@@ -237,7 +238,7 @@
             btn.addEventListener('click', function () {
               const code = box.querySelector('pre');
               copy(code ? code.innerText : '').then(function (ok) {
-                btn.textContent = ok ? 'Copié' : 'Échec';
+                btn.textContent = ok ? '{{ "Copied"|t|escapejs }}' : '{{ "Copy"|t|escapejs }}';
                 btn.dataset.copied = '';
                 setTimeout(function () {
                   btn.textContent = 'Copier';
@@ -280,7 +281,7 @@
           lb.hidden = true;
           lb.innerHTML =
             '<button type="button" class="lightbox-close" aria-label="Fermer">×</button>' +
-            '<button type="button" class="lightbox-prev" aria-label="Image précédente">‹</button>' +
+            '<button type="button" class="lightbox-prev" aria-label="{{ "Previous image"|t|escapejs }}">‹</button>' +
             '<button type="button" class="lightbox-next" aria-label="Image suivante">›</button>' +
             '<img alt=""><div class="lightbox-caption"></div>';
           document.body.appendChild(lb);
@@ -456,7 +457,7 @@
         }
 
         function closeEditor() {
-          if (dirty && !window.confirm('Modifications non enregistrées. Fermer ?')) {
+          if (dirty && !window.confirm('{{ "Unsaved changes. Close anyway?"|t|escapejs }}')) {
             return;
           }
           setEditing(false);
@@ -489,13 +490,13 @@
               mtime = res.d.mtime;
               dirty = false;
               savedAt = Date.now();
-              say(res.d.committed ? 'Enregistré et commité' : 'Enregistré (non versionné)', 'ok');
+              say(res.d.committed ? '{{ "Saved and committed"|t|escapejs }}' : '{{ "Saved (unversioned)"|t|escapejs }}', 'ok');
               // The title lives in the frontmatter but is rendered outside the
               // body the live reload swaps, so only a reload can refresh it.
               if (res.d.title !== document.title) window.location.reload();
             })
             .catch(function () {
-              say('Échec de l’enregistrement (réseau).', 'error');
+              say('{{ "Saving failed (network)."|t|escapejs }}', 'error');
             });
         }
 
@@ -505,7 +506,7 @@
 
         textarea.addEventListener('input', function () {
           dirty = true;
-          say('Modifié');
+          say('{{ "Updated"|t|escapejs }}');
         });
         editToggle.addEventListener('click', function () {
           editor.hidden ? openEditor() : closeEditor();
@@ -521,10 +522,10 @@
         const moveType = document.getElementById('moveType');
         function move() {
           if (dirty) {
-            say('Enregistre d’abord tes modifications avant de déplacer la page.', 'error');
+            say('{{ "Save your changes before moving the page."|t|escapejs }}', 'error');
             return;
           }
-          say('Déplacement…');
+          say('{{ "Moving…"|t|escapejs }}');
           fetch('/move/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
@@ -535,14 +536,14 @@
             })
             .then(function (res) {
               if (!res.ok) {
-                say(res.d.error || 'Échec du déplacement.', 'error');
+                say(res.d.error || '{{ "Moving failed."|t|escapejs }}', 'error');
                 return;
               }
               // The URL moved with the directory; land on it, still in edit mode.
               window.location.href = res.d.url + '#edit';
             })
             .catch(function () {
-              say('Échec du déplacement (réseau).', 'error');
+              say('{{ "Moving failed (network)."|t|escapejs }}', 'error');
             });
         }
         moveBtn.addEventListener('click', move);
@@ -581,7 +582,7 @@
           // be refused). Our own save fires this too, hence the short grace
           // window rather than a warning on every keystroke saved.
           if (!firstPush && !editor.hidden && Date.now() - savedAt > 2000) {
-            say('Le fichier a changé sur le disque. Recharge avant d’enregistrer.',
+            say('{{ "The file changed on disk. Reload before saving."|t|escapejs }}',
                 'error');
           }
           firstPush = false;
