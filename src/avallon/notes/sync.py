@@ -454,22 +454,22 @@ def sync(
                     result.conflict_files = conflicts
                     run_git(["rebase", "--abort"], cwd=content_dir)
                     result.warnings.append(
-                        "conflit de rebase, rebase annulé, résolution manuelle"
+                        "rebase conflict, rebase aborted, resolve by hand"
                     )
                 else:
                     result.warnings.append(
-                        f"pull échoué : {_first_line(res.stderr, 'réseau')}"
+                        f"pull failed: {_first_line(res.stderr, 'network')}"
                     )
             else:
                 result.pulled = True
         except (subprocess.TimeoutExpired, OSError):
-            result.warnings.append("pull échoué (délai dépassé / réseau)")
+            result.warnings.append("pull failed (timeout / network)")
 
     # -- commit -------------------------------------------------------------
     if commit:
         result.committed, err = commit_scoped(content_dir, message, window=window)
         if err:
-            result.warnings.append(f"commit échoué : {err}")
+            result.warnings.append(f"commit failed: {err}")
 
     # -- push ---------------------------------------------------------------
     pending = origin and has_pending(content_dir)
@@ -491,11 +491,11 @@ def sync(
                 result.pushed = True
             else:
                 result.warnings.append(
-                    "push échoué (réessai plus tard) : "
-                    + _first_line(res.stderr, "réseau")
+                    "push failed (will retry later): "
+                    + _first_line(res.stderr, "network")
                 )
         except (subprocess.TimeoutExpired, OSError):
-            result.warnings.append("push échoué (délai dépassé / réseau)")
+            result.warnings.append("push failed (timeout / network)")
 
     return result
 
@@ -571,20 +571,20 @@ def spawn_flush(content_dir: Path) -> None:
 
 def _report(content_dir: Path, result: SyncResult, window: int) -> int:
     """Print a human summary of *result*; return the process exit code."""
-    print(f"dépôt : {content_dir}")
+    print(f"repo: {content_dir}")
     if result.pulled:
-        print("  ↓ pull (rebase) ok")
+        print("  pulled (rebase)")
     if result.committed:
-        print("  ✓ commit local")
+        print("  committed locally")
     else:
-        print("  = rien à commiter")
+        print("  nothing to commit")
     if result.pushed:
-        print("  ↑ push ok")
+        print("  pushed")
     elif result.held:
         mins = window // 60
-        print(f"  ⏸ push retenu : commit encore groupable ({mins} min)")
+        print(f"  push held: the commit is still batchable ({mins} min)")
     elif not has_origin(content_dir):
-        print("  · pas d'origin : commit local seulement")
+        print("  no origin: local commit only")
         print(f"    git -C {content_dir} remote add origin <url>")
     for w in result.warnings:
         print(f"  ! {w}")
@@ -616,11 +616,11 @@ def main(argv: list[str]) -> int:
 
     content_dir = cc.resolve_content_dir()
     if not content_dir.exists():
-        sys.exit(f"Dossier de contenu introuvable : {content_dir}")
+        sys.exit(f"Notes directory not found: {content_dir}")
     if not is_git_repo(content_dir):
         sys.exit(
-            f"{content_dir} n'est pas un dépôt git.\n"
-            "Lance `avallon init <chemin>` pour en créer un."
+            f"{content_dir} is not a git repository.\n"
+            "Run `avallon init <path>` to create one."
         )
     # `is_git_repo` is true for any subdirectory of any repo, so a notes
     # directory sitting inside another checkout would pass it. Syncing there
@@ -629,10 +629,10 @@ def main(argv: list[str]) -> int:
     if not is_repo_root(content_dir):
         enclosing = run_git(["rev-parse", "--show-toplevel"], cwd=content_dir)
         sys.exit(
-            f"{content_dir} n'est pas la racine d'un dépôt git : il est contenu\n"
-            f"dans {enclosing.stdout.strip()}.\n"
-            "Synchroniser ici committerait les notes dans ce dépôt-là.\n"
-            "Lance `avallon init <chemin>` pour sortir le contenu."
+            f"{content_dir} is not the root of a git repository: it sits inside\n"
+            f"{enclosing.stdout.strip()}.\n"
+            "Syncing here would commit the notes into that repository.\n"
+            "Run `avallon init <path>` to move the notes out."
         )
 
     window = 0 if args.no_batch else sync_window()

@@ -86,7 +86,7 @@ def ask(prompt: str) -> str:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Créer une nouvelle page de contenu.")
+    ap = argparse.ArgumentParser(description="Create a new page.")
     ap.add_argument("--domain")
     ap.add_argument("--type")
     ap.add_argument("--title")
@@ -97,27 +97,25 @@ def main() -> int:
     taxo = taxonomy.load()
     if not taxo["domains"] or not taxo["types"]:
         sys.exit(
-            "taxonomy.toml est vide : déclare d'abord un domaine et un type "
+            "taxonomy.toml is empty: declare a domain and a type first "
             "(avallon add-domain …, avallon add-type …)."
         )
 
     domain = args.domain or pick("Domaine", taxo["domains"])
     if not domain:
-        sys.exit("Annulé.")
+        sys.exit("Cancelled.")
     if domain not in taxo["domains"]:
-        sys.exit(f"domaine non déclaré : {domain}  (avallon add-domain {domain})")
+        sys.exit(f"undeclared domain: {domain}  (avallon add-domain {domain})")
     type_ = args.type or pick("Type", taxo["types"])
     if not type_:
-        sys.exit("Annulé.")
+        sys.exit("Cancelled.")
     if type_ not in taxo["types"]:
-        sys.exit(f"type non déclaré : {type_}  (avallon add-type {type_})")
+        sys.exit(f"undeclared type: {type_}  (avallon add-type {type_})")
 
     title = args.title or ask("Titre")
     if not title.strip():
         sys.exit("titre requis.")
-    tags_raw = (
-        args.tags if args.tags is not None else ask("Tags (séparés par des virgules)")
-    )
+    tags_raw = args.tags if args.tags is not None else ask("Tags (comma separated)")
     # Same normalization the app applies on read (content.normalize_tags):
     # lowercase + collapsed spacing, so case variants don't split a tag in two.
     tags = list(
@@ -127,7 +125,7 @@ def main() -> int:
             if t.strip()
         )
     )
-    summary = args.summary if args.summary is not None else ask("Résumé (optionnel)")
+    summary = args.summary if args.summary is not None else ask("Summary (optional)")
 
     slug = slugify(title)
     base = CONTENT / domain / type_
@@ -150,7 +148,7 @@ def main() -> int:
 
     target.mkdir(parents=True)
     (target / "index.md").write_text(body, encoding="utf-8")
-    print(f"Créé : {target / 'index.md'}")
+    print(f"Created {target / 'index.md'}.")
     print(f"URL  : /{target.relative_to(CONTENT)}/")
     return 0
 

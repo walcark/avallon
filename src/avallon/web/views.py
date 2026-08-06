@@ -134,7 +134,7 @@ def serve_content(request, relpath):
             content.load_page(sibling)  # raises Http404 when private
         return FileResponse(open(target, "rb"))
 
-    raise Http404("Page introuvable")
+    raise Http404("Page not found")
 
 
 def may_edit(request) -> bool:
@@ -156,7 +156,7 @@ def _editable_page(relpath: str):
     """
     index_md = content.safe_resolve(relpath) / "index.md"
     if not index_md.is_file():
-        raise Http404("Page introuvable")
+        raise Http404("Page not found")
     content.load_page(index_md)
     return index_md
 
@@ -188,7 +188,7 @@ def new_page(request):
     create what `avallon check` would then flag as out of vocabulary.
     """
     if not may_edit(request):
-        raise Http404("Édition indisponible")
+        raise Http404("Editing unavailable")
 
     vocab = content.vocabulary()
     form = {
@@ -245,7 +245,7 @@ def page_source(request):
     overwrite an edit made meanwhile in a local text editor.
     """
     if not may_edit(request):
-        raise Http404("Édition indisponible")
+        raise Http404("Editing unavailable")
     index_md = _editable_page(request.GET.get("path", ""))
     return JsonResponse(
         {"text": content.read_source(index_md), "mtime": content.page_mtime(index_md)}
@@ -261,28 +261,27 @@ def save_page(request):
     breaks the page.
     """
     if not may_edit(request):
-        raise Http404("Édition indisponible")
+        raise Http404("Editing unavailable")
     try:
         payload = json.loads(request.body)
     except json.JSONDecodeError:
-        return JsonResponse({"error": "Requête illisible."}, status=400)
+        return JsonResponse({"error": "Unreadable request."}, status=400)
 
     relpath = str(payload.get("path", ""))
     index_md = _editable_page(relpath)
     text = payload.get("text")
     if not isinstance(text, str):
-        return JsonResponse({"error": "Contenu manquant."}, status=400)
+        return JsonResponse({"error": "Missing content."}, status=400)
 
     try:
         content.save_source(index_md, text, payload.get("mtime"))
     except content.InvalidFrontmatter as exc:
-        return JsonResponse({"error": f"Frontmatter invalide : {exc}"}, status=400)
+        return JsonResponse({"error": f"Invalid frontmatter: {exc}"}, status=400)
     except content.StaleEdit:
         return JsonResponse(
             {
-                "error": "Le fichier a changé sur le disque depuis l'ouverture "
-                "de l'éditeur. Recharge la page pour repartir de la "
-                "version courante.",
+                "error": "The file changed on disk since the editor opened it. "
+                "Reload the page to start from the current version.",
             },
             status=409,
         )
@@ -312,11 +311,11 @@ def move_page(request):
     slug collision, rather than moving the page somewhere it cannot live.
     """
     if not may_edit(request):
-        raise Http404("Édition indisponible")
+        raise Http404("Editing unavailable")
     try:
         payload = json.loads(request.body)
     except json.JSONDecodeError:
-        return JsonResponse({"error": "Requête illisible."}, status=400)
+        return JsonResponse({"error": "Unreadable request."}, status=400)
 
     relpath = str(payload.get("path", ""))
     # Same guards as the reader: refuse a path escaping the tree or a page the
@@ -350,7 +349,7 @@ def export_page(request):
     page = content.load_page(index_md)
     fmt = request.GET.get("format", "docx")
     if fmt not in _EXPORT_TYPES:
-        raise Http404("Format d'export inconnu")
+        raise Http404("Unknown export format")
 
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / f"{page.slug}.{fmt}"
@@ -376,7 +375,7 @@ async def markdown_stream(request):
     target = content.safe_resolve(request.GET.get("path", ""))
     index_md = target / "index.md"
     if not index_md.is_file():
-        raise Http404("Page introuvable")
+        raise Http404("Page not found")
     content.load_page(index_md)  # refuse to stream a page that is not visible
 
     async def event_stream():

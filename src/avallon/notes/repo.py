@@ -66,9 +66,9 @@ def _ensure_taxonomy(target: Path) -> None:
     if taxo.exists():
         return
     taxo.write_text(
-        "# Vocabulaire autorisé pour les pages du site.\n"
-        "# Édité par `avallon add-domain <nom>` / `avallon add-type <nom>`.\n"
-        "# Chaque page vit dans <domaine>/<type>/<slug>/.\n\n"
+        "# Vocabulary the pages of this site may use.\n"
+        "# Edited by `avallon add-domain <name>` / `avallon add-type <name>`.\n"
+        "# Every page lives in <domain>/<type>/<slug>/.\n\n"
         "domains = []\n"
         "types = []\n",
         encoding="utf-8",
@@ -88,16 +88,16 @@ def cmd_where() -> int:
     except cc.NotConfigured as exc:
         print(exc)
         return 1
-    print(f"content_dir : {active}")
+    print(f"notes dir : {active}")
     print(
-        f"source      : {cc.content_source()}  "
+        f"source    : {cc.content_source()}  "
         f"(env {cc.ENV_VAR} > {cc.local_config_path()})"
     )
     taxo = cc.taxonomy_path(active)
-    print(f"taxonomy    : {taxo}  {'✓' if taxo.exists() else '(absent)'}")
+    print(f"taxonomy  : {taxo}  {'ok' if taxo.exists() else '(missing)'}")
     n_pages = sum(1 for _ in active.glob("*/*/*/index.md")) if active.exists() else 0
-    print(f"pages       : {n_pages}")
-    print(f"dépôt git   : {'oui' if cc.is_git_root(active) else 'non'}")
+    print(f"pages     : {n_pages}")
+    print(f"git repo  : {'yes' if cc.is_git_root(active) else 'no'}")
     return 0
 
 
@@ -118,9 +118,7 @@ def _clone(url: str) -> Path:
     name = url.rstrip("/").rsplit("/", 1)[-1].removesuffix(".git")
     target = Path.home() / name
     if target.exists():
-        sys.exit(
-            f"{target} existe déjà : utilise `avallon repo {target}` pour l'activer"
-        )
+        sys.exit(f"{target} already exists: use `avallon repo {target}` to activate it")
     subprocess.run(["git", "clone", url, str(target)], check=True)
     return target
 
@@ -142,32 +140,30 @@ def cmd_init(path: str) -> int:
     if created_repo:
         _run(["git", "add", "-A"], cwd=target)
         subprocess.run(
-            ["git", "commit", "-q", "-m", "init: contenu du site"],
+            ["git", "commit", "-q", "-m", "init: notes"],
             cwd=str(target),
         )
 
-    print(f"✓ content_dir actif : {target}")
+    print(f"Active notes dir: {target}")
     if created_repo:
-        print("  - dépôt git initialisé")
-    print("  - hook pre-commit (tampon des dates) installé")
-    print(f"  - config écrite : {cc.local_config_path()}")
-    print("  ↻ redémarre le serveur pour qu'il serve ce dossier.")
+        print("  git repository initialized")
+    print("  pre-commit hook (date stamping) installed")
+    print(f"  wrote {cc.local_config_path()}")
+    print("\nRestart the server for it to serve this directory.")
     return 0
 
 
 def cmd_set(path: str) -> int:
     target = Path(path).expanduser().resolve()
     if not target.exists():
-        sys.exit(
-            f"Dossier introuvable : {target}  (utilise `avallon init` pour le créer)"
-        )
+        sys.exit(f"Directory not found: {target}  (use `avallon init` to create it)")
     cc.write_content_dir(target)
     if cc.is_git_root(target):
         _install_hook(target)
     _ensure_taxonomy(target)
-    print(f"✓ content_dir actif : {target}")
-    print(f"  - config écrite : {cc.local_config_path()}")
-    print("  ↻ redémarre le serveur pour qu'il serve ce dossier.")
+    print(f"Active notes dir: {target}")
+    print(f"  wrote {cc.local_config_path()}")
+    print("\nRestart the server for it to serve this directory.")
     return 0
 
 
@@ -179,9 +175,9 @@ def main(argv: list[str]) -> int:
         return cmd_where()
     if cmd in ("init", "set"):
         if not rest:
-            sys.exit(f"usage : avallon {cmd} <path>")
+            sys.exit(f"usage: avallon {cmd} <path>")
         return cmd_init(rest[0]) if cmd == "init" else cmd_set(rest[0])
-    sys.exit(f"commande inconnue : {cmd}  (where | init <path> | set <path>)")
+    sys.exit(f"unknown command: {cmd}  (where | init <path> | set <path>)")
 
 
 if __name__ == "__main__":

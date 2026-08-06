@@ -92,8 +92,8 @@ def resolve_content_dir() -> Path:
     if configured:
         return configured.resolve()
     raise NotConfigured(
-        "Aucun dépôt de notes configuré.\n"
-        "  avallon init <chemin|url>   pour en créer ou en adopter un"
+        "No notes repository configured.\n"
+        "  avallon init <path|url>   to create or adopt one"
     )
 
 

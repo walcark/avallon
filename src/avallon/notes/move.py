@@ -38,7 +38,7 @@ def pages() -> list[str]:
 
 def main() -> int:
     ap = argparse.ArgumentParser(
-        description="Déplacer une page vers un autre domaine/type."
+        description="Re-file a page under another domain/type."
     )
     ap.add_argument("--path", help="relpath de la page, <domaine>/<type>/<slug>")
     ap.add_argument("--domain")
@@ -48,41 +48,41 @@ def main() -> int:
     taxo = taxonomy.load()
     if not taxo["domains"] or not taxo["types"]:
         sys.exit(
-            "taxonomy.toml est vide : déclare d'abord un domaine et un type "
+            "taxonomy.toml is empty: declare a domain and a type first "
             "(avallon add-domain …, avallon add-type …)."
         )
 
     all_pages = pages()
     if not all_pages:
-        sys.exit("Aucune page à déplacer.")
-    relpath = (args.path or pick("Page à déplacer", all_pages)).strip("/")
+        sys.exit("No page to move.")
+    relpath = (args.path or pick("Page to move", all_pages)).strip("/")
     if not relpath:
-        sys.exit("Annulé.")
+        sys.exit("Cancelled.")
     source = (CONTENT / relpath).resolve()
     if CONTENT not in source.parents or not (source / "index.md").is_file():
         sys.exit(f"page introuvable : {relpath}")
 
     domain = args.domain or pick("Nouveau domaine", taxo["domains"])
     if not domain:
-        sys.exit("Annulé.")
+        sys.exit("Cancelled.")
     if domain not in taxo["domains"]:
-        sys.exit(f"domaine non déclaré : {domain}  (avallon add-domain {domain})")
+        sys.exit(f"undeclared domain: {domain}  (avallon add-domain {domain})")
     type_ = args.type or pick("Nouveau type", taxo["types"])
     if not type_:
-        sys.exit("Annulé.")
+        sys.exit("Cancelled.")
     if type_ not in taxo["types"]:
-        sys.exit(f"type non déclaré : {type_}  (avallon add-type {type_})")
+        sys.exit(f"undeclared type: {type_}  (avallon add-type {type_})")
 
     slug = source.name
     target = CONTENT / domain / type_ / slug
     if target.resolve() == source:
-        sys.exit("La note est déjà dans ce domaine et ce type.")
+        sys.exit("The page already sits under this domain and type.")
     if target.exists():
-        sys.exit(f"une note « {slug} » existe déjà dans {domain}/{type_}.")
+        sys.exit(f'a page "{slug}" already exists in {domain}/{type_}.')
 
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.move(str(source), str(target))
-    print(f"Déplacé : {relpath}")
+    print(f"Moved {relpath}.")
     print(f"      -> {target.relative_to(CONTENT)}")
     print(f"URL     : /{target.relative_to(CONTENT)}/")
     return 0

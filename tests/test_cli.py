@@ -9,14 +9,14 @@ from avallon import cli
 
 def test_no_argument_prints_the_usage(capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main([]) == 0
-    assert "avallon <commande>" in capsys.readouterr().out
+    assert "avallon <command>" in capsys.readouterr().out
 
 
 def test_an_unknown_command_fails_and_says_so(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     assert cli.main(["frobnique"]) == 2
-    assert "commande inconnue" in capsys.readouterr().err
+    assert "unknown command" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize(
@@ -82,7 +82,7 @@ def test_serving_beyond_loopback_without_a_token_is_refused(
 ) -> None:
     monkeypatch.delenv("AVALLON_TOKEN", raising=False)
 
-    with pytest.raises(SystemExit, match="jeton"):
+    with pytest.raises(SystemExit, match="access token"):
         cli.main(["serve", "--host", "10.8.0.2"])
 
 
@@ -91,9 +91,9 @@ def test_an_unconfigured_install_fails_cleanly(monkeypatch: pytest.MonkeyPatch) 
     from avallon.notes import config
 
     def unconfigured(*_args: object, **_kwargs: object) -> None:
-        raise config.NotConfigured("Aucun dépôt de notes configuré.")
+        raise config.NotConfigured("No notes repository configured.")
 
     monkeypatch.setattr(cli, "_dispatch", unconfigured)
 
-    with pytest.raises(SystemExit, match="Aucun dépôt"):
+    with pytest.raises(SystemExit, match="No notes repository"):
         cli.main(["repo"])

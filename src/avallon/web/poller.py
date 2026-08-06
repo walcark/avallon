@@ -49,7 +49,7 @@ async def poll(content_dir: Path, every: int | None = None) -> None:
         try:
             await asyncio.to_thread(sync.flush, content_dir)
         except Exception:  # noqa: BLE001 - a poller must outlive its failures
-            logger.warning("poller: échec de la synchronisation", exc_info=True)
+            logger.warning("poller: sync failed", exc_info=True)
 
 
 def start(content_dir: Path) -> asyncio.Task[None] | None:

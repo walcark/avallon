@@ -26,12 +26,12 @@ class Command(BaseCommand):
             "--format",
             choices=("docx", "pdf"),
             default="docx",
-            help="format de sortie (défaut : docx)",
+            help="output format (default: docx)",
         )
         parser.add_argument(
             "--pdf", action="store_true", help="raccourci pour --format pdf"
         )
-        parser.add_argument("--reference", help="reference.docx (styles) à utiliser")
+        parser.add_argument("--reference", help="reference.docx (styles) to use")
 
     def handle(self, *args, **opts):
         relpath = opts["relpath"].strip("/")

@@ -118,7 +118,7 @@ def export_pdf(
         _run(cmd, "LibreOffice", timeout=180)
         produced = tmp / "doc.pdf"
         if not produced.is_file():
-            raise ExportError("LibreOffice n'a pas produit de PDF.")
+            raise ExportError("LibreOffice produced no PDF.")
         shutil.move(str(produced), str(out_path))
     return out_path
 
@@ -128,9 +128,9 @@ def _run(cmd: list[str], tool: str, timeout: int | None = None) -> None:
     try:
         subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=timeout)
     except FileNotFoundError as exc:
-        raise ExportError(f"{tool} introuvable.") from exc
+        raise ExportError(f"{tool} not found.") from exc
     except subprocess.TimeoutExpired as exc:
-        raise ExportError(f"{tool} a dépassé le délai.") from exc
+        raise ExportError(f"{tool} timed out.") from exc
     except subprocess.CalledProcessError as exc:
         detail = (exc.stderr or exc.stdout or "").strip().splitlines()
-        raise ExportError(f"{tool} a échoué : {detail[-1] if detail else '?'}") from exc
+        raise ExportError(f"{tool} failed: {detail[-1] if detail else '?'}") from exc

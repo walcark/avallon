@@ -215,7 +215,7 @@ def safe_resolve(relpath: str) -> Path:
     (e.g. `../../etc/passwd`)."""
     target = (CONTENT_DIR / relpath.strip("/")).resolve()
     if target != CONTENT_DIR and CONTENT_DIR not in target.parents:
-        raise Http404("Chemin hors du contenu")
+        raise Http404("Path outside the notes tree")
     return target
 
 
@@ -400,11 +400,11 @@ def create_page(
 
     vocab = vocabulary()
     if domain not in vocab["domains"]:
-        raise InvalidPage(f"Domaine non déclaré : {domain}")
+        raise InvalidPage(f"Undeclared domain: {domain}")
     if type_ not in vocab["types"]:
-        raise InvalidPage(f"Type non déclaré : {type_}")
+        raise InvalidPage(f"Undeclared type: {type_}")
     if not title.strip():
-        raise InvalidPage("Le titre est obligatoire.")
+        raise InvalidPage("A title is required.")
 
     base = CONTENT_DIR / domain / type_
     slug = slugify(title)
@@ -460,22 +460,20 @@ def move_page(relpath: str, new_domain: str, new_type: str) -> Page:
     """
     vocab = vocabulary()
     if new_domain not in vocab["domains"]:
-        raise InvalidPage(f"Domaine non déclaré : {new_domain}")
+        raise InvalidPage(f"Undeclared domain: {new_domain}")
     if new_type not in vocab["types"]:
-        raise InvalidPage(f"Type non déclaré : {new_type}")
+        raise InvalidPage(f"Undeclared type: {new_type}")
 
     source = safe_resolve(relpath)
     if not (source / "index.md").is_file():
-        raise InvalidPage("Page introuvable.")
+        raise InvalidPage("Page not found.")
 
     slug = source.name
     target = CONTENT_DIR / new_domain / new_type / slug
     if target == source:
-        raise InvalidPage("La note est déjà dans ce domaine et ce type.")
+        raise InvalidPage("The page already sits under this domain and type.")
     if target.exists():
-        raise InvalidPage(
-            f"Une note « {slug} » existe déjà dans {new_domain}/{new_type}."
-        )
+        raise InvalidPage(f'A page "{slug}" already exists in {new_domain}/{new_type}.')
 
     # The intermediate <domain>/<type> dir need not exist yet (a domain/type
     # pair no page has used so far); make it, then move the leaf whole.
@@ -580,7 +578,7 @@ def is_visible(page: Page) -> bool:
 def load_page(index_md: Path) -> Page:
     page = _page_from(index_md)
     if not is_visible(page):
-        raise Http404("Page introuvable")
+        raise Http404("Page not found")
     return page
 
 

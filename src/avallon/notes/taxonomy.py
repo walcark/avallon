@@ -27,7 +27,6 @@ CONTENT = cc.resolve_content_dir()
 TAXO = cc.taxonomy_path(CONTENT)
 _SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _KEY = {"domain": "domains", "type": "types"}
-_FR = {"domain": "domaine", "type": "type"}
 
 
 def load() -> dict[str, list[str]]:
@@ -71,13 +70,13 @@ def add(kind: str, name: str, *, commit: bool = True) -> bool:
         sys.exit(f"nom invalide : {name!r} (minuscules, chiffres et tirets)")
     data = load()
     if name in data[key]:
-        print(f"{_FR[kind]} « {name} » déjà présent.")
+        print(f'{kind} "{name}" already declared.')
         return False
     TAXO.write_text(
         _insert(TAXO.read_text(encoding="utf-8") if TAXO.exists() else "", key, name),
         encoding="utf-8",
     )
-    print(f"{_FR[kind]} « {name} » ajouté à {TAXO.name}.")
+    print(f'{kind} "{name}" added to {TAXO.name}.')
     # Only commit when the content dir is its own git repo (the external case);
     # in the in-repo dev fallback it's gitignored, so committing would fail.
     if commit and cc.is_git_root(CONTENT):
@@ -87,7 +86,7 @@ def add(kind: str, name: str, *, commit: bool = True) -> bool:
                 "git",
                 "commit",
                 "-m",
-                f"taxo: ajoute le {_FR[kind]} « {name} »",
+                f'taxo: add {kind} "{name}"',
                 "--",
                 str(TAXO),
             ],

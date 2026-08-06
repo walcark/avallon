@@ -77,7 +77,7 @@ def gallery_fence(source: str, language, css_class, options, md, **kwargs) -> st
             items.append((path, caption or path.rsplit("/", 1)[-1].rsplit(".", 1)[0]))
 
     if not items:
-        return _error("Galerie vide : aucune image trouvée.")
+        return _error("Empty gallery: no image found.")
 
     # In an export, drop the lightbox anchor: a document wants plain figures,
     # each image resolved against the note dir by Pandoc's resource path.
@@ -242,7 +242,7 @@ def query_fence(source: str, language, css_class, options, md, **kwargs) -> str:
     except yaml.YAMLError as exc:
         return _error(f"Query invalide : {exc}")
     if not isinstance(config, dict):
-        return _error("Query invalide : un bloc clé: valeur est attendu.")
+        return _error("Invalid query: a key: value block is expected.")
 
     domains = set(_as_list(config.get("domain")))
     types = set(_as_list(config.get("type")))
@@ -278,16 +278,16 @@ def query_fence(source: str, language, css_class, options, md, **kwargs) -> str:
         fields = ["title", "domain", "type", "updated"]
 
     if not pages:
-        return '<p class="query-empty">Aucune note ne correspond à cette requête.</p>'
+        return '<p class="query-empty">No page matches this query.</p>'
 
     _labels = {
-        "title": "Titre",
-        "domain": "Domaine",
+        "title": "Title",
+        "domain": "Domain",
         "type": "Type",
         "date": "Date",
-        "updated": "Modifié",
+        "updated": "Updated",
         "tags": "Tags",
-        "summary": "Résumé",
+        "summary": "Summary",
     }
     head = "".join(f"<th>{html.escape(_labels[f])}</th>" for f in fields)
     body = "".join(
@@ -369,7 +369,7 @@ def plot_fence(source: str, language, css_class, options, md, **kwargs) -> str:
     except yaml.YAMLError as exc:
         return _error(f"Plot invalide : {exc}")
     if not isinstance(config, dict):
-        return _error("Plot invalide : un bloc clé: valeur est attendu.")
+        return _error("Invalid plot: a key: value block is expected.")
 
     series = _series(config)
     if not series:
@@ -378,7 +378,7 @@ def plot_fence(source: str, language, css_class, options, md, **kwargs) -> str:
         for s in series:
             s["y"] = [float(v) for v in s["y"]]
     except (KeyError, TypeError, ValueError):
-        return _error("Plot invalide : chaque série a besoin d'une liste `y`.")
+        return _error("Invalid plot: every series needs a `y` list.")
 
     n = max(len(s["y"]) for s in series)
     kind = str(config.get("kind", "line")).lower()
@@ -393,7 +393,7 @@ def plot_fence(source: str, language, css_class, options, md, **kwargs) -> str:
             try:
                 xs = [float(v) for v in raw_x]
             except (TypeError, ValueError):
-                return _error("Plot invalide : `x` doit être une liste de nombres.")
+                return _error("Invalid plot: `x` must be a list of numbers.")
         else:
             xs = [float(i) for i in range(n)]
         svg_html = _xy_svg(config, series, xs, scatter=(kind == "scatter"))
