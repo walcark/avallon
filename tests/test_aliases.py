@@ -126,7 +126,7 @@ def test_saving_without_a_title_change_adds_nothing(notes: Path) -> None:
 def test_the_frontmatter_keeps_its_shape(notes: Path) -> None:
     """A YAML round-trip would reorder and requote what was written by hand."""
     text = (
-        '---\ntitle: T\ndate: 2026-01-01\ntags: [a, b]\n'
+        "---\ntitle: T\ndate: 2026-01-01\ntags: [a, b]\n"
         'summary: "Une phrase."\n---\n\nCorps.\n'
     )
 
@@ -135,3 +135,46 @@ def test_the_frontmatter_keeps_its_shape(notes: Path) -> None:
     assert 'summary: "Une phrase."' in out
     assert "tags: [a, b]" in out
     assert out.index("date:") < out.index("tags:")
+
+
+def test_renaming_keeps_both_former_names(notes: Path) -> None:
+    """The slug and the title both stop being current at the same instant."""
+    from avallon.notes import rename
+
+    write_page(notes, "informatique/fiche/ancien-titre", title="Ancien titre")
+
+    target = rename.rename("informatique/fiche/ancien-titre", "Nouveau titre")
+
+    assert target.name == "nouveau-titre"
+    page = content.load_page(target / "index.md")
+    assert page.title == "Nouveau titre"
+    assert set(page.aliases) == {"Ancien titre", "ancien-titre"}
+
+
+def test_links_to_a_renamed_page_still_resolve(notes: Path) -> None:
+    from avallon.notes import rename
+
+    write_page(notes, "informatique/fiche/ancien-titre", title="Ancien titre")
+    source = write_page(notes, "informatique/cr/source", title="Source")
+    source.write_text(
+        source.read_text(encoding="utf-8") + "\n[[ancien-titre]] et [[Ancien titre]]\n",
+        encoding="utf-8",
+    )
+
+    rename.rename("informatique/fiche/ancien-titre", "Nouveau titre")
+
+    html = content.render_markdown(source)
+    assert html.count('href="/informatique/fiche/nouveau-titre/"') == 2
+    assert "wikilink-missing" not in html
+
+
+def test_renaming_onto_a_taken_slug_is_refused(notes: Path) -> None:
+    import pytest
+
+    from avallon.notes import rename
+
+    write_page(notes, "informatique/fiche/a", title="A")
+    write_page(notes, "informatique/fiche/b", title="B")
+
+    with pytest.raises(SystemExit):
+        rename.rename("informatique/fiche/a", "B")

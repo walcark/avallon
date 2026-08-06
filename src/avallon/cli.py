@@ -29,6 +29,7 @@ avallon <command> [options]
   new                   create a page
   add-file <path>       promote a file to a page of its own
   move                  re-file a page under another domain/type
+  rename <page> <title> rename a page, keeping its links alive
   sync                  pull, commit, push
   export                export a page to .docx or .pdf
   add-domain <name>     extend the vocabulary
@@ -300,6 +301,12 @@ def _dispatch(args: list[str]) -> int:
 
         sys.argv = ["avallon move", *rest]
         return move.main()
+
+    if command == "rename":
+        from avallon.notes import rename
+
+        sys.argv = ["avallon rename", *rest]
+        return rename.main()
 
     if command == "sync":
         from avallon.notes import sync
