@@ -111,6 +111,7 @@ class Page:
     project: str  # slug of the page that indexes the project, or ""
     status: str  # one of STATUSES, or "" when the question is moot
     file: str  # attached file, co-located with index.md, or ""
+    aliases: list[str]  # names this page used to answer to
 
     @property
     def url(self) -> str:
@@ -621,6 +622,7 @@ def _page_from(index_md: Path, post: frontmatter.Post | None = None) -> Page:
         project=str(post.get("project", "") or "").strip(),
         status=str(post.get("status", "") or "").strip().lower(),
         file=str(post.get("file", "") or "").strip(),
+        aliases=[str(a).strip() for a in (post.get("aliases") or []) if str(a).strip()],
     )
 
 
@@ -672,7 +674,7 @@ def backlinks(target: Page) -> list[Page]:
             continue
         for match in _WIKILINK.finditer(post.content):
             ref = match.group(1).strip()
-            if resolves_to(ref, target.slug, target.relpath):
+            if resolves_to(ref, target.slug, target.relpath, target.aliases):
                 found.append(source)
                 break
     found.sort(key=lambda p: p.title)
@@ -704,7 +706,9 @@ def project_of(page: Page) -> Page | None:
     if not page.project:
         return None
     for candidate in all_pages():
-        if resolves_to(page.project, candidate.slug, candidate.relpath):
+        if resolves_to(
+            page.project, candidate.slug, candidate.relpath, candidate.aliases
+        ):
             return candidate
     return None
 
@@ -721,7 +725,7 @@ def project_members(project: Page) -> list[Page]:
         for page in all_pages()
         if page.project
         and page.relpath != project.relpath
-        and resolves_to(page.project, project.slug, project.relpath)
+        and resolves_to(page.project, project.slug, project.relpath, project.aliases)
     ]
     members.sort(key=_recency_key, reverse=True)
     members.sort(key=lambda p: p.type)
@@ -767,7 +771,11 @@ def membership() -> dict[str, Page]:
         key = page.project.lower()
         if key not in seen:
             seen[key] = next(
-                (c for c in pages if resolves_to(page.project, c.slug, c.relpath)),
+                (
+                    c
+                    for c in pages
+                    if resolves_to(page.project, c.slug, c.relpath, c.aliases)
+                ),
                 None,
             )
         target = seen[key]
@@ -787,7 +795,7 @@ def all_projects() -> list[Page]:
     found = [
         page
         for page in pages
-        if any(resolves_to(ref, page.slug, page.relpath) for ref in refs)
+        if any(resolves_to(ref, page.slug, page.relpath, page.aliases) for ref in refs)
     ]
     found.sort(key=lambda p: p.title)
     return found

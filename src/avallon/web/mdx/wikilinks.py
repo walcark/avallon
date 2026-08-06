@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import re
 import xml.etree.ElementTree as etree
+from collections.abc import Sequence
 
 from markdown.extensions import Extension
 from markdown.inlinepatterns import InlineProcessor
@@ -44,7 +45,9 @@ EMBED_RE = r"!\[\[\s*([^\]|]+?)\s*(?:\|\s*([^\]]+?)\s*)?\]\]"
 _FILE_SUFFIX = re.compile(r"\.[A-Za-z0-9]{1,8}$")
 
 
-def resolves_to(target: str, slug: str, relpath: str) -> bool:
+def resolves_to(
+    target: str, slug: str, relpath: str, aliases: Sequence[str] = ()
+) -> bool:
     """Whether the wikilink *target* designates the page (*slug*, *relpath*).
 
     The single matching rule, shared with the backlink walker so a reference
@@ -55,6 +58,7 @@ def resolves_to(target: str, slug: str, relpath: str) -> bool:
     - the slug or the full relpath, verbatim: ``[[titre-exact]]``
     - either of those in any case: ``[[Titre-Exact]]``
     - the title itself: ``[[Titre exact]]``, or ``[[titre exact]]``
+    - any name the page used to answer to, listed in its ``aliases:``
 
     The last form works by slugifying the target, which is exactly how the
     slug was derived from the title when the page was created (accents
@@ -81,6 +85,13 @@ def resolves_to(target: str, slug: str, relpath: str) -> bool:
     lowered = target.lower()
     if lowered in (slug.lower(), relpath.lower()):
         return True
+    # Former names, written by the tool when a title or a slug changes: the
+    # identity travels with the page, not with the notes that cite it.
+    if any(
+        lowered == alias.lower() or slugify(target) == slugify(alias)
+        for alias in aliases
+    ):
+        return True
     # Not applied to the relpath: slugify would eat its slashes and turn it
     # into something that can only ever collide by accident.
     return slugify(target) == slug.lower()
@@ -95,7 +106,7 @@ def _resolve(target: str):
     from avallon.web import content
 
     for page in content.all_pages():
-        if resolves_to(target, page.slug, page.relpath):
+        if resolves_to(target, page.slug, page.relpath, page.aliases):
             return page
     return None
 
