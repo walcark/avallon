@@ -99,7 +99,11 @@ fmt = "ruff format ."
 fmt-check = "ruff format --check ."
 lint = "ruff check src scripts tests"
 type-check = "mypy src scripts"
-test = "pytest -q --cov=avallon --cov-report=term-missing --cov-report=xml"
+# The notes directory is resolved when Django imports the settings, which
+# pytest-django does *before* any conftest runs. It therefore has to come from
+# the environment: a throwaway path, since every test rebinds it to its own
+# tree through the `notes` fixture.
+test = { cmd = "pytest -q --cov=avallon --cov-report=term-missing --cov-report=xml", env = { AVALLON_CONTENT_DIR = "/tmp/avallon-tests-notes" } }
 all = { depends-on = ["fmt", "lint", "type-check", "test"] }
 
 [tool.pixi.environments]

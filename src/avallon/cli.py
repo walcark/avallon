@@ -167,7 +167,18 @@ def _django(command: list[str]) -> int:
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Dispatch to the subcommand named by the first argument."""
-    args = list(sys.argv[1:] if argv is None else argv)
+    from avallon.notes.config import NotConfigured
+
+    try:
+        return _dispatch(list(sys.argv[1:] if argv is None else argv))
+    except NotConfigured as exc:
+        # Reaching the notes without having chosen them is an ordinary mistake,
+        # not a crash: say what to run, not where the exception came from.
+        sys.exit(str(exc))
+
+
+def _dispatch(args: list[str]) -> int:
+    """Route *args* to the module implementing the subcommand."""
     if not args or args[0] in ("-h", "--help", "help"):
         print(USAGE, end="")
         return 0

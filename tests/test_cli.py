@@ -84,3 +84,16 @@ def test_serving_beyond_loopback_without_a_token_is_refused(
 
     with pytest.raises(SystemExit, match="jeton"):
         cli.main(["serve", "--host", "10.8.0.2"])
+
+
+def test_an_unconfigured_install_fails_cleanly(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No notes repository is a message, not a traceback."""
+    from avallon.notes import config
+
+    def unconfigured(*_args: object, **_kwargs: object) -> None:
+        raise config.NotConfigured("Aucun dépôt de notes configuré.")
+
+    monkeypatch.setattr(cli, "_dispatch", unconfigured)
+
+    with pytest.raises(SystemExit, match="Aucun dépôt"):
+        cli.main(["repo"])
