@@ -201,47 +201,127 @@ first and offers "search everywhere" as one click.
 It composes with the rest: the same parameter serves a domain or a type, and
 the facets on the home page already speak that language.
 
-## 7. What breaks at three hundred pages
+## 7. The home page is the explorer
 
-The question is about arranging documents, so the entry point matters as much
-as the pages. Measured on synthetic corpora:
+The home page is not a listing with a search box bolted on: **it is one
+selection, rendered according to what it contains.** Facets and text are two
+ways of narrowing the same thing.
 
-| Corpus | Home page | Weight | Cards in the HTML | One page |
-| --- | --- | --- | --- | --- |
-| 44 pages (today) | 32 ms | 67 Ko | 45 | 32 ms |
-| 300 pages | 96 ms | 280 Ko | 301 | 58 ms |
-| 1 000 pages | 305 ms | 864 Ko | 1 001 | 196 ms |
+The use case that states it best:
 
-Nothing is slow enough to break, and that is the trap: the home page will not
-fail, it will just stop being useful. It renders **every** card, and the
-filtering is client-side on the whole corpus. At three hundred pages it is a
-wall of cards; at a thousand it is a megabyte of HTML to say "here is
-everything".
+> Filter on administrative images: I want to see them all, as images. Then I
+> want to narrow that down by typing.
 
-The same holds for the two other places that list everything: the sidebar tree
-and the command palette, which reads its list from that tree.
+Two consequences, and the second is the interesting one.
 
-Three answers, in the order I would take them:
+### Measured: why the current shape cannot do that
 
-**Make the home page an entry, not a dump.** What a reader wants on arrival is
-recent work, unfinished dossiers, and the search box. Rendering the twenty most
-recent cards plus the facets covers it, and the rest is one filter away. The
-weight of the page stops growing with the corpus, and the facets stay accurate
-because they are computed server-side from all pages regardless.
+| Corpus | Home page | Weight | Cards in the HTML |
+| --- | --- | --- | --- |
+| 44 pages (today) | 32 ms | 67 Ko | 45 |
+| 300 pages | 96 ms | 280 Ko | 301 |
+| 1 000 pages | 305 ms | 864 Ko | 1 001 |
 
-**Give the sidebar the same treatment as the dossier navigation.** Inside a
-dossier it already shows the dossier instead of the whole tree, which is the
-right instinct: show the neighbourhood, not the world. Outside one, the tree can
-stay folded to domains and open on demand.
+Nothing is slow enough to break, and that is the trap: the page will not fail,
+it will quietly stop being useful. It renders **every** card and filters them in
+the browser, so the weight grows with the corpus rather than with the selection.
+And the search results arrive in a *separate* floating panel, which is precisely
+what makes "filter, then narrow by typing" impossible: the two do not compose,
+one replaces the other.
 
-**Leave the palette alone.** It is keyboard-driven and prefix-filtered, which is
-exactly the tool for a large corpus; it only needs its list to arrive by fetch
-rather than by reading a DOM that no longer contains everything.
+The fix is the same one: **the selection is computed server-side, from facets
+and text together**, and only the selection is rendered. `/?domaine=administratif
+&kind=image&q=identité` is one URL, shareable and bookmarkable, and the weight
+of the page follows what was asked, not what exists.
 
-**The objection to pagination:** a "load more" button on a personal site is
-usually a symptom of a missing filter. That is why the answer above is *recency
-plus facets*, not paging: nobody scrolls to page 7 of their own notes, they
-filter or they search.
+### Do not add `type: image`
+
+The temptation, given the use case, is a type per medium: `image`, `pdf`, `scan`.
+It is the wrong axis, for a reason worth stating:
+
+- **The type is editorial**: it says what the page *is* (a note, a compte rendu,
+  an index). It is chosen by a human and cannot be checked.
+- **The medium is structural**: it is already written in the file's extension.
+
+Declaring both invites them to disagree: `type: image` on a page whose `file:`
+is a PDF is a lie nothing detects. So the medium becomes a **derived facet**,
+computed from `file:` and never typed:
+
+| `kind` | From | Rendering |
+| --- | --- | --- |
+| `note` | no `file:` | the body, as today |
+| `image` | png, jpg, webp, svg, heic | thumbnail grid, lightbox |
+| `pdf` | pdf | first-page thumbnail, inline viewer |
+| `text` | txt, md, csv, code | Pygments |
+| `office` | docx, xlsx, pptx | icon, download |
+| `archive` | zip, tar, 7z | icon, download |
+
+Zero input, never wrong, and it filters exactly as asked:
+`domaine=administratif` plus `kind=image`.
+
+### The type vocabulary a documentation space needs
+
+Which leaves the real question: what types, for a space meant to hold everything?
+
+**One addition, `doc`**: a file promoted to a page of its own, per the test in
+`documents.md` ("would I look for this file on its own?"). With `fiche`, `cr`,
+`tutoriel` and `recueil`, that is the whole vocabulary.
+
+The types *not* to add, and why, because the pressure to add them is constant:
+
+| Tempting | What it really is |
+| --- | --- |
+| `image`, `pdf`, `scan` | a `kind`, derived from the file |
+| `facture`, `contrat`, `passeport` | tags: they say the subject, not the form |
+| `livre`, `article` | a `doc` with a tag; the form is identical |
+| `photo` | a `doc` whose `kind` is `image` |
+| `projet` | a dossier, which is a page plus `project:` on its members |
+| `archive`, `todo` | a `status`, not a form |
+
+The discriminating test: **a type you cannot define without naming a file
+format or a subject is not a type.** It is a `kind` or a tag. Five types, stable
+for years, is the right size; fifteen means every new page starts with a
+taxonomy decision, which is exactly the friction that stops people from filing.
+
+### The view follows the selection
+
+A selection of images should not render as a list of titles. So the view is
+chosen, not fixed:
+
+- every result carries a thumbnail (`kind` image or pdf) → **grid**;
+- otherwise → **cards**, as today;
+- and an explicit switch (grid / list / table) that overrides the guess and is
+  remembered, because an automatic choice that cannot be refused is an
+  annoyance the third time it guesses wrong.
+
+Thumbnails are cheap: an image is its own thumbnail (`loading="lazy"`, sized by
+CSS), and a PDF's first page costs **19 ms and 18 Ko** with `pdftoppm`, measured
+on a real invoice from the battery dossier. Cached next to the file and keyed on
+its mtime, it is generated once.
+
+`pdftoppm` comes from poppler, which is a system dependency, so it must degrade:
+without it, a PDF falls back to an icon. The grid must never depend on a binary
+being installed.
+
+### What this gives, end to end
+
+```
+/?domaine=administratif&kind=image        every administrative image, as a grid
+  + type "identité" in the search box     the same grid, narrowed
+  + click a thumbnail                     the document's own page
+```
+
+Same surface, same URL grammar, three levels of narrowing. And it is the same
+mechanism as ` ```query as: gallery ` from section 4: a stored query is a
+selection someone decided to name.
+
+### The objection worth keeping
+
+Six facets (domain, type, kind, state, dossier, tags) is a lot of chrome for a
+personal site. The existing code already hides a facet group when it holds a
+single value, which is what keeps this bearable: on a corpus of notes with no
+files, `kind` never appears. The rule to hold: **a facet that does not divide
+the current selection does not show up.**
 
 ## 8. What not to do
 
@@ -260,17 +340,19 @@ filter or they search.
 ## 9. Order of work
 
 1. ~~**Search performance**~~ **done**: ripgrep now runs, folding is 30x
-   cheaper, searches went from 1 144 ms to 97 ms at 500 pages.
-2. **Scoped search**, one parameter, closes "a dossier is a place you search
-   from".
-3. **The home page as an entry** (recent plus facets), before the corpus makes
-   it moot.
-4. **`file:` and the viewers** (`documents.md` step 3): this is what gives a
-   document its own identity, and nothing about collections works before it.
-5. **`as: gallery|list` on queries**, which turns tags into readable
-   collections.
+   cheaper, 1 144 ms → 97 ms at 500 pages.
+2. **Server-side selection**: facets and text resolved together, one URL, only
+   the selection rendered. This is the keystone. It closes the scoped-search
+   gap, it fixes the home page's growth, and nothing below is worth building
+   on the current split between a list and a floating panel.
+3. **`file:` and the viewers** (`documents.md` step 3), which gives a document
+   its own identity, plus the derived `kind` that comes free with it.
+4. **Grid view and thumbnails**, the payoff of 2 and 3 together: filter on
+   images, see images.
+5. **`as: gallery|list` on queries**, so a named collection renders like a
+   selection does.
 6. **Per-type templates**, `recueil` and `galerie` first.
 
-Steps 2 and 3 are worth doing whatever happens to the rest. Steps 4 to 6 only
-pay off together: a collection of documents needs documents to exist, and a view
-to show them.
+Step 2 is the one to do first and alone: it is the only one that changes the
+shape of the application, and every other step is easier once a selection is a
+first-class thing rather than a filter applied in a browser.
