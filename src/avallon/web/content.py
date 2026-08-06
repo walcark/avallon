@@ -547,6 +547,56 @@ def read_source(index_md: Path) -> str:
     return index_md.read_text(encoding="utf-8")
 
 
+_FRONTMATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.S)
+_ALIASES_LINE = re.compile(r"^aliases:\s*\[(.*)\]\s*$", re.M)
+_TITLE_LINE = re.compile(r"^title:\s*(.+?)\s*$", re.M)
+
+
+def _yaml_scalar(value: str) -> str:
+    """Quote *value* only when it could be misread unquoted."""
+    return value if not re.search(r"""[:#\[\]{},"']""", value) else f'"{value}"'
+
+
+def add_alias(text: str, alias: str) -> str:
+    """Return *text* with *alias* added to its frontmatter ``aliases:``.
+
+    Edited as text, not through a YAML round-trip: the frontmatter is written
+    by hand and a dump would reorder its keys and requote its values, turning
+    every title change into a diff nobody asked for.
+    """
+    match = _FRONTMATTER.match(text)
+    if not match or not alias.strip():
+        return text
+    block = match.group(1)
+
+    existing = _ALIASES_LINE.search(block)
+    if existing:
+        current = [a.strip().strip("\"'") for a in existing.group(1).split(",")]
+        if alias in current:
+            return text
+        values = [a for a in current if a] + [alias]
+        line = "aliases: [" + ", ".join(_yaml_scalar(v) for v in values) + "]"
+        new_block = block[: existing.start()] + line + block[existing.end() :]
+    else:
+        # After the title, where a reader expects the names of the page.
+        title = _TITLE_LINE.search(block)
+        line = f"aliases: [{_yaml_scalar(alias)}]"
+        if title:
+            new_block = block[: title.end()] + "\n" + line + block[title.end() :]
+        else:
+            new_block = block + "\n" + line
+    return text[: match.start(1)] + new_block + text[match.end(1) :]
+
+
+def title_of(text: str) -> str:
+    """The title declared in *text*'s frontmatter, or ""."""
+    match = _FRONTMATTER.match(text)
+    if not match:
+        return ""
+    found = _TITLE_LINE.search(match.group(1))
+    return found.group(1).strip().strip("\"'") if found else ""
+
+
 def save_source(index_md: Path, text: str, expected_mtime: float | None = None) -> None:
     """Overwrite a page's Markdown, refusing to clobber a concurrent edit.
 

@@ -384,6 +384,12 @@ def save_page(request):
         return JsonResponse({"error": "Missing content."}, status=400)
 
     try:
+        # A title change would strand every link written to the old one, so the
+        # old title becomes an alias at the moment it stops being the title.
+        previous = content.title_of(content.read_source(index_md))
+        new_title = content.title_of(text)
+        if previous and new_title and previous != new_title:
+            text = content.add_alias(text, previous)
         content.save_source(index_md, text, payload.get("mtime"))
     except content.InvalidFrontmatter as exc:
         return JsonResponse({"error": f"Invalid frontmatter: {exc}"}, status=400)

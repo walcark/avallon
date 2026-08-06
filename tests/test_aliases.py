@@ -85,3 +85,50 @@ def test_a_page_without_aliases_is_unaffected(notes: Path) -> None:
 
     assert page.aliases == []
     assert not resolves_to("autre-chose", page.slug, page.relpath, page.aliases)
+
+
+def test_changing_a_title_records_the_old_one(notes: Path) -> None:
+    """The moment a title stops being the title is when the alias must appear."""
+    from django.test import Client
+
+    write_page(notes, "informatique/fiche/p", title="Ancien titre")
+    body = "---\ntitle: Nouveau titre\ndate: 2026-01-01\n---\n\nDu texte.\n"
+
+    response = Client().post(
+        "/save/",
+        data='{"path": "informatique/fiche/p", "text": %s}'
+        % __import__("json").dumps(body),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    page = content.load_page(notes / "informatique/fiche/p/index.md")
+    assert page.title == "Nouveau titre"
+    assert page.aliases == ["Ancien titre"]
+
+
+def test_saving_without_a_title_change_adds_nothing(notes: Path) -> None:
+    from django.test import Client
+
+    write_page(notes, "informatique/fiche/p", title="Stable")
+    body = "---\ntitle: Stable\ndate: 2026-01-01\n---\n\nAutre texte.\n"
+
+    Client().post(
+        "/save/",
+        data='{"path": "informatique/fiche/p", "text": %s}'
+        % __import__("json").dumps(body),
+        content_type="application/json",
+    )
+
+    assert content.load_page(notes / "informatique/fiche/p/index.md").aliases == []
+
+
+def test_the_frontmatter_keeps_its_shape(notes: Path) -> None:
+    """A YAML round-trip would reorder and requote what was written by hand."""
+    text = '---\ntitle: T\ndate: 2026-01-01\ntags: [a, b]\nsummary: "Une phrase."\n---\n\nCorps.\n'
+
+    out = content.add_alias(text, "vieux")
+
+    assert 'summary: "Une phrase."' in out
+    assert "tags: [a, b]" in out
+    assert out.index("date:") < out.index("tags:")
