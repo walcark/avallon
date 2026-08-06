@@ -57,6 +57,7 @@ FRENCH: dict[str, str] = {
     "Previous image": "Image précédente",
     "Next image": "Image suivante",
     "Close": "Fermer",
+    "Download": "Télécharger",
     "Copied": "Copié",
     "Copy": "Copier",
     # Editor

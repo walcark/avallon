@@ -44,6 +44,10 @@ def notes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     (root / "taxonomy.toml").write_text(TAXONOMY, encoding="utf-8")
     monkeypatch.setattr(settings, "CONTENT_DIR", root)
     monkeypatch.setattr(content, "CONTENT_DIR", root)
+    # Anything resolving the directory at call time (the notes commands) must
+    # land here too: without this a test writes into the developer's real
+    # notes, which is exactly what happened once.
+    monkeypatch.setenv("AVALLON_CONTENT_DIR", str(root))
     # The taxonomy is cached against its mtime, and a fresh tmp file can land
     # on the same one as the previous test's.
     monkeypatch.setattr(content, "_taxonomy_cache", None)

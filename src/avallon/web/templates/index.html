@@ -120,6 +120,24 @@
             </p>
         </header>
 
+        {% if page.file %}
+        <!-- The attached file, rendered by what it is rather than by the page's
+             type: a compte rendu carrying a scan shows it like a doc would. -->
+        <div class="attachment" data-kind="{{ page.kind }}">
+            {% if page.kind == "image" %}
+            <a href="{{ page.file_url }}" class="attachment-image">
+                <img src="{{ page.file_url }}" alt="{{ page.title }}">
+            </a>
+            {% elif page.kind == "pdf" %}
+            <embed src="{{ page.file_url }}" type="application/pdf">
+            {% endif %}
+            <p class="attachment-meta">
+                <a class="btn" href="{{ page.file_url }}" download>{{ "Download"|t }}</a>
+                <span class="attachment-name">{{ page.file }}</span>
+            </p>
+        </div>
+        {% endif %}
+
         <div class="page-body">{{ content_html|safe }}</div>
 
         <!-- Raw Markdown editor. The source is fetched on first open rather

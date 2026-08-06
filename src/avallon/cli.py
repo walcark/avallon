@@ -27,6 +27,7 @@ avallon <command> [options]
   repo [path]           print or switch the active repository
   language [en|fr]      print or switch the interface language
   new                   create a page
+  add-file <path>       promote a file to a page of its own
   move                  re-file a page under another domain/type
   sync                  pull, commit, push
   export                export a page to .docx or .pdf
@@ -287,6 +288,12 @@ def _dispatch(args: list[str]) -> int:
 
         sys.argv = ["avallon new", *rest]
         return scaffold.main()
+
+    if command == "add-file":
+        from avallon.notes import add_file
+
+        sys.argv = ["avallon add-file", *rest]
+        return add_file.main()
 
     if command == "move":
         from avallon.notes import move

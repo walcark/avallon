@@ -1410,3 +1410,28 @@ html:has(.page.is-editing) { overflow: hidden; }
     color: var(--accent);
     text-decoration: none;
 }
+
+/* An attached file, shown above the notes about it: the document is the
+   subject, the Markdown is the commentary. */
+.attachment { margin: 0 0 2rem; }
+.attachment-image img,
+.attachment embed {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--surface);
+}
+.attachment embed { height: min(80vh, 46rem); }
+.attachment-image img { height: auto; }
+.attachment-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin: 0.6rem 0 0;
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+.attachment-name { font-family: "Roboto Mono", monospace; }
