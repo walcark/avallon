@@ -41,10 +41,17 @@ So the answer to "a link should always resolve" is not to freeze it, but to
 | --- | --- | --- |
 | `check-links` in `pre-commit` | a commit that would break an internal link is refused | ~40 lines, and the hook already exists for dates |
 | `avallon move` rewriting inbound links | the one operation that breaks links, made safe | ~50 lines |
-| `id:` in the frontmatter, resolution as a fallback | a rename made outside the tool | more, and only worth it if the two above prove insufficient |
+| `aliases:` in the frontmatter, tried after the slug | every former name of a page, forever | ~30 lines, and the rename writes them itself |
 
 That order matters: the first two remove the cause, the third compensates for
 it. `documents.md` already argued for the same sequence.
+
+**Aliases are what got built**, rather than an opaque `id:`. A former name is
+readable, a link written against it keeps working, and nothing has to be
+migrated when the mechanism is introduced: `avallon rename` records both the
+old slug and the old title before moving the directory, so a link never learns
+that the page was renamed. Resolution tries the slug, then the aliases, which
+costs one extra comparison per candidate on a miss.
 
 ## 2. The past of a page is git's job, exposed
 
@@ -115,8 +122,11 @@ recorded points"**, not "see every version". Two consequences:
 - A page with a single commit shows a single entry, and the button should say
   that rather than opening an empty menu.
 - If finer history is wanted, that is a change to the *sync* (a shorter window,
-  or a commit per save), not to the history view. Worth deciding separately, and
-  the trade is readable history against fine history.
+  or a commit per save), not to the history view. The trade is readable history
+  against fine history, and it was settled in favour of the second: **one commit
+  per modification**, by setting `AVALLON_SYNC_WINDOW=0` on the deployment. The
+  history panel then lists five saves rather than five batches, which is what
+  the button implies when it shows a time to the minute.
 
 ## 4. What I would build, in order
 
@@ -151,5 +161,28 @@ Three options, cheapest first:
 3. Add a Python PDF writer, which means rendering the site's typography twice
    and keeping the two in step. Not worth it.
 
-Option 1 for the button, option 2 for `avallon export`, which is a different
-tool with a different purpose: a styled document to send to someone.
+**Option 2 is what got built**, for both, because the two software packages
+are installed on the server that runs the site. The rendering happens where the
+site runs, not on the machine holding the browser: clicking the button from a
+phone produces the same PDF as clicking it from a desktop, which is the
+property that matters when the point is to hand a document to a bank.
+
+Option 1 stays worth having later, as a second path rather than a replacement:
+a print stylesheet costs nothing at runtime and works when the server has
+neither package. Noted, not built.
+
+## 6. What the page ended up showing
+
+The date in the label is a button. Clicking it fetches `/history/?path=…` and
+drops a menu of at most five entries, each `YYYY/MM/DD-hh:mm` followed by the
+commit subject, so a batch is recognisable as one. Choosing an entry reloads
+the page at `?at=<sha>`, under a banner naming the state being read and linking
+back to the present. The revision is validated as a hexadecimal hash before it
+reaches git, so it can never be read as a path.
+
+Two states have their own wording rather than an empty menu: a page modified
+and not yet recorded says so, and a page with no commit at all says that too.
+Both are ordinary, and both would otherwise look like a bug.
+
+Next to it, the download button: the file when the page carries one, the page
+as a PDF otherwise.

@@ -1541,3 +1541,60 @@ a.card-project:hover { text-decoration: underline; }
    closes that paragraph early and leaves an empty one behind. Hiding empty
    paragraphs removes its margin without touching the markdown pipeline. */
 .prose p:empty { display: none; }
+
+/* The date opens the earlier states, so it looks clickable without becoming a
+   button in the middle of a line of metadata. */
+.history-anchor { position: relative; display: inline-flex; }
+.date-button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    border-bottom: 1px dotted var(--border);
+}
+.date-button:hover { color: var(--accent); border-bottom-color: var(--accent); }
+.history-menu {
+    position: absolute;
+    top: 1.6rem;
+    left: 0;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    min-width: 11rem;
+    padding: 0.3rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    box-shadow: 0 8px 24px var(--shadow-lg);
+}
+.history-menu[hidden] { display: none; }
+.history-menu a {
+    padding: 0.4rem 0.5rem;
+    border-radius: 0.35rem;
+    color: var(--ink);
+    text-decoration: none;
+    font-family: "Roboto Mono", monospace;
+    font-size: 0.82rem;
+}
+.history-menu a:hover { background: var(--code-bg); color: var(--accent); }
+.history-dirty { padding: 0.4rem 0.5rem; color: var(--muted); font-size: 0.82rem; }
+
+/* Reading the past: stated once, at the top, with the way back. */
+.revision-banner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 0 0 1rem;
+    padding: 0.55rem 0.8rem;
+    background: var(--warn-bg);
+    color: var(--warn-ink);
+    border-radius: 0.5rem;
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+}
+.revision-banner a { color: inherit; font-weight: 600; }
+
+.meta-action { color: var(--accent); text-decoration: none; }
+.meta-action:hover { text-decoration: underline; }

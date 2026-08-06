@@ -49,6 +49,8 @@ another device: the running server polls  <-- pull ----------------- +
 - Python 3.11+
 - `git`
 - [`pandoc`](https://pandoc.org) for the Word/PDF export
+- [LibreOffice](https://www.libreoffice.org) for the PDF specifically, and so
+  for a page's download button; the `.docx` export needs only pandoc
 - [`fzf`](https://github.com/junegunn/fzf) for the interactive pickers
 - [`ripgrep`](https://github.com/BurntSushi/ripgrep) *(optional)*: full-text
   search falls back to a pure-Python scan without it
@@ -202,6 +204,40 @@ Standard Markdown, plus:
 
 Every page shows what cites it, so a note is never a dead end.
 
+### Links that keep working
+
+A link points at a slug, so it already survives a page changing domain, type or
+title. What it would not survive is the directory being renamed, so nothing
+renames one silently:
+
+- **`avallon rename <page> "New title"`** records the former slug and the
+  former title as `aliases:` before moving anything. Resolution tries the slug
+  first, then the aliases, so every link written against the old name keeps
+  landing on the page. Editing the title in the browser does the same.
+- **`avallon check-links`** verifies that every `[[link]]` resolves, and the
+  pre-commit hook runs it on the staged pages. It reports rather than blocks: a
+  half-written dossier still commits.
+- A page that deliberately shows unresolvable examples opts out with
+  `check_links: false` in its frontmatter.
+
+### The past of a page
+
+The date in a page's label is a button. It lists the **last five recorded
+states** as `YYYY/MM/DD-hh:mm`, and opening one shows the page as it was then,
+under a banner with the way back to the present. Images and attached files come
+from that same commit, so a state of last week never shows today's scan.
+
+History follows relocations: a page moved from `administratif/` to `perso/`
+keeps one continuous story, reconstructed by git rather than recorded by hand.
+A page edited and not yet committed says so, instead of pretending the last
+commit is what is on screen.
+
+Next to it, a download button, adapted to what the page holds: **the file
+itself** when the frontmatter carries a `file:`, the **page as a PDF**
+otherwise. The PDF is rendered by the machine running the site, so it is the
+same document whether the button is clicked from a laptop or a phone (it needs
+pandoc and LibreOffice there, see [Requirements](#requirements)).
+
 ## Commands
 
 | Command | What it does |
@@ -212,11 +248,13 @@ Every page shows what cites it, so a note is never a dead end.
 | `avallon new` | Scaffold a page (domain and type picked from the taxonomy). |
 | `avallon add-file <path>` | Promote a file to a page of its own. |
 | `avallon move <page>` | Re-file a page under another domain/type. |
+| `avallon rename <page> <title>` | Rename a page, keeping every link to it alive. |
 | `avallon sync` | Pull, commit, push. `--local` commits without the network. |
 | `avallon export <page>` | Export a page to `.docx` or `.pdf` (needs pandoc). |
 | `avallon add-domain <name>` | Extend the taxonomy. |
 | `avallon add-type <name>` | Extend the taxonomy. |
 | `avallon check` | Verify every page sits under a declared domain/type. |
+| `avallon check-links` | Verify every `[[link]]` resolves. |
 | `avallon language [en\|fr]` | Print or switch the interface language. |
 | `avallon stamp` | Fill missing `date:` / `updated:` in the frontmatter. |
 | `avallon setup` | Write the deployment env file (address, port, token). |
@@ -267,7 +305,7 @@ on a timer so pages written on another device show up without a restart.
 | `AVALLON_HOST` / `AVALLON_PORT` | `127.0.0.1` / `8000` | Bind address. |
 | `AVALLON_LANGUAGE` | `en` | Interface language: `en` or `fr`. |
 | `AVALLON_SHOW_PRIVATE` | on in debug | Serve pages marked `visibility: private`. |
-| `AVALLON_SYNC_WINDOW` | `900` | Seconds during which consecutive edits fold into one commit. |
+| `AVALLON_SYNC_WINDOW` | `900` (`0` from `avallon setup`) | Seconds during which consecutive edits fold into one commit. |
 | `AVALLON_POLL_INTERVAL` | `120` | Seconds between two pulls; `0` disables the poller. |
 | `AVALLON_ALLOWED_HOSTS` | loopback | Comma separated names the site answers to. |
 | `AVALLON_SECRET_KEY` | *(generated per process)* | Django secret key. `avallon setup` writes a fixed one. |
@@ -326,6 +364,12 @@ warning.
 `AVALLON_SYNC_WINDOW` seconds, so a page written in ten passes does not leave
 ten commits behind. Only commits the tool made itself are amended, recognized
 by their trailer.
+
+`avallon setup` writes `AVALLON_SYNC_WINDOW=0` instead, which turns batching
+off: the history panel offers a page's last five states, and folding a day of
+edits into one commit would leave most pages with a single entry. Batching is
+the better default for a repository one reads through `git log`; a commit per
+save is the better one for a site whose pages carry their own history.
 
 **Polling.** A long-running server is one more git writer among the devices, so
 it pulls on a timer to reflect what was written elsewhere.

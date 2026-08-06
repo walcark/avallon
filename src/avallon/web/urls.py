@@ -12,6 +12,7 @@ urlpatterns = [
     path("save/", views.save_page, name="save"),
     path("move/", views.move_page, name="move"),
     path("export/", views.export_page, name="export"),
+    path("history/", views.page_history, name="history"),
     path("thumb/<path:relpath>/", views.thumbnail, name="thumbnail"),
     path("manifest.webmanifest", views.manifest, name="manifest"),
     path("sw.js", views.service_worker, name="service-worker"),

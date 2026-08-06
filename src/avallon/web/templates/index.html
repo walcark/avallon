@@ -112,9 +112,31 @@
             {% endif %}
             <h1>{{ page.title }}</h1>
             {% if page.summary %}<p class="page-summary">{{ page.summary }}</p>{% endif %}
+            {% if revision %}
+            <!-- Reading a recorded state: say so plainly, and offer the way
+                 back, because every link on this page leads to the present. -->
+            <p class="revision-banner">
+                {{ "You are reading the state of"|t }} {{ revision.when }}
+                <a href="{{ page.url }}">{{ "back to the current version"|t }}</a>
+            </p>
+            {% endif %}
             <p class="page-meta">
-                {% if page.display_date %}<span>{{ page.display_date }}</span>{% endif %}
+                {% if page.display_date %}
+                <span class="history-anchor">
+                    <button type="button" class="date-button" id="historyBtn"
+                            aria-expanded="false" aria-haspopup="true"
+                            title="{{ "Earlier states"|t }}">{{ page.display_date }}</button>
+                    <span class="history-menu" id="historyMenu" hidden></span>
+                </span>
+                {% endif %}
                 <span>{{ reading_minutes }} {{ "min read"|t }}</span>
+                {% if page.file %}
+                <a class="meta-action" href="{{ page.file_url }}" download
+                   title="{{ "Download the file"|t }}">{{ "Download"|t }}</a>
+                {% else %}
+                <a class="meta-action" href="/export/?path={{ relpath|urlencode }}&amp;format=pdf"
+                   download title="{{ "Download as PDF"|t }}">{{ "Download"|t }}</a>
+                {% endif %}
                 {% if page.status %}<span class="badge-status" data-status="{{ page.status }}">{{ page.status }}</span>{% endif %}
                 {% for t in page.tags %}<a class="tag" href="/?tag={{ t|urlencode }}">{{ t }}</a>{% endfor %}
             </p>
@@ -181,6 +203,45 @@
 {% endblock %}
 
 {% block scripts %}
+    <script>
+      // Earlier states, fetched when the date is clicked rather than rendered
+      // with the page: most visits never open it.
+      (function () {
+        const button = document.getElementById('historyBtn');
+        const menu = document.getElementById('historyMenu');
+        if (!button || !menu) return;
+        let loaded = false;
+
+        button.addEventListener('click', function () {
+          const open = button.getAttribute('aria-expanded') === 'true';
+          button.setAttribute('aria-expanded', String(!open));
+          menu.hidden = open;
+          if (loaded || open) return;
+          loaded = true;
+          fetch('/history/?path=' + encodeURIComponent('{{ relpath|escapejs }}'))
+            .then(r => r.json())
+            .then(function (data) {
+              const rows = data.revisions.map(function (r) {
+                return '<a href="?at=' + r.sha + '">' + r.when + '</a>';
+              });
+              if (data.dirty) {
+                rows.unshift('<span class="history-dirty">{{ "modified, not recorded yet"|t|escapejs }}</span>');
+              }
+              menu.innerHTML = rows.length
+                ? rows.join('')
+                : '<span class="history-dirty">{{ "no recorded state yet"|t|escapejs }}</span>';
+            })
+            .catch(function () { menu.innerHTML = ''; });
+        });
+
+        document.addEventListener('click', function (e) {
+          if (!menu.hidden && !e.target.closest('.history-anchor')) {
+            menu.hidden = true;
+            button.setAttribute('aria-expanded', 'false');
+          }
+        });
+      })();
+    </script>
     <script>
       (function () {
         const main = document.querySelector('.page-body');

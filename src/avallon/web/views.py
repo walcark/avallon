@@ -1,5 +1,6 @@
 import asyncio
 import json
+import mimetypes
 import re
 import tempfile
 from pathlib import Path
@@ -201,6 +202,21 @@ def service_worker(request):
     )
 
 
+def page_history(request):
+    """The last recorded states of a page, as the menu behind the date."""
+    relpath = request.GET.get("path", "").strip("/")
+    content.safe_resolve(relpath)  # refuses anything outside the notes tree
+    revisions = content.history(relpath, limit=5)
+    return JsonResponse(
+        {
+            "dirty": content.is_dirty(relpath),
+            "revisions": [
+                {"sha": r.sha, "when": r.when, "subject": r.subject} for r in revisions
+            ],
+        }
+    )
+
+
 def serve_content(request, relpath):
     """Resolve a hierarchical URL to either a Markdown page or a co-located
     asset (image, etc.) sitting next to it in the content tree."""
@@ -214,12 +230,32 @@ def serve_content(request, relpath):
             return HttpResponsePermanentRedirect(request.path + "/")
         page = content.load_page(index_md)
         vocab = content.vocabulary()
+
+        # Reading an older state: the markdown comes from that commit, and so do
+        # its images (see the asset branch below), so the page is never a mix of
+        # two dates.
+        at = request.GET.get("at", "").strip()
+        revision = None
+        if at:
+            old_text = content.at_revision(page.relpath, at)
+            if old_text is None:
+                raise Http404("Unknown revision")
+            revision = next(
+                (r for r in content.history(page.relpath, limit=20) if r.sha == at),
+                None,
+            )
+            html = content.render_markdown_text(old_text.decode("utf-8"), index_md)
+        else:
+            html = content.render_markdown(index_md)
+
         return render(
             request,
             "index.html",
             {
                 "page": page,
-                "content_html": content.render_markdown(index_md),
+                "revision": revision,
+                "at": at,
+                "content_html": html,
                 "relpath": page.relpath,
                 "reading_minutes": content.reading_minutes(index_md),
                 "backlinks": content.backlinks(page),
@@ -242,6 +278,14 @@ def serve_content(request, relpath):
         sibling = target.parent / "index.md"
         if sibling.is_file():
             content.load_page(sibling)  # raises Http404 when private
+        at = request.GET.get("at", "").strip()
+        if at and sibling.is_file():
+            page_rel = str(sibling.parent.relative_to(settings.CONTENT_DIR))
+            blob = content.at_revision(page_rel, at, target.name)
+            if blob is not None:
+                return HttpResponse(
+                    blob, content_type=mimetypes.guess_type(target.name)[0] or ""
+                )
         return FileResponse(open(target, "rb"))
 
     raise Http404("Page not found")

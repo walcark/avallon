@@ -382,6 +382,21 @@ def _export_code_blocks(html_out: str) -> str:
     return _CODE_BOX.sub(rewrite, html_out)
 
 
+def render_markdown_text(text: str, index_md: Path) -> str:
+    """Render *text* as if it were the body of *index_md*.
+
+    The path still matters: it is what relative images and co-located files
+    resolve against, so an old revision renders with the same rules as the
+    current one.
+    """
+    post = frontmatter.loads(text)
+    token = _render_dir.set(index_md.parent)
+    try:
+        return str(markdownify(_LEADING_H1.sub("", post.content, count=1)))
+    finally:
+        _render_dir.reset(token)
+
+
 def reading_minutes(index_md: Path) -> int:
     """Rough reading time in minutes, at 200 words per minute, floored at 1."""
     post = frontmatter.load(index_md)
@@ -886,6 +901,101 @@ def nav_tree() -> list[dict[str, Any]]:
         }
         for domain in sorted(grouped)
     ]
+
+
+# --------------------------------------------------------------------------- #
+# History                                                                     #
+# --------------------------------------------------------------------------- #
+#
+# Read from git on demand, never recorded. `--follow` reconstructs renames and
+# relocations by similarity, so a page moved between domains keeps one
+# continuous story without anything being written when it moved.
+
+
+@dataclass(frozen=True)
+class Revision:
+    """One recorded state of a page."""
+
+    sha: str
+    when: str  # YYYY/MM/DD-hh:mm, the form the menu shows
+    subject: str
+
+
+def _git(args: list[str], root: Path | None = None) -> subprocess.CompletedProcess:
+    """Run git inside the notes repository."""
+    return subprocess.run(
+        ["git", "-C", str(root or CONTENT_DIR), *args],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+
+
+def history(relpath: str, limit: int = 5) -> list[Revision]:
+    """The last recorded states of a page, most recent first.
+
+    Empty when the notes are not a git repository, or the page was never
+    committed: both are ordinary, and neither is an error worth showing.
+    """
+    target = f"{relpath.strip('/')}/index.md"
+    try:
+        out = _git(
+            [
+                "log",
+                f"-{max(1, limit)}",
+                "--follow",
+                "--format=%h\t%ad\t%s",
+                "--date=format:%Y/%m/%d-%H:%M",
+                "--",
+                target,
+            ]
+        )
+    except (OSError, subprocess.SubprocessError):
+        return []
+    if out.returncode != 0:
+        return []
+
+    revisions = []
+    for line in out.stdout.splitlines():
+        parts = line.split("\t", 2)
+        if len(parts) == 3:
+            revisions.append(Revision(sha=parts[0], when=parts[1], subject=parts[2]))
+    return revisions
+
+
+def at_revision(relpath: str, sha: str, name: str = "index.md") -> bytes | None:
+    """The bytes of a page's file as of *sha*, or None if it did not exist.
+
+    Used for the markdown and for its images alike: a state of the page shown
+    with today's pictures would be a mix of two dates, and this site holds
+    evidence.
+    """
+    if not re.fullmatch(r"[0-9a-f]{4,40}", sha):
+        return None  # a revision is a hash, never a path
+    target = f"{relpath.strip('/')}/{name}"
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(CONTENT_DIR), "show", f"{sha}:{target}"],
+            capture_output=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return out.stdout if out.returncode == 0 else None
+
+
+def is_dirty(relpath: str) -> bool:
+    """Whether the page has changes git has not recorded yet.
+
+    The label must not claim a page is at its last commit when the working tree
+    is ahead of it.
+    """
+    target = f"{relpath.strip('/')}/index.md"
+    try:
+        out = _git(["status", "--porcelain", "--", target])
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return out.returncode == 0 and bool(out.stdout.strip())
 
 
 # --------------------------------------------------------------------------- #
