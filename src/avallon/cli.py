@@ -35,6 +35,7 @@ avallon <command> [options]
   add-domain <name>     extend the vocabulary
   add-type <name>       extend the vocabulary
   check                 verify every page sits under a declared pair
+  check-links           verify every [[link]] resolves
   stamp                 fill the missing frontmatter dates
   setup                 write the environment file (address, token)
   install               install and start the systemd user unit
@@ -318,6 +319,11 @@ def _dispatch(args: list[str]) -> int:
 
         sys.argv = ["avallon stamp", *rest]
         return stamp.main()
+
+    if command == "check-links":
+        from avallon.notes import links
+
+        return links.main(list(rest))
 
     if command in ("add-domain", "add-type", "check"):
         from avallon.notes import taxonomy

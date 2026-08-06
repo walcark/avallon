@@ -24,6 +24,7 @@ from avallon.notes import config as cc
 # interpreter that installed it. Reinstalling (`avallon init`) is what moves it
 # to another one.
 STAMP_CMD = f'"{sys.executable}" -m avallon.notes.stamp'
+LINKS_CMD = f'"{sys.executable}" -m avallon.notes.links'
 
 _HOOK = """#!/usr/bin/env sh
 # Auto-stamp `updated:` (fill `date:` if missing) on staged pages, then re-stage
@@ -38,6 +39,9 @@ staged=$(git diff --cached --name-only --diff-filter=ACM \\
     exit 0
 }}
 echo "$staged" | xargs git add
+# Dead links are reported, never blocking: a link one can fix later is not a
+# reason to lose a commit, same rule as the dates above.
+{links} $staged 2>&1 || true
 """
 
 
@@ -57,7 +61,7 @@ def _ensure_git(target: Path) -> bool:
 def _install_hook(target: Path) -> None:
     hook = target / ".git" / "hooks" / "pre-commit"
     hook.parent.mkdir(parents=True, exist_ok=True)
-    hook.write_text(_HOOK.format(stamp=STAMP_CMD), encoding="utf-8")
+    hook.write_text(_HOOK.format(stamp=STAMP_CMD, links=LINKS_CMD), encoding="utf-8")
     hook.chmod(0o755)
 
 
