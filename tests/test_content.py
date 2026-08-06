@@ -119,3 +119,28 @@ def test_the_search_requires_every_term(notes: Path) -> None:
 def test_a_path_escaping_the_tree_is_refused(notes: Path) -> None:
     with pytest.raises(Http404):
         content.safe_resolve("../../etc/passwd")
+
+
+def test_folding_preserves_length(notes: Path) -> None:
+    """The highlighter indexes the original with the folded string's offsets."""
+    from avallon.web.content import _fold_text
+
+    for text in ("système", "DÉCHARGE", "ça et là", "plain ascii", "Œuvre"):
+        assert len(_fold_text(text)) == len(text), text
+
+
+def test_folding_strips_accents_and_case(notes: Path) -> None:
+    from avallon.web.content import _fold_text
+
+    assert _fold_text("Système Déformé") == "systeme deforme"
+
+
+def test_the_snippet_marks_the_term_in_its_original_spelling(notes: Path) -> None:
+    index = write_page(notes, "informatique/fiche/systeme", title="Le système")
+    index.write_text(
+        index.read_text(encoding="utf-8") + "\nUn système complet.\n", encoding="utf-8"
+    )
+
+    (hit,) = content.search("systeme")
+
+    assert "<mark>système</mark>" in hit.snippet
