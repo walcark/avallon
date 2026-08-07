@@ -47,6 +47,15 @@ def rename(relpath: str, new_title: str) -> Path:
     old_slug = source.name
     new_slug = slugify(new_title)
     target = source.parent / new_slug
+    # Anywhere in the tree, not just in this folder: a name designates a page
+    # across the whole site, so two bearers would make [[new_slug]] ambiguous
+    # wherever they sit.
+    taken = content.page_named(new_slug, exclude=relpath.strip("/"))
+    if taken is not None:
+        sys.exit(
+            f'A page already goes by "{new_slug}": {taken.relpath}\n'
+            "  rename that one first, or pick another title"
+        )
     if target.exists() and target != source:
         sys.exit(f'A page "{new_slug}" already exists in {source.parent.name}.')
 

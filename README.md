@@ -220,6 +220,15 @@ renames one silently:
 - A page that deliberately shows unresolvable examples opts out with
   `check_links: false` in its frontmatter.
 
+**A name is either taken or freed.** The name a page goes by *now* belongs to
+it alone: creating or renaming onto a name another page currently bears is
+refused, across the whole tree rather than within a folder, because a link
+designates a page site-wide. A *former* name is free, and giving it to a new
+page is allowed: the new bearer wins every `[[name]]`, while the old page keeps
+the alias so links written before the rename still land. Should two pages ever
+claim one freed name, nothing resolves at all: a dead link is visible and
+fixable, a working link to the wrong page is neither.
+
 ### The past of a page
 
 The date in a page's label is a button. It lists the **last five recorded

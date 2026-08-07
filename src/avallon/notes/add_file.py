@@ -45,8 +45,16 @@ def add_file(
 ) -> Path:
     """Create the page, move (or copy) *source* into it, return its directory."""
     content = cc.resolve_content_dir()
+    from avallon.web import content as _content
+
     base = content / domain / type_
     slug = slugify(title)
+    taken = _content.page_named(slug)
+    if taken is not None:
+        sys.exit(
+            f'A page already goes by "{slug}": {taken.relpath}\n'
+            "  choose another title, or `avallon rename` that page first"
+        )
     target = base / slug
     suffix = 2
     while target.exists():

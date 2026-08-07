@@ -49,12 +49,36 @@ def test_an_empty_title_is_refused(notes: Path) -> None:
         content.create_page("informatique", "fiche", "   ", [])
 
 
-def test_a_taken_slug_gets_a_suffix_rather_than_an_overwrite(notes: Path) -> None:
-    first = content.create_page("informatique", "fiche", "Pixi", [])
-    second = content.create_page("informatique", "fiche", "Pixi", [])
+def test_a_name_already_borne_is_refused(notes: Path) -> None:
+    """One page per name, or every [[pixi]] in the tree becomes a guess."""
+    content.create_page("informatique", "fiche", "Pixi", [])
 
-    assert first.slug == "pixi"
-    assert second.slug == "pixi-2"
+    with pytest.raises(content.InvalidPage, match="already goes by"):
+        content.create_page("informatique", "fiche", "Pixi", [])
+
+
+def test_a_name_is_taken_across_the_whole_tree(notes: Path) -> None:
+    """A link designates a page site-wide, so a folder is not a namespace."""
+    content.create_page("informatique", "fiche", "Pixi", [])
+
+    with pytest.raises(content.InvalidPage, match="already goes by"):
+        content.create_page("administratif", "cr", "Pixi", [])
+
+
+def test_a_freed_name_can_be_given_away(notes: Path) -> None:
+    """The point of the rule: a former name is free, a current one is not."""
+    write_page(notes, "informatique/fiche/analyse", title="Analyse", aliases="[pixi]")
+
+    created = content.create_page("informatique", "fiche", "Pixi", [])
+
+    assert created.slug == "pixi"
+
+
+def test_a_private_page_holds_its_name_too(notes: Path) -> None:
+    write_page(notes, "informatique/fiche/pixi", title="Pixi", visibility="private")
+
+    with pytest.raises(content.InvalidPage, match="already goes by"):
+        content.create_page("informatique", "fiche", "Pixi", [])
 
 
 def test_moving_a_page_keeps_its_slug_and_its_assets(notes: Path) -> None:

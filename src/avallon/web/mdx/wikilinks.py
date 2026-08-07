@@ -24,6 +24,7 @@ from __future__ import annotations
 import re
 import xml.etree.ElementTree as etree
 from collections.abc import Sequence
+from typing import Any
 
 from markdown.extensions import Extension
 from markdown.inlinepatterns import InlineProcessor
@@ -80,21 +81,57 @@ def resolves_to(
     bool
         True when *target* designates that page.
     """
+    return matches_current(target, slug, relpath) or matches_former(target, aliases)
+
+
+def matches_current(target: str, slug: str, relpath: str) -> bool:
+    """Whether *target* is a name the page answers to **now**."""
     from avallon.notes.scaffold import slugify
 
     lowered = target.lower()
     if lowered in (slug.lower(), relpath.lower()):
         return True
-    # Former names, written by the tool when a title or a slug changes: the
-    # identity travels with the page, not with the notes that cite it.
-    if any(
-        lowered == alias.lower() or slugify(target) == slugify(alias)
-        for alias in aliases
-    ):
-        return True
     # Not applied to the relpath: slugify would eat its slashes and turn it
     # into something that can only ever collide by accident.
     return slugify(target) == slug.lower()
+
+
+def matches_former(target: str, aliases: Sequence[str]) -> bool:
+    """Whether *target* is a name the page **used to** answer to.
+
+    Former names, written by the tool when a title or a slug changes: the
+    identity travels with the page, not with the notes that cite it.
+    """
+    from avallon.notes.scaffold import slugify
+
+    lowered = target.lower()
+    return any(
+        lowered == alias.lower() or slugify(target) == slugify(alias)
+        for alias in aliases
+    )
+
+
+def resolve_among(target: str, pages: Sequence[Any]) -> Any | None:
+    """The page *target* designates among *pages*, or None.
+
+    Two passes, and the order is the whole point. A page that bears the name
+    now always beats a page that merely bore it: a freed name can be given to a
+    new page, and the new page must own it. Without the split, the winner was
+    whichever came first in the list, which is sorted by recency, so a rename
+    made today could quietly capture a link meant for a note dated last June.
+
+    Ambiguity is not resolved, it is refused. Two pages that were both once
+    called the same thing give no answer at all, which renders as a dead link
+    someone can see and fix. Guessing would render as a working link to the
+    wrong page, and these notes are read as evidence.
+    """
+    current = [p for p in pages if matches_current(target, p.slug, p.relpath)]
+    if current:
+        # More than one page bearing a name is prevented at creation, so this
+        # only happens in a tree edited by hand: same rule, no guess.
+        return current[0] if len(current) == 1 else None
+    former = [p for p in pages if matches_former(target, p.aliases)]
+    return former[0] if len(former) == 1 else None
 
 
 def _resolve(target: str):
@@ -105,10 +142,7 @@ def _resolve(target: str):
     # always current (matters for live-reload).
     from avallon.web import content
 
-    for page in content.all_pages():
-        if resolves_to(target, page.slug, page.relpath, page.aliases):
-            return page
-    return None
+    return resolve_among(target, content.all_pages())
 
 
 def _colocated_file(target: str):

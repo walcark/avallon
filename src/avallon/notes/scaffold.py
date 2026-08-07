@@ -21,6 +21,7 @@ import shutil
 import subprocess
 import sys
 import unicodedata
+from functools import lru_cache
 
 from avallon.notes import config as cc
 from avallon.notes import taxonomy
@@ -28,6 +29,9 @@ from avallon.notes import taxonomy
 CONTENT = cc.resolve_content_dir()
 
 
+# Pure, and called once per candidate page per reference while resolving a
+# link, over a small set of strings that repeat constantly.
+@lru_cache(maxsize=4096)
 def slugify(text: str) -> str:
     text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
     text = re.sub(r"[^a-zA-Z0-9]+", "-", text).strip("-").lower()
@@ -128,6 +132,18 @@ def main() -> int:
     summary = args.summary if args.summary is not None else ask("Summary (optional)")
 
     slug = slugify(title)
+    # A current name belongs to one page: handing it to a second would make
+    # every [[slug]] in the tree ambiguous. A former name is free, its page
+    # only kept it as an alias so old links keep landing.
+    from avallon.web import content as _content
+
+    taken = _content.page_named(slug)
+    if taken is not None:
+        sys.exit(
+            f'A page already goes by "{slug}": {taken.relpath}\n'
+            "  choose another title, or `avallon rename` that page first"
+        )
+
     base = CONTENT / domain / type_
     target = base / slug
     n = 2

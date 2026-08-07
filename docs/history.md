@@ -231,3 +231,43 @@ became the visible problem, since it exports `TZ` for the whole process: a note
 saved at 14:39 in Paris showed 12:39 in its own history. `TIME_ZONE` now
 defaults to the machine's zone, read from `/etc/localtime`, and
 `AVALLON_TIME_ZONE` overrides it.
+
+## 8. What aliases cost, and the rule that pays for it
+
+Introducing former names created a question the tree did not have before: if
+`batterie` is both the name of a new page and the former name of an older one,
+which does `[[batterie]]` mean?
+
+It had an answer, and the answer was wrong. `_resolve` returned the first page
+matching, walking the list `all_pages()` returns, which is sorted by recency.
+So the winner depended on dates: a page renamed today captured links meant for
+a note dated last June. Reproduced on a throwaway tree, with a compte rendu
+dated to the event it recounts, which is how this repository dates them.
+
+The rule now is a priority, not an order:
+
+1. **A page that bears the name beats a page that bore it.** Current names are
+   matched first, and former names are only consulted when nothing bears it.
+2. **Ambiguity is refused, not resolved.** Two pages that were both once called
+   the same thing yield nothing, which renders as a dead link someone can see.
+   Guessing would render as a working link to the wrong page, in notes that are
+   read as evidence.
+3. **A current name cannot be given twice.** Creation and renaming refuse it,
+   across the whole tree: a folder is not a namespace, because a link is not
+   scoped to one. Private pages hold their names too, or the collision would
+   appear the day private pages are shown.
+
+Together these make a freed name safely reusable, which is the property that
+lets a rename be cheap.
+
+The backlink walker had to follow: it used to ask "does this reference match
+me", which was enough while a name designated one page. It now resolves the
+reference against the tree and compares, so a link that renders as pointing
+elsewhere cannot show up as a backlink here. That doubled its work (4.8 ms to
+11.4 ms on this repository, on every page view); folding its two walks into one
+and memoizing `slugify` brought it back to 5.4 ms.
+
+Deliberately not built: an index from name to page. It would remove the last
+0.6 ms and add a second implementation of the matching rules, which is exactly
+the kind of cache that drifts from the tree it describes. Section 4 refused one
+for the same reason.

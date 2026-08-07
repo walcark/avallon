@@ -32,7 +32,7 @@ from django.conf import settings
 from django.http import Http404
 from markdownify.templatetags.markdownify import markdownify
 
-from .mdx.wikilinks import WIKILINK_RE, resolves_to
+from .mdx.wikilinks import WIKILINK_RE, resolve_among
 
 CONTENT_DIR: Path = settings.CONTENT_DIR
 
@@ -426,6 +426,28 @@ class InvalidPage(ValueError):
     """The submitted creation form cannot produce a page."""
 
 
+def page_named(name: str, exclude: str = "") -> Page | None:
+    """The page that bears *name* right now, ignoring *exclude*'s relpath.
+
+    A name is either taken or freed. A **current** name (a slug, a relpath, or
+    a title that slugifies to one) belongs to exactly one page, and handing it
+    to a second would make every `[[name]]` in the tree ambiguous. A **former**
+    name is free: its page kept it as an alias only so old links keep landing,
+    and `resolve_among` gives a new bearer priority over it.
+
+    So this is what creation and renaming must refuse on, and nothing else.
+    """
+    from .mdx.wikilinks import matches_current
+
+    # Every page on disk, not `all_pages()`: a private page holds its name just
+    # as firmly, and would collide the moment private pages are shown.
+    for index_md in CONTENT_DIR.glob(_PAGE_GLOB):
+        page = _page_from(index_md)
+        if page.relpath != exclude and matches_current(name, page.slug, page.relpath):
+            return page
+    return None
+
+
 def create_page(
     domain: str,
     type_: str,
@@ -476,8 +498,15 @@ def create_page(
     if not title.strip():
         raise InvalidPage("A title is required.")
 
-    base = CONTENT_DIR / domain / type_
     slug = slugify(title)
+    taken = page_named(slug)
+    if taken is not None:
+        raise InvalidPage(
+            f'A page already goes by "{slug}": {taken.relpath}. '
+            "Choose another title, or rename that page first."
+        )
+
+    base = CONTENT_DIR / domain / type_
     target = base / slug
     suffix = 2
     while target.exists():
@@ -727,19 +756,38 @@ def backlinks(target: Page) -> list[Page]:
     """Visible pages whose body cites *target* with a [[wikilink]].
 
     Wikilinks are one-way in the Markdown; this walks the tree to invert them,
-    so a page can show what refers to it. Matching is delegated to the
-    extension's own `resolves_to`, so the two can never disagree about which
-    references count.
+    so a page can show what refers to it.
+
+    A reference is resolved against the whole tree, exactly as the renderer
+    resolves it, rather than merely tested against this page: a link that
+    *renders* as pointing elsewhere must not show up here as a backlink. Asking
+    only "does this ref match me" was enough while a name designated one page,
+    and stopped being enough once a freed name could be claimed by a new page
+    while the old one kept it as an alias.
     """
-    found: list[Page] = []
+    # One walk, used twice: the bodies to find the references, and the pages
+    # themselves as the set to resolve them against. Calling `all_pages()` here
+    # instead would parse every file a second time, which measured 2.4x on this
+    # path, and it runs on every page view.
+    walked = []
     for index_md in CONTENT_DIR.glob(_PAGE_GLOB):
         post = frontmatter.load(index_md)
         source = _page_from(index_md, post)
-        if source.relpath == target.relpath or not is_visible(source):
+        if is_visible(source):
+            walked.append((source, post.content))
+    candidates = [source for source, _ in walked]
+
+    resolved: dict[str, str | None] = {}  # ref -> relpath, refs repeat a lot
+    found: list[Page] = []
+    for source, body in walked:
+        if source.relpath == target.relpath:
             continue
-        for match in _WIKILINK.finditer(post.content):
+        for match in _WIKILINK.finditer(body):
             ref = match.group(1).strip()
-            if resolves_to(ref, target.slug, target.relpath, target.aliases):
+            if ref not in resolved:
+                page = resolve_among(ref, candidates)
+                resolved[ref] = page.relpath if page else None
+            if resolved[ref] == target.relpath:
                 found.append(source)
                 break
     found.sort(key=lambda p: p.title)
@@ -770,12 +818,7 @@ def project_of(page: Page) -> Page | None:
     """
     if not page.project:
         return None
-    for candidate in all_pages():
-        if resolves_to(
-            page.project, candidate.slug, candidate.relpath, candidate.aliases
-        ):
-            return candidate
-    return None
+    return resolve_among(page.project, all_pages())
 
 
 def project_members(project: Page) -> list[Page]:
@@ -785,13 +828,17 @@ def project_members(project: Page) -> list[Page]:
     lists them in: the type says what each page is for, the date says which one
     moved last.
     """
-    members = [
-        page
-        for page in all_pages()
-        if page.project
-        and page.relpath != project.relpath
-        and resolves_to(page.project, project.slug, project.relpath, project.aliases)
-    ]
+    candidates = all_pages()
+    resolved: dict[str, str | None] = {}
+    members = []
+    for page in candidates:
+        if not page.project or page.relpath == project.relpath:
+            continue
+        if page.project not in resolved:
+            named = resolve_among(page.project, candidates)
+            resolved[page.project] = named.relpath if named else None
+        if resolved[page.project] == project.relpath:
+            members.append(page)
     members.sort(key=_recency_key, reverse=True)
     members.sort(key=lambda p: p.type)
     return members
@@ -835,14 +882,7 @@ def membership() -> dict[str, Page]:
             continue
         key = page.project.lower()
         if key not in seen:
-            seen[key] = next(
-                (
-                    c
-                    for c in pages
-                    if resolves_to(page.project, c.slug, c.relpath, c.aliases)
-                ),
-                None,
-            )
+            seen[key] = resolve_among(page.project, pages)
         target = seen[key]
         if target is not None and target.relpath != page.relpath:
             resolved[page.relpath] = target
@@ -856,12 +896,14 @@ def all_projects() -> list[Page]:
     nothing to declare: writing `project: x` in a page makes x a project.
     """
     pages = all_pages()
-    refs = {page.project for page in pages if page.project}
-    found = [
-        page
-        for page in pages
-        if any(resolves_to(ref, page.slug, page.relpath, page.aliases) for ref in refs)
-    ]
+    named = {
+        page.relpath
+        for page in (
+            resolve_among(ref, pages) for ref in {p.project for p in pages if p.project}
+        )
+        if page is not None
+    }
+    found = [page for page in pages if page.relpath in named]
     found.sort(key=lambda p: p.title)
     return found
 
