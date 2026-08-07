@@ -5,3 +5,8 @@
 # Content lives in an external repo (pixi run content-init). Keep it out of
 # the app repo; the in-repo content/ is only the dev fallback.
 /content/
+
+# Coverage artifacts: written by `pixi run test`, so tracking them makes the
+# tree dirty after every run and every commit carry an unrelated diff.
+.coverage
+coverage.xml
