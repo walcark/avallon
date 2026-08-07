@@ -357,6 +357,12 @@ as: gallery      # table (default) | list | gallery
 So an "identity documents" page is one query, and it stays correct when a
 passport is added tomorrow.
 
+**Cache and freshness.** The stylesheets are requested with a fingerprint of
+their own bytes (`style.css?v=…`), so the service worker can keep serving them
+cache-first, offline and instantly, while an upgrade still shows up on the next
+load. Pages themselves are fetched network-first: a note that changed on
+another device is worse stale than slow.
+
 ## On a phone
 
 The site is installable: open it, then "Add to home screen". It runs full

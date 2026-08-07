@@ -2,9 +2,12 @@
  *
  * Two strategies, because the two kinds of request have opposite needs.
  *
- * The shell (stylesheet, fonts, icons) is versioned by this file's CACHE name
- * and served cache-first: it changes when avallon is upgraded, never between
- * two reads, and going to the network for it would cost a round trip per page.
+ * The shell (stylesheet, fonts, icons) is served cache-first: going to the
+ * network for it would cost a round trip per page, and it only changes when
+ * avallon does. Freshness comes from the URL instead: the pages ask for
+ * `style.css?v=<fingerprint>`, so an edited file is a different URL, misses
+ * the cache, and is fetched. Serving it cache-first under a fixed URL is what
+ * used to make a stylesheet need a hard reload to ever change again.
  *
  * The pages are network-first: notes change under the reader (another device
  * pushed, the editor saved), so a stale page is worse than a slow one. The
@@ -14,22 +17,13 @@
  * succeeds later, against a page that has moved on, would corrupt a note.
  */
 
-const CACHE = 'avallon-v1';
-const SHELL = [
-  '/static/avallon/css/style.css',
-  '/static/avallon/css/fonts.css',
-  '/static/avallon/css/pygments.css',
-  '/static/avallon/pwa/icon-192.png',
-];
+const CACHE = 'avallon-v2';
 
 self.addEventListener('install', (event) => {
-  // addAll rejects wholesale if one entry 404s; each is added on its own so a
-  // renamed asset cannot keep the worker from installing.
-  event.waitUntil(
-    caches.open(CACHE)
-      .then((cache) => Promise.all(SHELL.map((url) => cache.add(url).catch(() => null))))
-      .then(() => self.skipWaiting())
-  );
+  // Nothing is precached: the shell URLs carry a fingerprint the worker cannot
+  // guess, and one visit online is enough to fill the cache with the right
+  // ones. Precaching guesses would only store entries nothing ever asks for.
+  event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', (event) => {
@@ -53,7 +47,14 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.match(request).then((hit) => hit || fetch(request).then((res) => {
         const copy = res.clone();
-        caches.open(CACHE).then((cache) => cache.put(request, copy));
+        caches.open(CACHE).then((cache) => cache.keys()
+          // Drop the other fingerprints of this same file, otherwise every
+          // edit leaves its predecessor behind for good. Awaited before the
+          // put, or a late delete would take the entry just written.
+          .then((keys) => Promise.all(keys
+            .filter((key) => new URL(key.url).pathname === url.pathname)
+            .map((key) => cache.delete(key))))
+          .then(() => cache.put(request, copy)));
         return res;
       }))
     );

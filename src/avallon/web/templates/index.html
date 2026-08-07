@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 {% load lang %}
 {% load static %}
+{% load asset %}
 {% load taxonomy %}
 
 {% block title %}{{ page.title }}{% endblock %}
 
 {% block head %}
-    <link rel="stylesheet" href="{% static 'avallon/css/pygments.css' %}">
+    <link rel="stylesheet" href="{% asset 'avallon/css/pygments.css' %}">
 
     <!-- MathJax (self-hosted SVG build): renders the \(...\) / \[...\] emitted
          by arithmatex. SVG output embeds glyph paths, so no external font files
