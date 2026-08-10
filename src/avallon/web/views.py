@@ -64,6 +64,13 @@ def _explorer_context(request):
         # a list of titles. An explicit `view=` always wins.
         view = "grid" if selection.is_visual else "cards"
 
+    # Each axis gets the control its cardinality warrants, rather than one
+    # uniform widget. Domains and types are closed and small, and will stay
+    # small: chips show every value with its count, one tap away. Dossiers grow
+    # without limit, so they become a menu, which is also the better control on
+    # a phone since the OS renders it. Tags are the extreme case, in the
+    # hundreds, and have their own page; here they only appear once one is
+    # active, so a selection arrived at from a tag link can still be undone.
     facets = [
         {
             "param": "domain",
@@ -71,6 +78,7 @@ def _explorer_context(request):
             "values": selection.facets["domain"],
             "active": active["domains"],
             "translate": False,
+            "control": "chips",
         },
         {
             "param": "type",
@@ -78,6 +86,7 @@ def _explorer_context(request):
             "values": selection.facets["type"],
             "active": active["types"],
             "translate": False,
+            "control": "chips",
         },
         {
             "param": "kind",
@@ -85,13 +94,7 @@ def _explorer_context(request):
             "values": selection.facets["kind"],
             "active": active["kinds"],
             "translate": True,
-        },
-        {
-            "param": "dossier",
-            "label": "Dossier",
-            "values": selection.facets["project"],
-            "active": active["projects"],
-            "translate": False,
+            "control": "chips",
         },
         {
             "param": "state",
@@ -99,6 +102,15 @@ def _explorer_context(request):
             "values": selection.facets["status"],
             "active": active["statuses"],
             "translate": True,
+            "control": "chips",
+        },
+        {
+            "param": "dossier",
+            "label": "Dossier",
+            "values": selection.facets["project"],
+            "active": active["projects"],
+            "translate": False,
+            "control": "menu",
         },
         {
             "param": "tag",
@@ -106,12 +118,17 @@ def _explorer_context(request):
             "values": selection.facets["tag"],
             "active": active["tags"],
             "translate": False,
+            "control": "chips",
+            "only_when_active": True,
         },
     ]
+    facets = [f for f in facets if f["active"] or not f.get("only_when_active")]
+    active_count = sum(len(f["active"]) for f in facets)
 
     return {
         "selection": selection,
         "facets": facets,
+        "active_count": active_count,
         "view": view,
         "query": request.GET.get("q", ""),
         "active": active,

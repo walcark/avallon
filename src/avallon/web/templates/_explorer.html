@@ -2,20 +2,43 @@
 <!-- The explorer: facets, count and results. Rendered whole by the home page
      and swapped in by the browser as the selection narrows, so both paths
      render the same markup and there is no second implementation in JS. -->
-<div class="facets">
-    {% for facet in facets %}
-    {% if facet.values %}
-    <div class="facet-group" data-facet="{{ facet.param }}">
-        <span class="facet-label">{{ facet.label|t }}</span>
-        {% for value in facet.values %}
-        <button type="button" class="chip" data-param="{{ facet.param }}"
-                data-value="{{ value.0 }}"
-                aria-pressed="{% if value.0 in facet.active %}true{% else %}false{% endif %}">{% if facet.translate %}{{ value.0|t }}{% else %}{{ value.0|label }}{% endif %}<span class="chip-count">{{ value.1 }}</span></button>
+<!-- Collapsed on a phone, where five stacked groups used to fill the screen
+     before a single result appeared. The summary carries the count, so a
+     folded panel never hides that something is being filtered. Open by default
+     once anything is active, and always open on a wide screen (CSS). -->
+<details class="facet-panel" id="facetPanel"{% if active_count %} open{% endif %}>
+    <summary class="facet-summary">
+        {{ "Filters"|t }}{% if active_count %} <span class="facet-count">{{ active_count }}</span>{% endif %}
+    </summary>
+    <div class="facets">
+        {% for facet in facets %}
+        {% if facet.values %}
+        <div class="facet-group" data-facet="{{ facet.param }}">
+            <span class="facet-label">{{ facet.label|t }}</span>
+            {% if facet.control == "menu" %}
+            <!-- Unbounded axis: a menu stays one line however many there are,
+                 and on a phone the system renders it, search included. -->
+            <select class="facet-menu" data-param="{{ facet.param }}"
+                    aria-label="{{ facet.label|t }}">
+                <option value="">{{ "All"|t }}</option>
+                {% for value in facet.values %}
+                <option value="{{ value.0 }}"{% if value.0 in facet.active %} selected{% endif %}>{{ value.0|label }} ({{ value.1 }})</option>
+                {% endfor %}
+            </select>
+            {% else %}
+            <div class="facet-values">
+                {% for value in facet.values %}
+                <button type="button" class="chip" data-param="{{ facet.param }}"
+                        data-value="{{ value.0 }}"
+                        aria-pressed="{% if value.0 in facet.active %}true{% else %}false{% endif %}">{% if facet.translate %}{{ value.0|t }}{% else %}{{ value.0|label }}{% endif %}<span class="chip-count">{{ value.1 }}</span></button>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
         {% endfor %}
     </div>
-    {% endif %}
-    {% endfor %}
-</div>
+</details>
 
 <p class="count">
     {{ selection.total }} {% if selection.total > 1 %}{{ "results"|t }}{% else %}{{ "result"|t }}{% endif %}

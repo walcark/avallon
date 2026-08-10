@@ -41,9 +41,18 @@
           history.replaceState(null, '', url);
           if (pending) pending.abort();
           pending = new AbortController();
+          // The filter panel is inside the fragment, so it is rebuilt on
+          // every interaction; without this it would snap shut under the
+          // finger that just opened it.
+          const panel = document.getElementById('facetPanel');
+          const wasOpen = panel ? panel.open : null;
           fetch('/search/?' + qs, { signal: pending.signal })
             .then(r => r.text())
-            .then(html => { explorer.innerHTML = html; })
+            .then(html => {
+              explorer.innerHTML = html;
+              const fresh = document.getElementById('facetPanel');
+              if (fresh && wasOpen !== null) fresh.open = wasOpen;
+            })
             .catch(() => {});
         }
 
@@ -60,6 +69,16 @@
 
         // Delegated: the fragment is replaced on every change, so listeners
         // bound to its children would die with the first one.
+        // Menus answer to `change`, not to a click on a chip.
+        explorer.addEventListener('change', function (e) {
+          const menu = e.target.closest('.facet-menu');
+          if (!menu) return;
+          const next = params();
+          next.delete(menu.dataset.param);
+          if (menu.value) next.append(menu.dataset.param, menu.value);
+          apply(next);
+        });
+
         explorer.addEventListener('click', function (e) {
           const chip = e.target.closest('.chip');
           if (!chip) return;

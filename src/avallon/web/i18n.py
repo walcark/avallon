@@ -76,6 +76,7 @@ FRENCH: dict[str, str] = {
     ),
     "All tags": "Tous les tags",
     "Filters": "Filtres",
+    "All": "Tous",
     "Explore this dossier": "Explorer ce dossier",
     "Search a dossier…": "Chercher un dossier…",
     "Download the file": "Télécharger le fichier",
