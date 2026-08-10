@@ -37,7 +37,7 @@ def test_the_page_lists_every_tag_twice_over(notes: Path) -> None:
     body = Client().get("/tags/").content.decode()
 
     assert body.count('href="/?tag=banque"') == 2
-    assert "Par poids" in body
+    assert "By weight" in body
 
 
 def test_a_tag_leads_to_its_selection(notes: Path) -> None:
@@ -54,4 +54,4 @@ def test_a_tag_leads_to_its_selection(notes: Path) -> None:
 def test_an_empty_tree_says_so(notes: Path) -> None:
     write_page(notes, "informatique/fiche/a", title="A")
 
-    assert "Aucun tag" in Client().get("/tags/").content.decode()
+    assert "No tag yet." in Client().get("/tags/").content.decode()

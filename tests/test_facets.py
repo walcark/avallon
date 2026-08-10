@@ -101,7 +101,7 @@ def test_a_first_dossier_can_be_started_from_the_browser(notes: Path) -> None:
     body = Client().get("/nouvelle/").content.decode()
 
     assert 'value="le-litige"' in body
-    assert "Ouvrir un dossier sur" in body
+    assert "Start a dossier on" in body
 
 
 def test_an_existing_dossier_is_offered_first(notes: Path) -> None:
@@ -109,8 +109,8 @@ def test_an_existing_dossier_is_offered_first(notes: Path) -> None:
 
     body = Client().get("/nouvelle/").content.decode()
 
-    existing = body.index("Dossiers existants")
-    candidates = body.index("Ouvrir un dossier sur")
+    existing = body.index("Existing dossiers")
+    candidates = body.index("Start a dossier on")
     assert existing < candidates
     # A dossier is not offered twice, once per group.
     assert body.count('value="dossier-a"') == 1

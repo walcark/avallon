@@ -48,6 +48,11 @@ def notes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     root.mkdir()
     (root / "taxonomy.toml").write_text(TAXONOMY, encoding="utf-8")
     monkeypatch.setattr(settings, "CONTENT_DIR", root)
+    # The interface language too: it is resolved from the developer's own
+    # configuration at import, so a test asserting on a rendered string would
+    # pass here and fail in CI, where nothing is configured. English is both
+    # the default and the key every translation is looked up by.
+    monkeypatch.setattr(settings, "LANGUAGE", "en")
     monkeypatch.setattr(content, "CONTENT_DIR", root)
     # Anything resolving the directory at call time (the notes commands) must
     # land here too: without this a test writes into the developer's real
