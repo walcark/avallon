@@ -11,6 +11,8 @@ adding a string costs nothing until someone wants it in another language.
 
 from __future__ import annotations
 
+import contextvars
+
 FRENCH: dict[str, str] = {
     # Navigation and chrome
     "My notes": "Mes notes",
@@ -86,6 +88,7 @@ FRENCH: dict[str, str] = {
     "Capture": "Capture",
     "Delete": "Supprimer",
     "Trash": "Corbeille",
+    "Switch language": "Changer de langue",
     "Restore": "Restaurer",
     "Nothing deleted.": "Rien de supprimé.",
     "links to mend": "liens à réparer",
@@ -262,6 +265,27 @@ FRENCH: dict[str, str] = {
 }
 
 CATALOGS: dict[str, dict[str, str]] = {"fr": FRENCH}
+
+
+# The language a request is being answered in. Held per context rather than in
+# settings, because a setting belongs to the process: one reader switching to
+# English would switch it for a phone reading the same site in French, and the
+# choice would need a restart to take effect at all.
+_ACTIVE: contextvars.ContextVar[str] = contextvars.ContextVar("language")
+
+COOKIE = "avallon_lang"
+
+
+def activate(language: str) -> None:
+    """Answer the rest of this request in *language*."""
+    _ACTIVE.set(language if language in CATALOGS or language == "en" else "en")
+
+
+def active() -> str:
+    """The language in force, falling back to the configured default."""
+    from django.conf import settings
+
+    return _ACTIVE.get(getattr(settings, "LANGUAGE", "en"))
 
 
 def translate(text: str, language: str) -> str:

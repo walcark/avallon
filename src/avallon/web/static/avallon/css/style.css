@@ -1822,3 +1822,12 @@ a.card-project:hover { text-decoration: underline; }
 }
 .wikilink-deleted:hover { color: var(--accent); }
 .trash-where { color: var(--muted); font-family: "Roboto Mono", monospace; font-size: 0.78rem; }
+
+/* Two letters, not an icon: the language one would switch to is its own label,
+   and no pictogram says "French" without ambiguity. */
+.lang-toggle {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+}

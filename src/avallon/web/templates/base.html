@@ -127,6 +127,13 @@
                         <path d="M12 5v14M5 12h14"/>
                     </svg>
                 </a>
+                <!-- The other language, one click away. A cookie, so a phone
+                     reading in French and a laptop showing the same site in
+                     English are the same server. -->
+                <a class="icon-btn lang-toggle" id="langToggle"
+                   href="/langue/?to={{ other_lang }}&amp;back={{ request.get_full_path|urlencode }}"
+                   aria-label="{{ "Switch language"|t }}"
+                   title="{{ "Switch language"|t }}">{{ other_lang|upper }}</a>
                 <button type="button" class="icon-btn" id="themeToggle" aria-label="{{ "Toggle the light/dark theme"|t }}">🌓</button>
             </div>
         </header>

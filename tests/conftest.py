@@ -8,13 +8,14 @@ would drag Django's app registry along with it.
 
 from __future__ import annotations
 
+import contextvars
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 from django.conf import settings
 
-from avallon.web import content
+from avallon.web import content, i18n
 
 TAXONOMY = """\
 domains = ["informatique", "administratif"]
@@ -39,6 +40,17 @@ def write_page(
     index = page_dir / "index.md"
     index.write_text(f"---\n{lines}\n---\n\n{body}\n", encoding="utf-8")
     return index
+
+
+@pytest.fixture(autouse=True)
+def _fresh_language(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No test inherits another's language.
+
+    The middleware sets it on every request, so production is never in this
+    position; a test that renders a template directly would otherwise carry
+    whatever the previous one chose.
+    """
+    monkeypatch.setattr(i18n, "_ACTIVE", contextvars.ContextVar("language"))
 
 
 @pytest.fixture

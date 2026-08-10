@@ -333,7 +333,7 @@ pandoc and LibreOffice there, see [Requirements](#requirements)).
 | `avallon add-type <name>` | Extend the taxonomy. |
 | `avallon check` | Verify every page sits under a declared domain/type. |
 | `avallon check-links` | Verify every `[[link]]` resolves. |
-| `avallon language [en\|fr]` | Print or switch the interface language. |
+| `avallon language [en\|fr]` | Print or switch the **default** interface language. |
 | `avallon stamp` | Fill missing `date:` / `updated:` in the frontmatter. |
 | `avallon setup` | Write the deployment env file (address, port, token). |
 | `avallon install` | Install and start the systemd user unit. |
@@ -381,7 +381,7 @@ on a timer so pages written on another device show up without a restart.
 | `AVALLON_CONTENT_DIR` | the configured repository | Override the notes location. |
 | `AVALLON_TOKEN` | *(none)* | Bearer token required for every request. |
 | `AVALLON_HOST` / `AVALLON_PORT` | `127.0.0.1` / `8000` | Bind address. |
-| `AVALLON_LANGUAGE` | `en` | Interface language: `en` or `fr`. |
+| `AVALLON_LANGUAGE` | `en` | Default interface language: `en` or `fr`. A reader can switch their own from the top bar, which is remembered per device. |
 | `AVALLON_SHOW_PRIVATE` | on in debug | Serve pages marked `visibility: private`. |
 | `AVALLON_SYNC_WINDOW` | `900` (`0` from `avallon setup`) | Seconds during which consecutive edits fold into one commit. |
 | `AVALLON_HISTORY_WINDOW` | `3600` | Seconds under which two commits on a page read as one state. `0` shows every commit. |

@@ -169,6 +169,9 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    # Before anything that renders: the translation filter reads what it
+    # sets, and a page half-rendered in two languages helps nobody.
+    "avallon.web.language.LanguageMiddleware",
     # After the session (it reads one) and after CSRF (so the unlock POST is
     # checked like any other), before everything that serves content.
     "avallon.web.security.TokenGateMiddleware",

@@ -17,6 +17,7 @@ urlpatterns = [
     path("entretien/", views.upkeep, name="upkeep"),
     path("capture/", views.capture, name="capture"),
     path("delete/", views.delete_page, name="delete"),
+    path("langue/", views.set_language, name="set-language"),
     path("corbeille/", views.trash, name="trash"),
     path("restore/", views.restore, name="restore"),
     path("unlink/", views.unlink, name="unlink"),

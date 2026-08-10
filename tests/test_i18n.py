@@ -64,16 +64,27 @@ def test_the_catalogue_translates() -> None:
     assert i18n.translate("Contents", "fr") == "Contenu"
 
 
-def test_the_filter_follows_the_active_language(
+def test_the_filter_follows_the_reader_not_the_process(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The language belongs to whoever is holding the screen, so it is set per
+    request; the configured value is only what is answered by default."""
+    template = Template('{% load lang %}{{ "Contents"|t }}')
+
+    i18n.activate("fr")
+    assert template.render(Context({})) == "Contenu"
+
+    i18n.activate("en")
+    assert template.render(Context({})) == "Contents"
+
+
+def test_without_a_choice_the_configured_language_answers(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     template = Template('{% load lang %}{{ "Contents"|t }}')
 
     monkeypatch.setattr(settings, "LANGUAGE", "fr")
     assert template.render(Context({})) == "Contenu"
-
-    monkeypatch.setattr(settings, "LANGUAGE", "en")
-    assert template.render(Context({})) == "Contents"
 
 
 def test_the_page_is_served_in_english_by_default(
@@ -99,3 +110,33 @@ def test_the_page_is_served_in_french_when_asked(
 
     assert 'lang="fr"' in body
     assert "Sommaire" in body
+
+
+def test_a_reader_can_switch_language_and_it_sticks(notes: Path) -> None:
+    """The choice belongs to whoever is holding the screen, so it rides on
+    their device rather than on the installation's configuration."""
+    client = Client()
+
+    response = client.get("/langue/", {"to": "fr", "back": "/tags/"})
+
+    assert response.status_code == 302
+    assert response["Location"] == "/tags/"
+    assert client.cookies[i18n.COOKIE].value == "fr"
+    assert "Tous les tags" in client.get("/tags/").content.decode()
+
+
+def test_an_unknown_language_is_refused(notes: Path) -> None:
+    assert Client().get("/langue/", {"to": "klingon"}).status_code == 404
+
+
+def test_the_switch_only_ever_returns_into_the_site(notes: Path) -> None:
+    """`back` comes from a link, so it is never trusted to leave."""
+    for hostile in ("https://ailleurs.example/x", "//ailleurs.example/x"):
+        response = Client().get("/langue/", {"to": "fr", "back": hostile})
+        assert response["Location"] == "/"
+
+
+def test_the_switch_offers_the_other_language(notes: Path) -> None:
+    body = Client().get("/").content.decode()
+
+    assert 'href="/langue/?to=fr' in body  # English is the default here

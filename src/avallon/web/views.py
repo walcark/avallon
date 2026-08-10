@@ -20,7 +20,7 @@ from django.views.decorators.http import require_POST
 
 from avallon.notes import sync
 
-from . import content, exporter, security
+from . import content, exporter, i18n, security
 
 # How often the stream re-checks the watched file's modification time (seconds).
 POLL_INTERVAL = 0.3
@@ -259,6 +259,27 @@ def capture(request):
             "error": error,
         },
     )
+
+
+def set_language(request):
+    """Remember a reader's language on their device, and carry on.
+
+    A cookie, not the configuration: the configured value is what the site
+    answers with by default, and this is one reader's choice on one screen. A
+    year, because it is a preference and not a session.
+    """
+    from avallon.notes import config
+
+    wanted = request.GET.get("to", "").strip().lower()
+    if wanted not in config.LANGUAGES:
+        raise Http404("Unknown language")
+    back = request.GET.get("back") or "/"
+    # Only ever back into this site, never to wherever a crafted link points.
+    if not back.startswith("/") or back.startswith("//"):
+        back = "/"
+    response = HttpResponseRedirect(back)
+    response.set_cookie(i18n.COOKIE, wanted, max_age=365 * 24 * 3600, samesite="Lax")
+    return response
 
 
 def trash(request):
