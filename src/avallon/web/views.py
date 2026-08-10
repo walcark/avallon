@@ -1,6 +1,5 @@
 import asyncio
 import json
-import mimetypes
 import re
 import tempfile
 from pathlib import Path
@@ -347,23 +346,39 @@ def serve_content(request, relpath):
             page_rel = str(sibling.parent.relative_to(settings.CONTENT_DIR))
             blob = content.at_revision(page_rel, at, target.name)
             if blob is not None:
-                return HttpResponse(
-                    blob, content_type=mimetypes.guess_type(target.name)[0] or ""
-                )
-        response = FileResponse(open(target, "rb"))
-        # Markup served from this origin runs as part of the site, and a saved
-        # web page kept as evidence is exactly the kind of file that carries
-        # scripts. It is handed over as a download instead, and nothing is ever
-        # sniffed into a type it did not declare.
-        response["X-Content-Type-Options"] = "nosniff"
-        # Not SVG: it is a legitimate image kind here, drawn by hand for the
-        # notes and shown in tiles and pages. Forcing a download would break
-        # every diagram to guard against a file one wrote oneself.
-        if target.suffix.lower() in (".html", ".htm", ".xhtml"):
-            response["Content-Disposition"] = f'attachment; filename="{target.name}"'
-        return response
+                return _served(HttpResponse(blob), target)
+        return _served(FileResponse(open(target, "rb")), target)
 
     raise Http404("Page not found")
+
+
+def _served(response, target: Path):
+    """Set the headers a document is served with, by what it is.
+
+    Two things a browser will not show on its own. A `.sh`, a `.py`, an `.eml`
+    are text, but the type guessed from their extension is one no browser
+    renders, so they were offered as downloads while a `.txt` beside them
+    displayed: they are declared `text/plain`, which is what they are.
+
+    And markup is rendered rather than downloaded, but under a sandbox: a
+    merchant's page saved as evidence is worth *seeing*, and is exactly the
+    kind of file that carries scripts. The sandbox puts it in an opaque origin
+    with scripts off, so it draws as itself and can do nothing as this site.
+    """
+    suffix = target.suffix.lower()
+    response["X-Content-Type-Options"] = "nosniff"
+    if content.kind_of_file(target.name) == "text" and suffix not in (
+        ".html",
+        ".htm",
+        ".xhtml",
+    ):
+        response["Content-Type"] = "text/plain; charset=utf-8"
+        response["Content-Disposition"] = f'inline; filename="{target.name}"'
+    elif suffix in (".html", ".htm", ".xhtml"):
+        response["Content-Type"] = "text/html; charset=utf-8"
+        response["Content-Disposition"] = f'inline; filename="{target.name}"'
+        response["Content-Security-Policy"] = "sandbox"
+    return response
 
 
 def may_edit(request) -> bool:

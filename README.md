@@ -245,9 +245,13 @@ guessed at: a `.nc` grid and a `.pyc` are not kinds this site knows, and never
 appear. A document is named by its path under its page, so two files of the
 same name in two subfolders stay distinct.
 
-Saved markup (`.html`) is a legitimate exhibit and is served as a **download**,
-never inline: rendered in this site's origin it would run its own scripts as
-part of the site. SVG stays inline, being a kind these notes draw by hand.
+Every document opens in the browser rather than downloading. A `.sh`, a `.py`
+or an `.eml` is text, but the type guessed from its extension is one no browser
+renders, so they are declared `text/plain`, which is what they are. Saved markup
+(`.html`) is rendered, under `Content-Security-Policy: sandbox`: a merchant's
+page kept as evidence is worth *seeing*, and is exactly the kind of file that
+carries scripts, so the sandbox puts it in an opaque origin with scripts off.
+It draws as itself and can do nothing as this site.
 
 Documents stay out of the default listing, which is about pages, and come in
 the moment a **kind** is asked for: that facet counts them at all times, so

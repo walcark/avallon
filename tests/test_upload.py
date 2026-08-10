@@ -152,10 +152,10 @@ def test_a_rejected_document_reports_on_the_form(notes: Path) -> None:
     assert "Unsupported file type" in response.content.decode()
 
 
-def test_saved_markup_is_handed_over_as_a_download(notes: Path) -> None:
-    """A saved web page is an ordinary exhibit in a dispute, and exactly the
-    kind of file that carries scripts: rendered in this origin they would run
-    as part of the site."""
+def test_saved_markup_is_rendered_but_sandboxed(notes: Path) -> None:
+    """A merchant's page kept as evidence is worth seeing, and is exactly the
+    kind of file that carries scripts. The sandbox puts it in an opaque origin
+    with scripts off: it draws as itself and can do nothing as this site."""
     from .conftest import write_page
 
     write_page(notes, "administratif/recueil/pieces", title="Pièces")
@@ -165,7 +165,8 @@ def test_saved_markup_is_handed_over_as_a_download(notes: Path) -> None:
 
     response = Client().get("/administratif/recueil/pieces/pj5b.html")
 
-    assert response["Content-Disposition"].startswith("attachment")
+    assert response["Content-Security-Policy"] == "sandbox"
+    assert response["Content-Disposition"].startswith("inline")
     assert response["X-Content-Type-Options"] == "nosniff"
 
 
@@ -181,3 +182,30 @@ def test_a_diagram_is_still_shown_rather_than_downloaded(notes: Path) -> None:
 
     # FileResponse always sets the header; what matters is that it says inline.
     assert not response["Content-Disposition"].startswith("attachment")
+
+
+def test_text_a_browser_would_not_render_is_declared_plain(notes: Path) -> None:
+    """A .sh and a .py are text, but the type guessed from their extension is
+    one no browser shows, so they downloaded while a .txt beside them opened."""
+    from .conftest import write_page
+
+    write_page(notes, "informatique/fiche/outils", title="Outils")
+    for name in ("build.sh", "calc.py", "mail.eml"):
+        (notes / "informatique/fiche/outils" / name).write_text("x", encoding="utf-8")
+
+    for name in ("build.sh", "calc.py", "mail.eml"):
+        response = Client().get(f"/informatique/fiche/outils/{name}")
+        assert response["Content-Type"] == "text/plain; charset=utf-8", name
+        assert response["Content-Disposition"].startswith("inline"), name
+
+
+def test_a_pdf_is_left_to_the_browser_viewer(notes: Path) -> None:
+    """It renders one natively, and text/plain would break that."""
+    from .conftest import write_page
+
+    write_page(notes, "informatique/fiche/doc", title="D")
+    (notes / "informatique/fiche/doc/a.pdf").write_bytes(b"%PDF-1.4\n")
+
+    response = Client().get("/informatique/fiche/doc/a.pdf")
+
+    assert "text/plain" not in response["Content-Type"]
