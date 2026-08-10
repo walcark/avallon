@@ -40,7 +40,7 @@ class Command(BaseCommand):
         except Http404 as exc:
             raise CommandError(str(exc)) from exc
         if not index_md.is_file():
-            raise CommandError(f"page introuvable : {relpath}")
+            raise CommandError(f"Page not found: {relpath}")
 
         page = content.load_page(index_md)
         fmt = "pdf" if opts["pdf"] else opts["format"]

@@ -40,7 +40,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(
         description="Re-file a page under another domain/type."
     )
-    ap.add_argument("--path", help="relpath de la page, <domaine>/<type>/<slug>")
+    ap.add_argument("--path", help="the page, as <domain>/<type>/<slug>")
     ap.add_argument("--domain")
     ap.add_argument("--type")
     args = ap.parse_args()
@@ -60,7 +60,7 @@ def main() -> int:
         sys.exit("Cancelled.")
     source = (CONTENT / relpath).resolve()
     if CONTENT not in source.parents or not (source / "index.md").is_file():
-        sys.exit(f"page introuvable : {relpath}")
+        sys.exit(f"Page not found: {relpath}")
 
     domain = args.domain or pick("Nouveau domaine", taxo["domains"])
     if not domain:

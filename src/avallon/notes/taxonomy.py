@@ -107,11 +107,13 @@ def check() -> int:
     for rel, domain, type_ in bad:
         dd = "" if domain in data["domains"] else " ✗inconnu"
         tt = "" if type_ in data["types"] else " ✗inconnu"
-        print(f"hors taxonomie : {rel}  [{domain}{dd} / {type_}{tt}]", file=sys.stderr)
+        print(
+            f"out of vocabulary: {rel}  [{domain}{dd} / {type_}{tt}]", file=sys.stderr
+        )
     if bad:
-        print(f"{len(bad)} page(s) hors taxonomie.", file=sys.stderr)
+        print(f"{len(bad)} page(s) out of vocabulary.", file=sys.stderr)
         return 1
-    print("Toutes les pages respectent la taxonomie.")
+    print("Every page sits under a declared domain and type.")
     return 0
 
 

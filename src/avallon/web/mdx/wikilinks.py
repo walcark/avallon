@@ -179,7 +179,7 @@ class WikiLinkInlineProcessor(InlineProcessor):
         if page is None:
             el = etree.Element("span")
             el.set("class", "wikilink wikilink-missing")
-            el.set("title", f"Cible introuvable : {target}")
+            el.set("title", f"Target not found: {target}")
             el.text = label or target
         else:
             el = etree.Element("a")
@@ -202,7 +202,7 @@ class EmbedInlineProcessor(InlineProcessor):
         if page is None or not (page.file or inner):
             el = etree.Element("span")
             el.set("class", "wikilink wikilink-missing")
-            el.set("title", f"Cible introuvable : {target}")
+            el.set("title", f"Target not found: {target}")
             el.text = caption or target
             return el, m.start(0), m.end(0)
 
