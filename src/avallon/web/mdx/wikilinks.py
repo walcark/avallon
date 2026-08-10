@@ -145,6 +145,18 @@ def _resolve(target: str):
     return resolve_among(target, content.all_pages())
 
 
+def _deleted(target: str):
+    """The trashed page *target* names, or None."""
+    from avallon.web import content
+
+    try:
+        return content.deleted_named(target)
+    except Exception:
+        # Rendering a note must never fail because git did: a dead link stays
+        # a dead link, it simply loses the offer to undo.
+        return None
+
+
 def _colocated_file(target: str):
     """Return *target* if it names a file next to the page being rendered.
 
@@ -181,6 +193,16 @@ class WikiLinkInlineProcessor(InlineProcessor):
             el.set("class", "wikilink wikilink-missing")
             el.set("title", f"Target not found: {target}")
             el.text = label or target
+            # A link to a page that was deleted is not a typo, and saying only
+            # "not found" makes it a dead end: it carries what it needs for the
+            # reader to choose between bringing the page back and letting the
+            # link go. The trash is read once per render, not once per link.
+            gone = _deleted(target)
+            if gone is not None:
+                el.set("class", "wikilink wikilink-deleted")
+                el.set("data-slug", gone.slug)
+                el.set("data-target", target)
+                el.set("data-when", gone.when)
         else:
             el = etree.Element("a")
             el.set("href", page.url)

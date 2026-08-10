@@ -261,6 +261,80 @@ def capture(request):
     )
 
 
+def trash(request):
+    """Deleted pages, with what bringing each one back would repair.
+
+    Read from git, which already holds every deleted page: a directory of our
+    own would be a second copy that can disagree with the tree. What was
+    missing is a door, and a browser is the only one a phone has.
+    """
+    entries = content.deleted_pages()
+    # A count of links a restore would mend is a better reason to click than a
+    # date. Computed once over the tree rather than once per entry.
+    stranded: dict[str, int] = {}
+    for page in content.all_pages():
+        try:
+            text = (content.CONTENT_DIR / page.relpath / "index.md").read_text("utf-8")
+        except OSError:
+            continue
+        for match in content._WIKILINK.finditer(text):
+            gone = content.deleted_named(match.group(1).strip())
+            if gone is not None:
+                stranded[gone.slug] = stranded.get(gone.slug, 0) + 1
+
+    return render(
+        request,
+        "trash.html",
+        {"entries": [(e, stranded.get(e.slug, 0)) for e in entries]},
+    )
+
+
+@require_POST
+def restore(request):
+    """Bring a deleted page back where it was, documents included."""
+    if not may_edit(request):
+        raise Http404("Editing unavailable")
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Unreadable request."}, status=400)
+
+    try:
+        page = content.restore_page(str(payload.get("slug", "")))
+    except content.InvalidPage as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
+    _commit_page(page.relpath, action="restore", fold=False)
+    return JsonResponse({"url": page.url, "title": page.title})
+
+
+@require_POST
+def unlink(request):
+    """Turn a dead wikilink into the plain words it was written as.
+
+    The other half of the choice a dead link offers: bring the page back, or
+    accept that it is gone. The label is kept, since it is prose someone wrote;
+    only the brackets go.
+    """
+    if not may_edit(request):
+        raise Http404("Editing unavailable")
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Unreadable request."}, status=400)
+
+    relpath = str(payload.get("path", ""))
+    index_md = _editable_page(relpath)
+    text = content.read_source(index_md)
+    stripped, removed = content.strip_wikilink(text, str(payload.get("target", "")))
+    if not removed:
+        return JsonResponse({"error": "No such link on this page."}, status=400)
+
+    content.save_source(index_md, stripped)
+    _commit_page(relpath, action="unlink")
+    return JsonResponse({"removed": removed})
+
+
 def upkeep(request):
     """One screen answering "what is waiting for me?".
 

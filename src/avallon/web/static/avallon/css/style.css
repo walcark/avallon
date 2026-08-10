@@ -1811,3 +1811,14 @@ a.card-project:hover { text-decoration: underline; }
     color: var(--danger, #b3261e);
 }
 .btn-danger:hover { background: var(--danger, #b3261e); color: #fff; }
+
+/* A link whose page was deleted is not a typo: it offers a way out, so it
+   looks clickable, where a target that never existed stays inert. */
+.wikilink-deleted {
+    cursor: pointer;
+    text-decoration: line-through;
+    text-decoration-color: var(--muted);
+    border-bottom: 1px dashed var(--accent);
+}
+.wikilink-deleted:hover { color: var(--accent); }
+.trash-where { color: var(--muted); font-family: "Roboto Mono", monospace; font-size: 0.78rem; }

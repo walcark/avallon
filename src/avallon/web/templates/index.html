@@ -627,6 +627,34 @@
         });
         document.getElementById('editorSave').addEventListener('click', save);
 
+        // --- A dead link that was a page ---------------------------------------
+        // Two ways out, one click each: bring the page back, or let the link
+        // go and keep the words. Anything else leaves the reader stuck with a
+        // name that says only that it is not there.
+        document.addEventListener('click', function (e) {
+          const mark = e.target.closest('.wikilink-deleted');
+          if (!mark) return;
+          const choice = confirm(
+            mark.textContent + ' — {{ "deleted on"|t|escapejs }} ' + mark.dataset.when +
+            '\n\n{{ "OK to restore the page, Cancel to remove the link and keep the words."|t|escapejs }}'
+          );
+          const url = choice ? '/restore/' : '/unlink/';
+          const body = choice
+            ? { slug: mark.dataset.slug }
+            : { path: RELPATH, target: mark.dataset.target };
+          fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+            body: JSON.stringify(body),
+          })
+            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+            .then(function (res) {
+              if (!res.ok) { alert(res.d.error); return; }
+              location.reload();
+            })
+            .catch(function () {});
+        });
+
         // --- Deleting ---------------------------------------------------------
         // Recorded as a commit, so the page stays in the history and can be
         // brought back. What it strands is said first, because a count of

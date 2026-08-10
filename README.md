@@ -490,7 +490,27 @@ It is recorded as a commit of its own, never folded into the batch that may
 have just created the page: otherwise a note captured and deleted minutes apart
 would be created and removed inside one amended commit, existing in no recorded
 state, and "it can be brought back" would be false exactly when it matters
-most. `git show HEAD~1:<path>/index.md` is how it comes back.
+most.
+
+### The trash
+
+**`/corbeille/`** lists what was deleted and brings it back, documents
+included. There is no trash folder: git already holds every deleted page,
+compressed and deduplicated, and a directory of our own would only be a second
+copy that can disagree with the tree. What was missing was a door reachable
+from a browser, which is the only one a phone has. Each entry says how many
+links a restore would mend.
+
+A **link to a deleted page** stops being a dead end. It is struck through and
+clickable, and offers the two ways out: bring the page back, or drop the link
+and keep the words it displayed. A link to something that never existed stays
+inert, there being nothing to offer.
+
+One deliberate limit: a page is in the trash while no live page bears its slug.
+Git reports a *move* as a deletion, and telling a move from a name being reused
+is not something it can reliably say; filtering on the slug keeps every moved
+page out of the trash, at the cost of hiding a deleted page whose name has
+since been given away. It stays in the history either way.
 
 ## Not withering
 

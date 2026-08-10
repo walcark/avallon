@@ -85,6 +85,22 @@ FRENCH: dict[str, str] = {
     "Upkeep": "Entretien",
     "Capture": "Capture",
     "Delete": "Supprimer",
+    "Trash": "Corbeille",
+    "Restore": "Restaurer",
+    "Nothing deleted.": "Rien de supprimé.",
+    "links to mend": "liens à réparer",
+    "Remove the link": "Retirer le lien",
+    "deleted on": "supprimée le",
+    ("OK to restore the page, Cancel to remove the link and keep the words."): (
+        "OK pour restaurer la page, Annuler pour retirer le lien en gardant les mots."
+    ),
+    (
+        "Deleted pages, held by git rather than by a folder of their own, "
+        "so nothing here can disagree with the tree."
+    ): (
+        "Les pages supprimées, tenues par git plutôt que par un dossier à "
+        "part, donc rien ici ne peut diverger de l'arbre."
+    ),
     "Delete this page": "Supprimer cette page",
     "Deleting…": "Suppression…",
     "Deleting failed (network).": "Échec de la suppression (réseau).",

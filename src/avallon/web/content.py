@@ -24,6 +24,7 @@ import tomllib
 import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass, fields, replace
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -564,6 +565,133 @@ def safe_filename(name: str) -> str:
         )
     stem = slugify(Path(name).stem)
     return f"{stem}.{suffix}"
+
+
+@dataclass(frozen=True)
+class Deleted:
+    """A page that was removed, as git still holds it."""
+
+    slug: str
+    relpath: str  # where it was
+    title: str
+    sha: str  # the commit that removed it; its parent still has the page
+    when: str  # YYYY/MM/DD
+
+
+def _head_sha() -> str:
+    """The current commit, used to know when the trash can have changed."""
+    out = _git(["rev-parse", "HEAD"])
+    return out.stdout.strip() if out.returncode == 0 else ""
+
+
+@lru_cache(maxsize=8)
+def _deleted_at(head: str, root: str) -> tuple[Deleted, ...]:
+    """The trash as of *head*. Keyed on it, so it is read once per commit."""
+    out = _git(
+        [
+            "log",
+            "--diff-filter=D",
+            "-M",
+            "--format=%h|%ad",
+            "--date=format:%Y/%m/%d",
+            "--name-only",
+            "--",
+            "*/index.md",
+        ]
+    )
+    if out.returncode != 0:
+        return ()
+
+    alive = {page.slug for page in all_pages()}
+    found: list[Deleted] = []
+    sha = when = ""
+    for line in out.stdout.splitlines():
+        if line.count("|") == 1 and "/" not in line.split("|")[0]:
+            sha, when = line.split("|")
+            continue
+        if not line.strip():
+            continue
+        relpath = line.rsplit("/", 1)[0]
+        slug = relpath.rsplit("/", 1)[-1]
+        # git reports a move as a deletion. A page whose slug lives somewhere
+        # today was re-filed, not thrown away, and belongs in no trash.
+        if slug in alive or any(d.slug == slug for d in found):
+            continue
+        blob = _git(["show", f"{sha}^:{line}"])
+        title = slug
+        if blob.returncode == 0:
+            match = re.search(r"^title:\s*(.+)$", blob.stdout, re.M)
+            if match:
+                title = match.group(1).strip().strip("\"'")
+        found.append(
+            Deleted(slug=slug, relpath=relpath, title=title, sha=sha, when=when)
+        )
+    return tuple(found)
+
+
+def deleted_pages() -> list[Deleted]:
+    """Pages that were removed and are not back, most recent first.
+
+    Git is the trash: it already holds every deleted page, compressed and
+    deduplicated, and a directory of our own would only be a second copy that
+    can disagree with the tree. What was missing is a door reachable from a
+    browser, which is the only place a phone has.
+    """
+    return list(_deleted_at(_head_sha(), str(CONTENT_DIR)))
+
+
+def deleted_named(target: str) -> Deleted | None:
+    """The trashed page *target* designates, or None."""
+    from avallon.notes.scaffold import slugify
+
+    wanted = slugify(target)
+    return next((d for d in deleted_pages() if d.slug == wanted), None)
+
+
+def restore_page(slug: str) -> Page:
+    """Bring a deleted page back, with everything that was filed under it.
+
+    Restored where it was: it is the same page, and its slug is what every link
+    to it resolves by. Refused when the name has been given away since, which
+    is the same rule that governs creating and renaming.
+    """
+    entry = next((d for d in deleted_pages() if d.slug == slug), None)
+    if entry is None:
+        raise InvalidPage(f"Not in the trash: {slug}")
+    taken = page_named(entry.slug)
+    if taken is not None:
+        raise InvalidPage(
+            f'A page already goes by "{entry.slug}": {taken.relpath}. '
+            "Rename that one first."
+        )
+    # The whole directory, so a document filed under the page comes back too.
+    out = _git(["checkout", f"{entry.sha}^", "--", entry.relpath])
+    if out.returncode != 0:
+        raise InvalidPage(f"Could not restore {slug}: {out.stderr.strip()}")
+    return load_page(CONTENT_DIR / entry.relpath / "index.md")
+
+
+def strip_wikilink(text: str, target: str) -> tuple[str, int]:
+    """Replace every ``[[target]]`` in *text* with the words it displayed.
+
+    The label is prose someone wrote, so it stays; only the brackets go. Edited
+    textually rather than through a parse, for the same reason the frontmatter
+    is: a round-trip would reformat everything around the change.
+    """
+    from avallon.notes.scaffold import slugify
+
+    wanted = slugify(target)
+    removed = 0
+
+    def replace_one(match: re.Match[str]) -> str:
+        nonlocal removed
+        name = match.group(1).strip()
+        if slugify(name) != wanted:
+            return match.group(0)
+        removed += 1
+        return (match.group(2) or name).strip()
+
+    return _WIKILINK.sub(replace_one, text), removed
 
 
 def delete_page(relpath: str) -> None:

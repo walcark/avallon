@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load lang %}
+
+{% block title %}{{ "Trash"|t }}{% endblock %}
+{% block topbar %}{{ "Trash"|t }}{% endblock %}
+
+{% block content %}
+<main class="prose page">
+    <header class="page-head">
+        <h1>{{ "Trash"|t }}</h1>
+        <p class="page-summary">
+            {{ "Deleted pages, held by git rather than by a folder of their own, so nothing here can disagree with the tree."|t }}
+        </p>
+    </header>
+
+    {% if not entries %}
+    <p class="empty">{{ "Nothing deleted."|t }}</p>
+    {% else %}
+    <ul class="upkeep-list">
+        {% for entry, stranded in entries %}
+        <li id="{{ entry.slug }}">
+            <span>
+                <strong>{{ entry.title }}</strong>
+                <span class="trash-where">{{ entry.relpath }}</span>
+            </span>
+            <span class="upkeep-meta">
+                {% if stranded %}<span class="upkeep-tasks">{{ stranded }} {{ "links to mend"|t }}</span>{% endif %}
+                {{ entry.when }}
+                <button type="button" class="btn restore-btn" data-slug="{{ entry.slug }}">{{ "Restore"|t }}</button>
+            </span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</main>
+{% endblock %}
+
+{% block scripts %}
+{% csrf_token %}
+<script>
+  document.addEventListener('click', function (e) {
+    const button = e.target.closest('.restore-btn');
+    if (!button) return;
+    button.disabled = true;
+    fetch('/restore/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+      },
+      body: JSON.stringify({ slug: button.dataset.slug }),
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok) { alert(res.d.error); button.disabled = false; return; }
+        location.href = res.d.url;
+      })
+      .catch(function () { button.disabled = false; });
+  });
+</script>
+{% endblock %}
