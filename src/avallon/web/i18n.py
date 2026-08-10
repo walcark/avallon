@@ -91,7 +91,7 @@ FRENCH: dict[str, str] = {
     "Filed as “to sort”, and listed under Upkeep until you move it.": (
         "Classée « à trier », et listée dans Entretien jusqu'à ce que tu la déplaces."
     ),
-    "Capture an idea (Ctrl+Shift+C)": "Capturer une idée (Ctrl+Maj+C)",
+    "Capture an idea (c)": "Capturer une idée (c)",
     "To file": "À trier",
     "Open": "En cours",
     "to do": "à faire",

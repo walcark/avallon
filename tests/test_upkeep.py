@@ -154,3 +154,58 @@ def test_a_share_arrives_already_filled_in(notes: Path) -> None:
 
     assert 'value="Un article"' in body
     assert "à lire https://x.fr" in body
+
+
+def test_a_refused_capture_gives_back_everything_typed(notes: Path) -> None:
+    """Losing a capture to an error message defeats the one thing a capture
+    has to be: cheaper than remembering."""
+    write_page(notes, "administratif/fiche/deja-pris", title="Déjà pris")
+
+    body = (
+        Client()
+        .post(
+            "/capture/",
+            {
+                "title": "Déjà pris",
+                "body": "un texte précieux",
+                "domain": "administratif",
+                "type": "fiche",
+                "back": "/ailleurs",
+            },
+        )
+        .content.decode()
+    )
+
+    assert "un texte précieux" in body
+    assert 'value="Déjà pris"' in body
+    assert 'value="/ailleurs"' in body
+
+
+def test_an_empty_capture_is_never_refused(notes: Path) -> None:
+    """The moment it can fail is the moment it stops being used."""
+    response = Client().post(
+        "/capture/",
+        {"title": "", "body": "", "domain": "administratif", "type": "fiche"},
+    )
+
+    assert response.status_code == 302
+    assert len(content.all_pages()) == 1
+
+
+def test_a_page_with_tasks_but_no_status_is_still_waiting(notes: Path) -> None:
+    """Reading only the status left six tasks invisible in the real tree, on
+    pages nobody had thought to mark."""
+    write_page(notes, "culture/recueil/jeux", title="Jeux", body="- [ ] essayer\n")
+
+    body = _main(Client().get("/entretien/"))
+
+    assert "Jeux" in body
+    assert "1 to do" in body
+
+
+def test_a_page_its_dossier_lists_is_not_adrift(notes: Path) -> None:
+    """It is reachable through the dossier, wikilink or not."""
+    write_page(notes, "administratif/recueil/dossier", title="Dossier")
+    write_page(notes, "administratif/fiche/membre", title="Membre", project="dossier")
+
+    assert [p.slug for p in content.orphans()] == ["dossier"]

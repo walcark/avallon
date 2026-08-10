@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import json
 import re
 import tempfile
@@ -179,6 +180,18 @@ def tags_index(request):
     )
 
 
+def _capture_title(body: str) -> str:
+    """A title for a capture that was given none.
+
+    An empty one used to be refused, which is the one answer a capture must
+    never give: the moment it can fail is the moment it stops being used. The
+    first line if there is one, the date and time otherwise, and it can be
+    renamed later like any page.
+    """
+    first = next((line.strip() for line in body.splitlines() if line.strip()), "")
+    return first[:80] or datetime.datetime.now().strftime("Capture %Y-%m-%d %H:%M")
+
+
 def capture(request):
     """Write an idea down now, decide where it belongs later.
 
@@ -202,16 +215,24 @@ def capture(request):
     )
     error = ""
 
+    title = request.GET.get("title", "")
+    body = shared
+    back = request.GET.get("back", "")
+
     if request.method == "POST":
+        # Read back from what was submitted, so a refusal returns the form as
+        # it was typed. Losing a capture to an error message would defeat the
+        # one thing a capture has to be: cheaper than remembering.
         title = request.POST.get("title", "").strip()
         body = request.POST.get("body", "").strip()
+        back = request.POST.get("back", "")
         domain = request.POST.get("domain", "").strip()
         type_ = request.POST.get("type", "").strip()
         try:
             page = content.create_page(
                 domain,
                 type_,
-                title or (body.splitlines() or [""])[0][:80],
+                title or _capture_title(body),
                 [],
                 status=content.CAPTURED,
             )
@@ -224,7 +245,7 @@ def capture(request):
                     index_md, content.read_source(index_md).rstrip() + f"\n\n{body}\n"
                 )
             _commit_page(page.relpath, action="capture")
-            return HttpResponseRedirect(request.POST.get("back") or page.url)
+            return HttpResponseRedirect(back or page.url)
 
     return render(
         request,
@@ -232,9 +253,9 @@ def capture(request):
         {
             "domains": vocab["domains"],
             "types": vocab["types"],
-            "title": request.GET.get("title", ""),
-            "body": shared,
-            "back": request.GET.get("back", ""),
+            "title": title,
+            "body": body,
+            "back": back,
             "error": error,
         },
     )
@@ -248,14 +269,20 @@ def upkeep(request):
     kept up to date for it to stay true.
     """
     pages = content.all_pages()
+    # Marked open, or still carrying unticked boxes. Reading only the status
+    # left six tasks invisible here, on pages nobody had thought to mark: what
+    # is unfinished is unfinished whether or not it was declared so.
     open_pages = [
-        {
-            "page": page,
-            "tasks": content.open_tasks(page),
-            "days": content.days_since(page),
-        }
-        for page in pages
-        if page.status in (content.CAPTURED, "en cours")
+        row
+        for row in (
+            {
+                "page": page,
+                "tasks": content.open_tasks(page),
+                "days": content.days_since(page),
+            }
+            for page in pages
+        )
+        if row["page"].status in (content.CAPTURED, "en cours") or row["tasks"]
     ]
     # Stalest first: what has been left alone longest is what is rotting, and a
     # page untouched for a week is not the one that needs looking at.
@@ -266,7 +293,7 @@ def upkeep(request):
         "upkeep.html",
         {
             "captured": [r for r in open_pages if r["page"].status == content.CAPTURED],
-            "ongoing": [r for r in open_pages if r["page"].status == "en cours"],
+            "ongoing": [r for r in open_pages if r["page"].status != content.CAPTURED],
             "total_tasks": sum(r["tasks"] for r in open_pages),
             # Standing alone is not a fault, it is the one thing that makes a
             # page unreachable except by searching for it.

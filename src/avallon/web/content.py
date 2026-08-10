@@ -1090,7 +1090,9 @@ def orphans() -> list[Page]:
             target = resolve_among(match.group(1).strip(), pages)
             if target is not None and target.relpath != page.relpath:
                 cited.add(target.relpath)
-    return [p for p in pages if p.relpath not in cited]
+    # A page its dossier lists is reachable through it, wikilink or not.
+    filed = membership()
+    return [p for p in pages if p.relpath not in cited and p.relpath not in filed]
 
 
 def dossier_candidates() -> list[Page]:

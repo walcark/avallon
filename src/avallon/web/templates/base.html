@@ -360,11 +360,18 @@
       // Registered last, and only where a service worker is allowed at all
       // (https, or localhost during development).
       // Capture from anywhere, keeping where you were so it can hand you back.
+      // A bare `c`, the way a mail client does it, and not Ctrl+Shift+C: that
+      // one belongs to the browser's inspector, which does not give it up for
+      // preventDefault, so the shortcut simply never fired.
       document.addEventListener('keydown', function (e) {
-        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'c') {
-          e.preventDefault();
-          location.href = '/capture/?back=' + encodeURIComponent(location.pathname);
+        if (e.key !== 'c' || e.ctrlKey || e.metaKey || e.altKey) return;
+        const el = document.activeElement;
+        // Never while writing: in a field, `c` is the letter c.
+        if (el && (el.isContentEditable || /^(input|textarea|select)$/i.test(el.tagName))) {
+          return;
         }
+        e.preventDefault();
+        location.href = '/capture/?back=' + encodeURIComponent(location.pathname);
       });
 
       if ('serviceWorker' in navigator) {
