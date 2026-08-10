@@ -22,6 +22,13 @@ filter showed nothing while a dossier's sixteen exhibits were on disk.
       markup rendered under a sandbox rather than handed over as a download.
 - [x] Four mobile faults, one of which hid the dossier filter outright.
 
+## v0.5.0, the reader's own language
+
+- [x] **A language switch in the top bar.** The language was a property of the
+      process, so one reader switching it switched it for every device reading
+      the same server, and it took a restart to apply at all. It is answered
+      per request now, from a cookie, with the configured value as the default.
+
 ## v0.4.0, not withering
 
 A note site rots two ways: ideas never land because writing them down costs too

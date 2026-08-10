@@ -22,7 +22,7 @@ from this tool, and sync across devices on their own.
 The content model, and the reasoning behind it, lives in
 [`docs/model.md`](docs/model.md). This README is the user guide.
 
-> **Status.** v0.4.0. What comes next, and why, is in
+> **Status.** v0.5.0. What comes next, and why, is in
 > [`ROADMAP.md`](ROADMAP.md).
 
 ## How it works in one picture
@@ -586,7 +586,7 @@ publishes them to PyPI through Trusted Publishing (OIDC), so no token is
 stored anywhere.
 
 ```bash
-git tag v0.4.0 && git push origin v0.4.0
+git tag v0.5.0 && git push origin v0.5.0
 ```
 
 ## License
