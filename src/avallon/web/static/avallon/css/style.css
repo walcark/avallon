@@ -1774,3 +1774,31 @@ a.card-project:hover { text-decoration: underline; }
     letter-spacing: 0.04em;
 }
 .card-title.is-document { font-family: "Roboto Mono", monospace; font-size: 0.95rem; }
+
+/* Upkeep: one screen, read from the tree, that says what is waiting. */
+.upkeep-count {
+    padding: 0 0.45rem;
+    border-radius: 999px;
+    background: var(--code-bg);
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    vertical-align: middle;
+}
+.upkeep-why { color: var(--muted); font-size: 0.88rem; margin: 0.2rem 0 0.8rem; }
+.upkeep-list { list-style: none; padding: 0; margin: 0 0 1.75rem; }
+.upkeep-list li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--border);
+}
+.upkeep-meta { margin-left: auto; color: var(--muted); font-size: 0.82rem; }
+.upkeep-tasks {
+    padding: 0 0.4rem;
+    border-radius: 0.3rem;
+    background: var(--warn-bg);
+    color: var(--warn-ink);
+}

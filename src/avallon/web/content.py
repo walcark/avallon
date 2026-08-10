@@ -47,7 +47,11 @@ _PAGE_GLOB = "*/*/*/index.md"
 # page *is*, never how far along it is: a note that will be finished one day is
 # still a `cr` or a `fiche`, so progress lives in the frontmatter and can change
 # without moving the page (and thus without changing its URL).
-STATUSES = ("en cours", "terminé", "abandonné")
+# `à trier` is where a capture lands: it has a domain and a type like any page,
+# because the vocabulary is not optional, but it says those were guessed and
+# not chosen. Refiling is `avallon move`, and clearing the status.
+CAPTURED = "à trier"
+STATUSES = (CAPTURED, "en cours", "terminé", "abandonné")
 
 # What a page's attached file is, derived from its extension and never typed.
 # The type says what a page *is* and cannot be checked; the medium is already
@@ -720,6 +724,7 @@ def create_page(
     project: str = "",
     file: str = "",
     doc_date: str = "",
+    status: str = "",
 ) -> Page:
     """Scaffold ``<domain>/<type>/<slug>/index.md`` and return the new Page.
 
@@ -789,6 +794,8 @@ def create_page(
         lines.append(f"summary: {scalar(summary.strip())}")
     if project.strip():
         lines.append(f"project: {scalar(project.strip())}")
+    if status.strip():
+        lines.append(f"status: {scalar(status.strip())}")
     if file.strip():
         lines.append(f"file: {scalar(file.strip())}")
     if doc_date.strip():
@@ -1035,6 +1042,55 @@ def tag_counts() -> list[tuple[str, int]]:
         for tag in page.tags:
             counts[tag] = counts.get(tag, 0) + 1
     return sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+
+
+_OPEN_TASK = re.compile(r"^\s*[-*+] \[ \]", re.M)
+
+
+def open_tasks(page: Page) -> int:
+    """How many unticked task boxes the page still carries.
+
+    The most honest measure of "not finished" this tree has: 72 of them here,
+    concentrated on six pages. Length is not one, the shortest pages being
+    lists that are complete at forty words.
+    """
+    try:
+        text = (CONTENT_DIR / page.relpath / "index.md").read_text(encoding="utf-8")
+    except OSError:
+        return 0
+    return len(_OPEN_TASK.findall(text))
+
+
+def days_since(page: Page) -> int | None:
+    """Days since the page was last touched, or None when it carries no date."""
+    stamp = _recency_key(page)
+    if not stamp:
+        return None
+    try:
+        return (datetime.date.today() - datetime.date.fromisoformat(stamp)).days
+    except ValueError:
+        return None
+
+
+def orphans() -> list[Page]:
+    """Visible pages no other page cites.
+
+    Not a fault in itself, a journal entry is meant to stand alone. It is the
+    one property that makes a page unreachable except by searching for it, so
+    it is worth being able to look at the list once in a while.
+    """
+    pages = all_pages()
+    cited = set()
+    for page in pages:
+        try:
+            text = (CONTENT_DIR / page.relpath / "index.md").read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for match in _WIKILINK.finditer(text):
+            target = resolve_among(match.group(1).strip(), pages)
+            if target is not None and target.relpath != page.relpath:
+                cited.add(target.relpath)
+    return [p for p in pages if p.relpath not in cited]
 
 
 def dossier_candidates() -> list[Page]:

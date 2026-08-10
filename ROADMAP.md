@@ -22,6 +22,14 @@ filter showed nothing while a dossier's sixteen exhibits were on disk.
       markup rendered under a sandbox rather than handed over as a download.
 - [x] Four mobile faults, one of which hid the dossier filter outright.
 
+## v0.4.0, not withering
+
+- [x] **Capture**, org-mode fashion: one box from anywhere, a PWA share target
+      on a phone, filed `à trier` and handed back to where you were.
+- [x] **`/entretien/`**: what is waiting, read from the tree. Captures to file,
+      open pages stalest first with their remaining tasks, contradictions, and
+      pages nothing cites.
+
 ### Next
 
 - [ ] The lightbox for an image opened from the results, rather than a new tab.

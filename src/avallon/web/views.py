@@ -179,6 +179,108 @@ def tags_index(request):
     )
 
 
+def capture(request):
+    """Write an idea down now, decide where it belongs later.
+
+    GET is the form, and also the PWA share target, so anything shared from
+    another application on a phone arrives here already filled in. POST files
+    it and returns to where the capture started, because a capture that takes
+    you somewhere else is one you stop making.
+
+    The domain and type are asked for but remembered, and the page is marked
+    `à trier`: the vocabulary is not optional here, so the honest thing is to
+    say the answer was guessed rather than to invent a place for it.
+    """
+    if not may_edit(request):
+        raise Http404("Editing unavailable")
+
+    vocab = content.vocabulary()
+    shared = " ".join(
+        part
+        for part in (request.GET.get("text", ""), request.GET.get("url", ""))
+        if part.strip()
+    )
+    error = ""
+
+    if request.method == "POST":
+        title = request.POST.get("title", "").strip()
+        body = request.POST.get("body", "").strip()
+        domain = request.POST.get("domain", "").strip()
+        type_ = request.POST.get("type", "").strip()
+        try:
+            page = content.create_page(
+                domain,
+                type_,
+                title or (body.splitlines() or [""])[0][:80],
+                [],
+                status=content.CAPTURED,
+            )
+        except content.InvalidPage as exc:
+            error = str(exc)
+        else:
+            if body:
+                index_md = content.CONTENT_DIR / page.relpath / "index.md"
+                content.save_source(
+                    index_md, content.read_source(index_md).rstrip() + f"\n\n{body}\n"
+                )
+            _commit_page(page.relpath, action="capture")
+            return HttpResponseRedirect(request.POST.get("back") or page.url)
+
+    return render(
+        request,
+        "capture.html",
+        {
+            "domains": vocab["domains"],
+            "types": vocab["types"],
+            "title": request.GET.get("title", ""),
+            "body": shared,
+            "back": request.GET.get("back", ""),
+            "error": error,
+        },
+    )
+
+
+def upkeep(request):
+    """One screen answering "what is waiting for me?".
+
+    Scattered nags are ignored one by one; a single place can be visited on
+    purpose. Everything here is derived from the tree, so nothing has to be
+    kept up to date for it to stay true.
+    """
+    pages = content.all_pages()
+    open_pages = [
+        {
+            "page": page,
+            "tasks": content.open_tasks(page),
+            "days": content.days_since(page),
+        }
+        for page in pages
+        if page.status in (content.CAPTURED, "en cours")
+    ]
+    # Stalest first: what has been left alone longest is what is rotting, and a
+    # page untouched for a week is not the one that needs looking at.
+    open_pages.sort(key=lambda row: -(row["days"] or 0))
+
+    return render(
+        request,
+        "upkeep.html",
+        {
+            "captured": [r for r in open_pages if r["page"].status == content.CAPTURED],
+            "ongoing": [r for r in open_pages if r["page"].status == "en cours"],
+            "total_tasks": sum(r["tasks"] for r in open_pages),
+            # Standing alone is not a fault, it is the one thing that makes a
+            # page unreachable except by searching for it.
+            "orphans": content.orphans(),
+            # A page cannot be finished and still carry things to do.
+            "contradictions": [
+                page
+                for page in pages
+                if page.status == "terminé" and content.open_tasks(page)
+            ],
+        },
+    )
+
+
 def explore(request):
     """The explorer fragment alone, for the browser to swap in as you type."""
     return render(request, "_explorer.html", _explorer_context(request))

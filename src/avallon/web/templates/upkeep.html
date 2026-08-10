@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load lang %}
+
+{% block title %}{{ "Upkeep"|t }}{% endblock %}
+{% block topbar %}{{ "Upkeep"|t }}{% endblock %}
+
+{% block content %}
+<main class="prose page">
+    <header class="page-head">
+        <h1>{{ "Upkeep"|t }}</h1>
+        <p class="page-summary">
+            {{ "What is waiting for you. Everything here is read from the tree, so it cannot fall behind."|t }}
+        </p>
+    </header>
+
+    {% if captured %}
+    <h2>{{ "To file"|t }} <span class="upkeep-count">{{ captured|length }}</span></h2>
+    <p class="upkeep-why">{{ "Captured in a hurry: the domain and type were guessed, not chosen."|t }}</p>
+    <ul class="upkeep-list">
+        {% for row in captured %}
+        <li>
+            <a href="{{ row.page.url }}">{{ row.page.title }}</a>
+            <span class="upkeep-meta">{{ row.page.domain_label }} / {{ row.page.type_label }}{% if row.days %} · {{ row.days }} {{ "d"|t }}{% endif %}</span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <h2>{{ "Open"|t }} <span class="upkeep-count">{{ ongoing|length }}</span></h2>
+    {% if ongoing %}
+    <p class="upkeep-why">
+        {{ "Stalest first, with what each still has to do."|t }}
+        {% if total_tasks %}{{ total_tasks }} {{ "tasks in all."|t }}{% endif %}
+    </p>
+    <ul class="upkeep-list">
+        {% for row in ongoing %}
+        <li>
+            <a href="{{ row.page.url }}">{{ row.page.title }}</a>
+            <span class="upkeep-meta">
+                {% if row.tasks %}<span class="upkeep-tasks">{{ row.tasks }} {{ "to do"|t }}</span>{% endif %}
+                {% if row.days is not None %}{{ row.days }} {{ "d"|t }}{% endif %}
+            </span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty">{{ "Nothing left open."|t }}</p>
+    {% endif %}
+
+    {% if contradictions %}
+    <h2>{{ "Finished, but still has things to do"|t }}</h2>
+    <ul class="upkeep-list">
+        {% for page in contradictions %}
+        <li><a href="{{ page.url }}">{{ page.title }}</a></li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <h2>{{ "Cited by nothing"|t }} <span class="upkeep-count">{{ orphans|length }}</span></h2>
+    <p class="upkeep-why">{{ "Standing alone is not a fault; it is what makes a page reachable only by searching for it."|t }}</p>
+    <ul class="upkeep-list">
+        {% for page in orphans %}
+        <li>
+            <a href="{{ page.url }}">{{ page.title }}</a>
+            <span class="upkeep-meta">{{ page.domain_label }} / {{ page.type_label }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+</main>
+{% endblock %}

@@ -478,6 +478,31 @@ A tag still narrows the same selection as any facet (`/?tag=banque`), and the
 tag facet reappears on the home page as soon as one is active, so a selection
 reached from a tag link can be undone.
 
+## Not withering
+
+Two things make a personal wiki rot: ideas that never land because writing them
+down costs too much, and pages left half-done that nothing ever points at
+again.
+
+**Capture** answers the first. `Ctrl+Shift+C` from anywhere opens one box,
+which hands you back to where you were; on a phone, avallon is a **share
+target**, so anything shared from another application arrives here already
+filled in. The domain and type are asked for but remembered, and the page is
+filed `à trier`: the vocabulary is not optional, so the honest thing is to say
+the answer was guessed rather than to invent a place for it.
+
+**`/entretien/`** answers the second, in one screen read from the tree:
+
+| | |
+| --- | --- |
+| To file | captures whose place has not been chosen yet |
+| Open | pages `en cours`, stalest first, each with what it still has to do |
+| Contradictions | a page marked finished that still carries unticked boxes |
+| Cited by nothing | not a fault, but the one thing that makes a page reachable only by searching for it |
+
+Unticked task boxes are the measure of *unfinished* here, not length: the
+shortest pages in this tree are lists that are complete at forty words.
+
 ## On a phone
 
 The site is installable: open it, then "Add to home screen". It runs full

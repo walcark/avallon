@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load lang %}
+{% load taxonomy %}
+
+{% block title %}{{ "Capture"|t }}{% endblock %}
+{% block topbar %}{{ "Capture"|t }}{% endblock %}
+
+{% block content %}
+<main class="prose page">
+    <header class="page-head">
+        <h1>{{ "Capture"|t }}</h1>
+        <p class="page-summary">{{ "Write it down now, decide where it belongs later."|t }}</p>
+    </header>
+
+    {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+
+    <form class="form" method="post" action="/capture/">
+        {% csrf_token %}
+        <input type="hidden" name="back" value="{{ back }}">
+
+        <div class="form-row">
+            <label for="c-title">{{ "Title"|t }}</label>
+            <!-- Autofocus: the whole point is that nothing stands between the
+                 idea and its being written down. -->
+            <input type="text" id="c-title" name="title" value="{{ title }}"
+                   autocomplete="off" autofocus>
+        </div>
+
+        <div class="form-row">
+            <label for="c-body">{{ "Note"|t }}</label>
+            <textarea id="c-body" name="body" rows="6">{{ body }}</textarea>
+        </div>
+
+        <!-- Asked for, but remembered from last time: the vocabulary is not
+             optional, and a capture must not become a filing decision. -->
+        <div class="form-row form-row-inline">
+            <label for="c-domain">{{ "Domain"|t }}</label>
+            <select id="c-domain" name="domain">
+                {% for d in domains %}<option value="{{ d }}">{{ d|label }}</option>{% endfor %}
+            </select>
+            <label for="c-type">{{ "Type"|t }}</label>
+            <select id="c-type" name="type">
+                {% for t in types %}<option value="{{ t }}">{{ t|label }}</option>{% endfor %}
+            </select>
+        </div>
+        <p class="form-hint">{{ "Filed as “to sort”, and listed under Upkeep until you move it."|t }}</p>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{{ "Capture"|t }}</button>
+            <a class="btn" href="{{ back|default:'/' }}">{{ "Cancel"|t }}</a>
+        </div>
+    </form>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // The domain and type are remembered, so a capture is: type, Enter.
+  (function () {
+    ['c-domain', 'c-type'].forEach(function (id) {
+      const el = document.getElementById(id);
+      const saved = localStorage.getItem('avallon.' + id);
+      if (saved) el.value = saved;
+      el.addEventListener('change', function () {
+        localStorage.setItem('avallon.' + id, el.value);
+      });
+    });
+  })();
+</script>
+{% endblock %}

@@ -82,6 +82,44 @@ FRENCH: dict[str, str] = {
         "La page l'affichera, et sera référençable avec"
     ),
     "All tags": "Tous les tags",
+    "Upkeep": "Entretien",
+    "Capture": "Capture",
+    "Note": "Note",
+    "Write it down now, decide where it belongs later.": (
+        "Écris-le maintenant, tu décideras plus tard où ça va."
+    ),
+    "Filed as “to sort”, and listed under Upkeep until you move it.": (
+        "Classée « à trier », et listée dans Entretien jusqu'à ce que tu la déplaces."
+    ),
+    "Capture an idea (Ctrl+Shift+C)": "Capturer une idée (Ctrl+Maj+C)",
+    "To file": "À trier",
+    "Open": "En cours",
+    "to do": "à faire",
+    "tasks in all.": "tâches au total.",
+    "d": "j",
+    "Nothing left open.": "Rien en cours.",
+    "Cited by nothing": "Citées par rien",
+    "Finished, but still has things to do": "Terminées, mais avec des tâches ouvertes",
+    (
+        "What is waiting for you. Everything here is read from the tree, "
+        "so it cannot fall behind."
+    ): (
+        "Ce qui t'attend. Tout est lu dans l'arbre, rien ne peut donc "
+        "prendre du retard."
+    ),
+    ("Captured in a hurry: the domain and type were guessed, not chosen."): (
+        "Capturées à la volée : le domaine et le type ont été devinés, pas choisis."
+    ),
+    "Stalest first, with what each still has to do.": (
+        "Les plus anciennes d'abord, avec ce qu'il leur reste à faire."
+    ),
+    (
+        "Standing alone is not a fault; it is what makes a page reachable "
+        "only by searching for it."
+    ): (
+        "Être isolée n'est pas un défaut ; c'est ce qui rend une page "
+        "atteignable seulement par la recherche."
+    ),
     "tags": "tags",
     "uses": "emplois",
     "No tag yet.": "Aucun tag pour l'instant.",
