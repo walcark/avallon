@@ -75,6 +75,18 @@ FRENCH: dict[str, str] = {
         "La page l'affichera, et sera référençable avec"
     ),
     "All tags": "Tous les tags",
+    "tags": "tags",
+    "uses": "emplois",
+    "No tag yet.": "Aucun tag pour l'instant.",
+    "By weight": "Par poids",
+    "Alphabetically": "Par ordre alphabétique",
+    (
+        "Ranked by weight: two neighbours of equal weight are often the same "
+        "tag written twice."
+    ): (
+        "Classés par poids : deux voisins de même poids sont souvent le "
+        "même tag écrit deux fois."
+    ),
     "Filters": "Filtres",
     "All": "Tous",
     "Explore this dossier": "Explorer ce dossier",

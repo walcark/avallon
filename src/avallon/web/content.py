@@ -870,6 +870,20 @@ def all_tags() -> list[str]:
     return sorted({tag for page in all_pages() for tag in page.tags})
 
 
+def tag_counts() -> list[tuple[str, int]]:
+    """Every tag with how many visible pages carry it, most used first.
+
+    Ties break alphabetically, so the list is stable between two reads and two
+    tags of equal weight sit next to each other, which is exactly where a near
+    duplicate ("batterie" and "batteries") becomes visible.
+    """
+    counts: dict[str, int] = {}
+    for page in all_pages():
+        for tag in page.tags:
+            counts[tag] = counts.get(tag, 0) + 1
+    return sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+
+
 def backlinks(target: Page) -> list[Page]:
     """Visible pages whose body cites *target* with a [[wikilink]].
 

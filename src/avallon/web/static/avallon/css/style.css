@@ -1693,3 +1693,24 @@ a.card-project:hover { text-decoration: underline; }
     font-size: 0.82rem;
     line-height: 1.5;
 }
+
+/* The tag survey. A wrapping list rather than a scrolling row: here the point
+   is to see them all at once, which is the opposite of the home page's. */
+.tag-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.6rem 0 1.75rem;
+    padding: 0;
+    list-style: none;
+}
+.tag-cloud .chip { text-decoration: none; }
+
+.brand-sub {
+    display: block;
+    padding: 0 1.15rem 0.7rem;
+    font-size: 0.82rem;
+    color: var(--muted);
+    text-decoration: none;
+}
+.brand-sub:hover { color: var(--accent); }

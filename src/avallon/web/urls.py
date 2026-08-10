@@ -13,6 +13,7 @@ urlpatterns = [
     path("move/", views.move_page, name="move"),
     path("export/", views.export_page, name="export"),
     path("upload/", views.upload_document, name="upload"),
+    path("tags/", views.tags_index, name="tags"),
     path("history/", views.page_history, name="history"),
     path("thumb/<path:relpath>/", views.thumbnail, name="thumbnail"),
     path("manifest.webmanifest", views.manifest, name="manifest"),

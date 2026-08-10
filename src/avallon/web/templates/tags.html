@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load lang %}
+
+{% block title %}{{ "All tags"|t }}{% endblock %}
+{% block topbar %}{{ "All tags"|t }}{% endblock %}
+
+{% block content %}
+<main class="prose page">
+    <header class="page-head">
+        <h1>{{ "All tags"|t }}</h1>
+        <p class="page-summary">
+            {{ tags|length }} {{ "tags"|t }}, {{ total }} {{ "uses"|t }}.
+            {{ "Ranked by weight: two neighbours of equal weight are often the same tag written twice."|t }}
+        </p>
+    </header>
+
+    {% if not tags %}
+    <p class="empty">{{ "No tag yet."|t }}</p>
+    {% else %}
+    <!-- Two orders, because a tag is looked for in two ways: by weight when
+         surveying them, by name when one is already in mind. -->
+    <h2>{{ "By weight"|t }}</h2>
+    <ul class="tag-cloud">
+        {% for tag, count in tags %}
+        <li><a class="chip" href="/?tag={{ tag|urlencode }}">{{ tag }}<span class="chip-count">{{ count }}</span></a></li>
+        {% endfor %}
+    </ul>
+
+    <h2>{{ "Alphabetically"|t }}</h2>
+    <ul class="tag-cloud">
+        {% for tag, count in alphabetical %}
+        <li><a class="chip" href="/?tag={{ tag|urlencode }}">{{ tag }}<span class="chip-count">{{ count }}</span></a></li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</main>
+{% endblock %}

@@ -399,6 +399,18 @@ cache-first, offline and instantly, while an upgrade still shows up on the next
 load. Pages themselves are fetched network-first: a note that changed on
 another device is worse stale than slow.
 
+### Tags
+
+Tags are not on the home page: there are hundreds of them, and a facet listing
+them all crowded out the axes one actually filters on. They live on **`/tags/`**
+instead, where every tag appears twice over, ranked by weight and again
+alphabetically. Ranking is what makes the near-duplicates visible: `batterie`
+and `batteries` end up next to each other, and one of them is a typo.
+
+A tag still narrows the same selection as any facet (`/?tag=banque`), and the
+tag facet reappears on the home page as soon as one is active, so a selection
+reached from a tag link can be undone.
+
 ## On a phone
 
 The site is installable: open it, then "Add to home screen". It runs full

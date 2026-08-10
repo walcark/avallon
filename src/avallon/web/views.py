@@ -153,6 +153,28 @@ def home(request):
     return render(request, "home.html", _explorer_context(request))
 
 
+def tags_index(request):
+    """Every tag, with its weight, each leading to its own selection.
+
+    Tags left the home page because there are hundreds of them; this is where
+    they are surveyed instead. Seeing them ranked is also the only way to spot
+    the near-duplicates worth merging, which is what this page is for as much
+    as navigation.
+    """
+    counts = content.tag_counts()
+    return render(
+        request,
+        "tags.html",
+        {
+            "tags": counts,
+            "total": sum(n for _, n in counts),
+            # Alphabetical is the other way one looks for a tag: by name, when
+            # the name is already known.
+            "alphabetical": sorted(counts),
+        },
+    )
+
+
 def explore(request):
     """The explorer fragment alone, for the browser to swap in as you type."""
     return render(request, "_explorer.html", _explorer_context(request))

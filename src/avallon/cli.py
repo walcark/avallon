@@ -93,6 +93,11 @@ def _serve(argv: Sequence[str]) -> int:
         reload=args.reload,
         reload_dirs=[package_dir] if args.reload else None,
         reload_includes=["*.html", "*.css"] if args.reload else None,
+        # The live-reload stream never ends on its own, so a graceful shutdown
+        # waits on a reader's open tab forever: editing a template would hang
+        # the reloader instead of restarting it, and the port stays held by a
+        # worker that no longer serves. Cut the wait short.
+        timeout_graceful_shutdown=3,
     )
     return 0
 
