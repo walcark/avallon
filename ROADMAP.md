@@ -2,6 +2,36 @@
 
 `docs/model.md` holds the content model. This file tracks what ships when.
 
+## v0.2.0, reachable from a phone
+
+The site could be read anywhere and only administered from a terminal. This
+release closes that gap, and pays two debts the first one left.
+
+- [x] **Documents from the browser.** A document is a page whose `file:` is
+      what it is for; uploading one creates that page, and `![[slug]]` shows it
+      inside a note. Two ways in: the creation form, and a button plus
+      drag-and-drop and paste while editing.
+- [x] **The editor takes the screen.** It was capped at the reading measure and
+      kept the page header above it, while the title was being typed in the
+      frontmatter just below.
+- [x] **The past of a page.** The date opens the last five recorded states,
+      grouped into editing sessions, with the file of that same commit.
+- [x] **Links that keep working.** Aliases, `avallon rename`, `check-links` in
+      the pre-commit hook, and a resolution rule where a page bearing a name
+      always beats a page that merely bore it.
+- [x] **Facets by cardinality**, folded on a phone; tags moved to their own
+      page; `chantier` retired as a type, being a status.
+- [x] **A stylesheet that can change again**: the service worker was serving
+      `/static/` cache-first under URLs that never varied.
+
+### Next
+
+- [ ] **The search bar.** The weakest link since the beginning, and the reason
+      it goes unused: matching is too loose (`ALIS` matching a lone `a`).
+- [ ] Renaming and merging tags, now that `/tags/` makes the duplicates visible.
+- [ ] Print stylesheet as a second path to PDF, for a server without
+      LibreOffice.
+
 ## v0.1.0, the first release
 
 The goal is not new features: it is turning a local application into something
