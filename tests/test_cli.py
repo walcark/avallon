@@ -97,3 +97,16 @@ def test_an_unconfigured_install_fails_cleanly(monkeypatch: pytest.MonkeyPatch) 
 
     with pytest.raises(SystemExit, match="No notes repository"):
         cli.main(["repo"])
+
+
+def test_version_says_what_runs_and_what_it_reads(notes: Path, capsys) -> None:
+    """A site behaving like an older one is the hardest thing to diagnose from
+    the outside, and it is nearly always the service not having been restarted
+    or a different tree being read. Both are one line here."""
+    from avallon import cli
+
+    assert cli.main(["version"]) == 0
+
+    out = capsys.readouterr().out
+    assert out.startswith("avallon ")
+    assert str(notes) in out

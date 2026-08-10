@@ -319,6 +319,7 @@ pandoc and LibreOffice there, see [Requirements](#requirements)).
 
 | Command | What it does |
 | --- | --- |
+| `avallon version` | Print the installed version, the module it runs from, and the tree it reads. |
 | `avallon serve` | Run the site (see [Server](#server)). |
 | `avallon init <path\|url>` | Initialize or adopt a notes repository, make it active. |
 | `avallon repo [path]` | Print or switch the active repository. |

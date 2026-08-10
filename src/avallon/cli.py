@@ -22,6 +22,7 @@ from pathlib import Path
 USAGE = """\
 avallon <command> [options]
 
+  version               print the installed version and where it reads from
   serve                 run the site
   init <path|url>       create or adopt a notes repository, and activate it
   repo [path]           print or switch the active repository
@@ -245,6 +246,32 @@ def _language(argv: Sequence[str]) -> int:
     return 0
 
 
+def _version() -> int:
+    """Print what is installed, and what it is looking at.
+
+    A running site that behaves like an older one is the hardest thing to
+    diagnose from the outside, and the answer is almost always that the service
+    was not restarted after an upgrade, or that it reads a different tree. Both
+    are one line each here.
+    """
+    from importlib.metadata import PackageNotFoundError, version
+
+    from avallon.notes import config
+
+    try:
+        installed = version("avallon")
+    except PackageNotFoundError:
+        installed = "(not installed as a package)"
+    print(f"avallon {installed}")
+    print(f"  module : {Path(__file__).resolve().parent}")
+    try:
+        print(f"  notes  : {config.resolve_content_dir()}  ({config.content_source()})")
+    except config.NotConfigured as exc:
+        print(f"  notes  : {exc}")
+    print(f"  lang   : {config.resolve_language()}")
+    return 0
+
+
 def _django(command: list[str]) -> int:
     """Run a Django management command in-process."""
     from django.core.management import execute_from_command_line
@@ -274,6 +301,9 @@ def _dispatch(args: list[str]) -> int:
 
     command, rest = args[0], args[1:]
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "avallon.settings.settings")
+
+    if command in ("version", "--version", "-V"):
+        return _version()
 
     if command == "serve":
         return _serve(rest)
