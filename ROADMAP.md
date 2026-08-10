@@ -24,11 +24,23 @@ filter showed nothing while a dossier's sixteen exhibits were on disk.
 
 ## v0.4.0, not withering
 
+A note site rots two ways: ideas never land because writing them down costs too
+much, and pages pile up half-done with nothing pointing at them again. This
+release is about both, plus the hole that capture opened by making pages cheap.
+
+
 - [x] **Capture**, org-mode fashion: one box from anywhere, a PWA share target
       on a phone, filed `à trier` and handed back to where you were.
 - [x] **`/entretien/`**: what is waiting, read from the tree. Captures to file,
-      open pages stalest first with their remaining tasks, contradictions, and
-      pages nothing cites.
+      anything marked open or still carrying unticked boxes, contradictions,
+      and pages nothing cites.
+- [x] **Deleting a page**, saying first what it strands, and recorded as a
+      commit of its own so it can be brought back.
+- [x] **`/corbeille/`**, a trash read from git rather than a folder of its own,
+      restoring a page with the documents filed under it.
+- [x] **A dead link that offers a way out**: restore the page, or drop the link
+      and keep the words. A target that never existed stays inert.
+- [x] **`avallon version`**, for when a running site behaves like an older one.
 
 ### Next
 
