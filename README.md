@@ -237,9 +237,17 @@ domain, type, tags, date and dossier, which is what "identify a document by the
 folder it is in" amounts to. A result leads to the file itself, not to a page
 about it.
 
-Beside, not below: a subdirectory is where a note keeps what it *uses*
-(`data/`, `__pycache__/`), while what sits next to the index is what it shows.
-Only extensions the site can classify count, so a `.pyc` is never a document.
+At any depth, because depth says nothing about what a file is: a dossier keeps
+its exhibits in `pieces/`, and those are the most document-like things there
+are, while a note keeps its working set in `data/`. The **extension** separates
+them and does the whole job on its own, so no list of folder names has to be
+guessed at: a `.nc` grid and a `.pyc` are not kinds this site knows, and never
+appear. A document is named by its path under its page, so two files of the
+same name in two subfolders stay distinct.
+
+Saved markup (`.html`) is a legitimate exhibit and is served as a **download**,
+never inline: rendered in this site's origin it would run its own scripts as
+part of the site. SVG stays inline, being a kind these notes draw by hand.
 
 Documents stay out of the default listing, which is about pages, and come in
 the moment a **kind** is asked for: that facet counts them at all times, so

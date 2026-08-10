@@ -57,7 +57,25 @@ KIND_BY_EXTENSION = {
     **dict.fromkeys(("png", "jpg", "jpeg", "webp", "svg", "gif", "avif"), "image"),
     "pdf": "pdf",
     **dict.fromkeys(
-        ("txt", "md", "csv", "tsv", "py", "sh", "toml", "yaml", "yml", "json"), "text"
+        (
+            "txt",
+            "md",
+            "csv",
+            "tsv",
+            "py",
+            "sh",
+            "toml",
+            "yaml",
+            "yml",
+            "json",
+            # A saved mail and a saved page are ordinary exhibits in a dispute.
+            # `html` is served as a download, never inline: rendered in this
+            # site's origin it would run its own scripts as part of the site.
+            "eml",
+            "html",
+            "htm",
+        ),
+        "text",
     ),
     **dict.fromkeys(("docx", "xlsx", "pptx", "odt", "ods", "odp"), "office"),
     **dict.fromkeys(("zip", "tar", "gz", "xz", "7z", "rar", "epub"), "archive"),
@@ -202,24 +220,31 @@ class Asset(Page):
 
 
 def assets_of(page: Page) -> list[Asset]:
-    """The documents sitting beside *page*.
+    """The documents filed under *page*, at any depth.
 
-    Beside, not below: a subdirectory is where a note keeps what it *uses*
-    (`data/`, `__pycache__/`), while what sits next to the index is what it
-    shows. That one rule sorted 19 documents from 28 working files here,
-    without a denylist of extensions or folder names to maintain.
+    Depth says nothing about what a file is. A dossier keeps its exhibits in
+    `pieces/`, and those are the most document-like things in the tree; a note
+    keeps its working set in `data/`. The extension is what separates them, and
+    it does the whole job on its own: a `.nc` grid and a `.pyc` are not kinds
+    this site knows, so they never appear, and no list of folder names has to
+    be guessed at or maintained.
 
-    A page's own `file:` is left out: it is already the page.
+    A document's name is its path under the page, so two files called the same
+    thing in two subfolders stay distinct and say where they sit.
+
+    The page's own `file:` is left out: it is already the page.
     """
     directory = CONTENT_DIR / page.relpath
     found = []
-    for entry in sorted(directory.iterdir()):
-        if not entry.is_file() or entry.name in ("index.md", page.file):
+    for entry in sorted(directory.rglob("*")):
+        if not entry.is_file():
             continue
-        suffix = entry.suffix.lstrip(".").lower()
-        if suffix not in KIND_BY_EXTENSION:
-            continue  # not a document: a .pyc, a .nc, whatever a note works with
-        found.append(replace(page, title=entry.name, file=entry.name, summary=""))
+        name = entry.relative_to(directory).as_posix()
+        if name in ("index.md", page.file):
+            continue
+        if entry.suffix.lstrip(".").lower() not in KIND_BY_EXTENSION:
+            continue  # not a document: whatever a note works with
+        found.append(replace(page, title=name, file=name, summary=""))
     return [Asset(**{f.name: getattr(a, f.name) for f in fields(Page)}) for a in found]
 
 

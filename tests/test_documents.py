@@ -270,3 +270,42 @@ def test_a_second_file_of_the_same_name_never_overwrites(tree: Path) -> None:
 
     assert (tree / "science/cr/reunion/s.png").is_file()
     assert (tree / "science/cr/reunion/s-2.png").is_file()
+
+
+def test_depth_says_nothing_about_what_a_file_is(tree: Path) -> None:
+    """A dossier keeps its exhibits in `pieces/`, and those are the most
+    document-like things in the tree; a note keeps its working set in `data/`.
+    The extension separates them, and it does the whole job on its own."""
+    directory = tree / "science/cr/reunion"
+    (directory / "pieces").mkdir()
+    (directory / "pieces" / "pj3-releve.txt").write_text("mesures", encoding="utf-8")
+
+    files = [a.file for a in content.all_assets()]
+
+    assert "pieces/pj3-releve.txt" in files
+    assert not any("grid.nc" in f for f in files)  # still excluded, by extension
+
+
+def test_a_document_is_named_by_its_path_under_the_page(tree: Path) -> None:
+    """Two files of the same name in two subfolders must stay distinct."""
+    directory = tree / "science/cr/reunion"
+    for sub in ("avant", "apres"):
+        (directory / sub).mkdir()
+        (directory / sub / "releve.txt").write_text(sub, encoding="utf-8")
+
+    files = sorted(
+        a.file for a in content.all_assets() if a.file.endswith("releve.txt")
+    )
+
+    assert files == ["apres/releve.txt", "avant/releve.txt"]
+
+
+def test_a_nested_document_leads_to_itself(tree: Path) -> None:
+    directory = tree / "science/cr/reunion"
+    (directory / "pieces").mkdir()
+    (directory / "pieces" / "pj1.pdf").write_bytes(b"%PDF")
+
+    doc = next(a for a in content.all_assets() if a.file == "pieces/pj1.pdf")
+
+    assert doc.url == "/science/cr/reunion/pieces/pj1.pdf"
+    assert Client().get(doc.url).status_code == 200

@@ -44,8 +44,9 @@ def test_a_document_joins_a_dossier_like_any_page(notes: Path) -> None:
 
 
 def test_a_type_this_site_cannot_hold_is_refused(notes: Path) -> None:
-    """An .html served from this origin would run as part of the site."""
-    response = _post(Client(), "page.html", b"<script>alert(1)</script>")
+    """The allowlist is the set of kinds the site can classify; anything else
+    it would neither display, nor filter, nor say a thing about."""
+    response = _post(Client(), "installer.exe", b"MZ\x90\x00")
 
     assert response.status_code == 400
     assert "Unsupported file type" in response.json()["error"]
@@ -143,9 +144,40 @@ def test_a_rejected_document_reports_on_the_form(notes: Path) -> None:
             "tags": "",
             "summary": "",
             "project": "",
-            "file": SimpleUploadedFile("x.html", b"<script>"),
+            "file": SimpleUploadedFile("x.exe", b"MZ"),
         },
     )
 
     assert response.status_code == 200
     assert "Unsupported file type" in response.content.decode()
+
+
+def test_saved_markup_is_handed_over_as_a_download(notes: Path) -> None:
+    """A saved web page is an ordinary exhibit in a dispute, and exactly the
+    kind of file that carries scripts: rendered in this origin they would run
+    as part of the site."""
+    from .conftest import write_page
+
+    write_page(notes, "administratif/recueil/pieces", title="Pièces")
+    (notes / "administratif/recueil/pieces/pj5b.html").write_text(
+        "<script>alert(1)</script>", encoding="utf-8"
+    )
+
+    response = Client().get("/administratif/recueil/pieces/pj5b.html")
+
+    assert response["Content-Disposition"].startswith("attachment")
+    assert response["X-Content-Type-Options"] == "nosniff"
+
+
+def test_a_diagram_is_still_shown_rather_than_downloaded(notes: Path) -> None:
+    """SVG is a kind these notes draw by hand; forcing a download would break
+    every diagram to guard against a file one wrote oneself."""
+    from .conftest import write_page
+
+    write_page(notes, "informatique/fiche/schema", title="Schéma")
+    (notes / "informatique/fiche/schema/onde.svg").write_text("<svg/>", "utf-8")
+
+    response = Client().get("/informatique/fiche/schema/onde.svg")
+
+    # FileResponse always sets the header; what matters is that it says inline.
+    assert not response["Content-Disposition"].startswith("attachment")

@@ -350,7 +350,18 @@ def serve_content(request, relpath):
                 return HttpResponse(
                     blob, content_type=mimetypes.guess_type(target.name)[0] or ""
                 )
-        return FileResponse(open(target, "rb"))
+        response = FileResponse(open(target, "rb"))
+        # Markup served from this origin runs as part of the site, and a saved
+        # web page kept as evidence is exactly the kind of file that carries
+        # scripts. It is handed over as a download instead, and nothing is ever
+        # sniffed into a type it did not declare.
+        response["X-Content-Type-Options"] = "nosniff"
+        # Not SVG: it is a legitimate image kind here, drawn by hand for the
+        # notes and shown in tiles and pages. Forcing a download would break
+        # every diagram to guard against a file one wrote oneself.
+        if target.suffix.lower() in (".html", ".htm", ".xhtml"):
+            response["Content-Disposition"] = f'attachment; filename="{target.name}"'
+        return response
 
     raise Http404("Page not found")
 
