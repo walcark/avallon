@@ -2,6 +2,35 @@
 
 `docs/model.md` holds the content model. This file tracks what ships when.
 
+## v0.3.0, documents without ceremony
+
+Filing a document stopped requiring a page for it. What was there all along
+became visible: 47 files sat beside pages and not one was declared, so the kind
+filter showed nothing while a dossier's sixteen exhibits were on disk.
+
+- [x] **A file beside a page is a document**, at any depth, indexed as it
+      stands. It inherits that page's domain, type, tags, date and dossier, and
+      leads to itself rather than to a page about it.
+- [x] **The kind facet counts them at all times**, being the switch that
+      reveals them; it cannot be derived from a selection that excludes them.
+- [x] Searched by **filename** and by their page's title and tags, never by its
+      body, or a compte rendu would answer with all four of its figures.
+- [x] **Uploading stores the file beside the page** and writes plain Markdown.
+      Promotion to a page of its own remains, for what deserves a title, a date
+      of the document and an identity several notes can cite.
+- [x] **Every document opens in the browser**: text declared as text, saved
+      markup rendered under a sandbox rather than handed over as a download.
+- [x] Four mobile faults, one of which hid the dossier filter outright.
+
+### Next
+
+- [ ] The lightbox for an image opened from the results, rather than a new tab.
+- [ ] Renaming and merging tags, now that `/tags/` makes the duplicates visible.
+- [ ] Print stylesheet as a second path to PDF, for a server without
+      LibreOffice.
+- [ ] `docs/documents.md` is still in French while the rest of the project is
+      in English.
+
 ## v0.2.0, reachable from a phone
 
 The site could be read anywhere and only administered from a terminal. This
@@ -24,13 +53,6 @@ release closes that gap, and pays two debts the first one left.
 - [x] **A stylesheet that can change again**: the service worker was serving
       `/static/` cache-first under URLs that never varied.
 
-### Next
-
-- [ ] **The search bar.** The weakest link since the beginning, and the reason
-      it goes unused: matching is too loose (`ALIS` matching a lone `a`).
-- [ ] Renaming and merging tags, now that `/tags/` makes the duplicates visible.
-- [ ] Print stylesheet as a second path to PDF, for a server without
-      LibreOffice.
 
 ## v0.1.0, the first release
 
