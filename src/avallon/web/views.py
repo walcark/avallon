@@ -58,6 +58,7 @@ def _explorer_context(request):
     )
     membership = content.membership()
 
+    query = request.GET.get("q", "")
     view = request.GET.get("view", "")
     if view not in ("grid", "cards"):
         # Guessed from what was selected: a set of images should not render as
@@ -137,6 +138,7 @@ def _explorer_context(request):
                 "page": page,
                 "project": membership.get(page.relpath),
                 "snippet": selection.snippets.get(page.relpath, ""),
+                "title_html": content.highlight_title(page.title, query),
             }
             for page in selection.pages
         ],

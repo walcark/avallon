@@ -26,6 +26,13 @@ FRENCH: dict[str, str] = {
     "Home": "Accueil",
     # Home page
     "Search the notes…": "Rechercher dans le contenu…",
+    (
+        "Words narrow, and match the start of a word. Best matches first; "
+        "↓ then Enter opens one."
+    ): (
+        "Les mots affinent et correspondent à un début de mot. Les meilleurs "
+        "d'abord ; ↓ puis Entrée en ouvre un."
+    ),
     'Words narrow; "a quoted phrase" must appear as written.': (
         'Les mots affinent ; "une phrase entre guillemets" doit apparaître '
         "telle quelle."

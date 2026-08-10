@@ -25,14 +25,19 @@ cr = "compte rendu"
 """
 
 
-def write_page(root: Path, relpath: str, **frontmatter: str) -> Path:
-    """Create ``<root>/<relpath>/index.md`` with *frontmatter* and return it."""
+def write_page(
+    root: Path, relpath: str, *, body: str = "Du texte.", **frontmatter: str
+) -> Path:
+    """Create ``<root>/<relpath>/index.md`` with *frontmatter* and return it.
+
+    *body* is the page's prose. It matters wherever what is being tested reads
+    the text rather than the metadata, which searching does.
+    """
     page_dir = root / relpath
     page_dir.mkdir(parents=True, exist_ok=True)
     lines = "\n".join(f"{key}: {value}" for key, value in frontmatter.items())
-    body = f"---\n{lines}\n---\n\nDu texte.\n"
     index = page_dir / "index.md"
-    index.write_text(body, encoding="utf-8")
+    index.write_text(f"---\n{lines}\n---\n\n{body}\n", encoding="utf-8")
     return index
 
 

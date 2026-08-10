@@ -1719,3 +1719,16 @@ a.card-project:hover { text-decoration: underline; }
     border-top: 1px solid var(--border);
 }
 .dossier-explore-count { color: var(--muted); font-size: 0.85rem; }
+
+/* A marked term inside a title: the same signal as in the excerpt, weighted
+   down so a title does not turn into a highlighter stroke. */
+.card-title mark, .tile-title mark {
+    background: var(--mark-bg, rgba(255, 214, 0, 0.35));
+    color: inherit;
+    padding: 0 0.1em;
+    border-radius: 0.15em;
+}
+.card-title:focus-visible, .tiles a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}

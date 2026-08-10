@@ -159,19 +159,15 @@ def _recency_key(page: Page) -> str:
 
 
 def _sort_hits(hits: list[SearchHit], query: str = "") -> None:
-    """Order hits: exact runs of the query first, then most recent, then title.
+    """Order hits by relevance, recency breaking ties, then title.
 
-    Someone typing several words often remembers a sentence. Requiring the run
-    would be wrong (adding a word usually means narrowing, not quoting), and
-    ignoring it entirely buries the page they were thinking of, so it ranks
-    instead of filtering. Quotes remain the way to *require* it.
+    Recency used to be the ordering itself, which is right for browsing a tree
+    and wrong for answering a question: the page one was looking for was almost
+    never first. It now only separates pages the score cannot.
     """
     hits.sort(key=lambda h: h.page.title)
     hits.sort(key=lambda h: _recency_key(h.page), reverse=True)
-
-    run = _fold_text(" ".join(query.replace('"', " ").split()))
-    if " " in run:
-        hits.sort(key=lambda h: run not in _fold_text(h.blob))
+    hits.sort(key=lambda h: h.score, reverse=True)
 
 
 @dataclass(frozen=True)
@@ -181,6 +177,7 @@ class SearchHit:
     page: Page
     snippet: str  # safe HTML, matched terms wrapped in <mark>
     blob: str = ""  # the readable text it matched, kept for ranking
+    score: int = 0  # relevance, see the weights above _term_score
 
 
 # --------------------------------------------------------------------------- #
@@ -1514,17 +1511,77 @@ def _fold_text(text: str) -> str:
     return text.translate(_FOLD_TABLE)
 
 
+# What counts as being inside a word. Everything else is a boundary, so
+# "thinkpad" is found in "x1-thinkpad" and "2019" in "alis-2019.pdf".
+_WORD_CHAR = r"[^\W_]"
+_NOT_WORD = rf"(?<!{_WORD_CHAR})"
+
+
+def _term_regex(folded_term: str) -> str:
+    """A folded term as a regex matching it at the *start of a word*.
+
+    Prefix, not substring: "alis" stopped matching "pénalise", which is what
+    made a four-letter query return half the tree. Prefix rather than whole
+    word, because the query is retyped on every keystroke and "garant" has to
+    keep finding "garantie" while it is being typed. French plurals come free
+    with it, "batterie" finding "batteries".
+
+    Inside a phrase the boundary is applied to each word, so "garantie legale"
+    matches "garantie légale" but never "garanties légalement" mid-word.
+    """
+    words = folded_term.split()
+    if not words:
+        return ""
+    # A phrase can be broken by a line wrap: the file has a newline where the
+    # flattened text reads as one space.
+    return r"\s+".join(_NOT_WORD + re.escape(w) for w in words)
+
+
 def _term_pattern(terms: list[str]) -> re.Pattern[str] | None:
     """Compile the folded *terms* into one alternation, longest first so that
     overlapping terms mark the widest span at each position."""
     folded = sorted({_fold_text(t) for t in terms if t.strip()}, key=len, reverse=True)
-    if not folded:
+    patterns = [r for r in (_term_regex(f) for f in folded) if r]
+    if not patterns:
         return None
-    return re.compile("|".join(re.escape(t) for t in folded))
+    return re.compile("|".join(patterns))
+
+
+def _term_matches(folded_text: str, folded_term: str) -> bool:
+    """Whether *folded_term* starts a word somewhere in *folded_text*."""
+    regex = _term_regex(folded_term)
+    return bool(regex) and re.search(regex, folded_text) is not None
+
+
+_IS_WORD_CHAR = re.compile(_WORD_CHAR)
+
+
+def _field_hits(folded_text: str, folded_term: str) -> tuple[int, bool]:
+    """How often *folded_term* starts a word in *folded_text*, and whether it
+    ever ends one too.
+
+    One scan answers both questions. Asking them separately meant three passes
+    over a page's body per term, which is what a one-letter query pays on every
+    page of the tree.
+    """
+    regex = _term_regex(folded_term)
+    if not regex:
+        return 0, False
+    count = 0
+    whole = False
+    for match in re.finditer(regex, folded_text):
+        count += 1
+        after = folded_text[match.end() : match.end() + 1]
+        whole = whole or not (after and _IS_WORD_CHAR.match(after))
+    return count, whole
 
 
 def _highlight(
-    text: str, terms: list[str], width: int = 220, folded: str | None = None
+    text: str,
+    terms: list[str],
+    width: int = 150,
+    folded: str | None = None,
+    whole: bool = False,
 ) -> str:
     """Return a safe-HTML excerpt of *text* centered on the first matched term,
     with every occurrence of every term wrapped in <mark>. Matching ignores case
@@ -1542,11 +1599,11 @@ def _highlight(
     if pattern is not None:
         spans = [(m.start(), m.end()) for m in pattern.finditer(folded)]
 
-    if spans:
+    if spans and not whole:
         start = max(0, spans[0][0] - width // 3)
     else:
         start = 0
-    end = min(len(text), start + width)
+    end = len(text) if whole else min(len(text), start + width)
 
     out: list[str] = []
     cursor = start
@@ -1583,7 +1640,55 @@ def _plain_text(markdown: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def _hit_for(index_md: Path, terms: list[str]) -> SearchHit | None:
+# What a term is worth, by the strongest field it appears in. A page whose
+# *title* is the query used to rank behind any page merely mentioning it in
+# passing, because the only ordering was recency: that, more than the noise, is
+# what made the search bar unusable. The exact figures matter less than the
+# order of the tiers, and this table is the whole rule.
+_W_TITLE_WORD = 100
+_W_TITLE_PREFIX = 70
+_W_TAG = 60
+_W_SUMMARY = 35
+_W_BODY_WORD = 20
+_W_BODY_PREFIX = 12
+_W_BODY_REPEAT = 2  # per extra occurrence
+_W_BODY_REPEAT_CAP = 10
+_W_RUN = 80  # every term, in the order typed, contiguous
+_W_RUN_IN_TITLE = 160
+
+
+def _term_score(term: str, fields: dict[str, str]) -> int:
+    """What *term* is worth on one page, by the strongest field it reaches."""
+    folded = _fold_text(term)
+    count, whole = _field_hits(fields["title"], folded)
+    if count:
+        return _W_TITLE_WORD if whole else _W_TITLE_PREFIX
+    if _term_matches(fields["tags"], folded):
+        return _W_TAG
+    if _term_matches(fields["summary"], folded):
+        return _W_SUMMARY
+    count, whole = _field_hits(fields["body"], folded)
+    if not count:
+        return 0
+    base = _W_BODY_WORD if whole else _W_BODY_PREFIX
+    # A long page must not win by repetition alone, hence the cap.
+    return base + min((count - 1) * _W_BODY_REPEAT, _W_BODY_REPEAT_CAP)
+
+
+def _score(terms: list[str], fields: dict[str, str], run: str) -> int:
+    """The page's relevance for *terms*, plus the bonus for the whole run."""
+    total = sum(_term_score(term, fields) for term in terms)
+    if run and " " in run:
+        if _term_matches(fields["title"], run):
+            total += _W_RUN_IN_TITLE
+        elif _term_matches(fields["body"], run) or _term_matches(
+            fields["summary"], run
+        ):
+            total += _W_RUN
+    return total
+
+
+def _hit_for(index_md: Path, terms: list[str], run: str = "") -> SearchHit | None:
     """Build a SearchHit for *index_md*, or None unless *every* term is present
     in the readable text (AND semantics). The snippet is always drawn from the
     Markdown body turned into plain text (plus the searchable metadata), so it
@@ -1592,22 +1697,52 @@ def _hit_for(index_md: Path, terms: list[str]) -> SearchHit | None:
     page = _page_from(index_md, post)
     if not is_visible(page):
         return None
-    blob = "\n".join(
-        [_plain_text(post.content), page.title, page.summary, " ".join(page.tags)]
-    )
+    body = _plain_text(post.content)
+    blob = "\n".join([body, page.title, page.summary, " ".join(page.tags)])
     folded = _fold_text(blob)
-    if not all(_fold_text(t) in folded for t in terms):
+    if not all(_term_matches(folded, _fold_text(t)) for t in terms):
         return None
+    fields = {
+        "title": _fold_text(page.title),
+        "tags": _fold_text(" ".join(page.tags)),
+        "summary": _fold_text(page.summary),
+        "body": _fold_text(body),
+    }
     return SearchHit(
-        page=page, snippet=_highlight(blob, terms, folded=folded), blob=blob
+        page=page,
+        snippet=_highlight(blob, terms, folded=folded),
+        blob=blob,
+        score=_score(terms, fields, run),
     )
+
+
+def highlight_title(title: str, query: str) -> str:
+    """*title* with the query's terms marked, as safe HTML.
+
+    A result whose title matched now ranks first, so it has to be visible that
+    it did: without this the only evidence was an excerpt drawn from the body,
+    which is the one place the match may not be.
+    """
+    terms = parse_query(query)
+    if not terms:
+        return html.escape(title)
+    # Whole, never an excerpt: a title centred on its match came out as
+    # "… ntretien avec le banquier", which reads as a bug rather than as a
+    # match. An excerpt is for a body, where there is more text than room.
+    return _highlight(title, terms, whole=True)
+
+
+def _run_of(query: str) -> str:
+    """The query as one contiguous run, which contiguity is rewarded for."""
+    return " ".join(query.replace('"', " ").split())
 
 
 def _search_python(terms: list[str], query: str = "") -> list[SearchHit]:
     """Dependency-free fallback used when ripgrep is unavailable."""
     hits = []
+    run = _run_of(query)
     for index_md in sorted(CONTENT_DIR.glob(_PAGE_GLOB)):
-        hit = _hit_for(index_md, terms)
+        hit = _hit_for(index_md, terms, run)
         if hit is not None:
             hits.append(hit)
     _sort_hits(hits, query)
@@ -1667,9 +1802,18 @@ def parse_query(query: str) -> list[str]:
     sequence, which is what someone means when they remember a sentence.
     """
     phrases = [m.group(1).strip() for m in _QUOTED.finditer(query)]
-    phrases = [p for p in phrases if p]
     rest = _QUOTED.sub(" ", query)
-    return phrases + rest.split()
+    # A quote still open is a phrase being typed. Treating it as a literal
+    # character meant nothing matched until it was closed, so a phrase search
+    # showed an empty page for as long as it took to type one: the reason
+    # quotes felt heavy enough to avoid.
+    opening = rest.find('"')
+    if opening != -1:
+        trailing = rest[opening + 1 :].strip()
+        rest = rest[:opening]
+        if trailing:
+            phrases.append(trailing)
+    return [p for p in phrases if p] + rest.split()
 
 
 def _shortlist_term(terms: list[str]) -> str:
@@ -1716,6 +1860,7 @@ def search(query: str) -> list[SearchHit]:
         return _search_python(terms, query)
 
     hits = []
+    run = _run_of(query)
     for line in proc.stdout.splitlines():
         path = Path(line)
         try:
@@ -1724,7 +1869,7 @@ def search(query: str) -> list[SearchHit]:
             continue
         if len(rel.parts) != 3 or path.name != "index.md":
             continue  # ignore anything outside the <domaine>/<type>/<slug> shape
-        hit = _hit_for(path, terms)
+        hit = _hit_for(path, terms, run)
         if hit is not None:
             hits.append(hit)
     _sort_hits(hits, query)

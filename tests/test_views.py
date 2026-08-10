@@ -90,7 +90,7 @@ def test_facets_and_text_narrow_the_same_selection(dossier: Path) -> None:
         .get("/search/", {"domain": "administratif", "q": "Mail"})
         .content.decode()
     )
-    assert "Mail du 01/08" in narrowed
+    assert "/administratif/cr/mail-du-01-08/" in narrowed
     # Same filter, fewer results. Counted on the cards: a dossier's title also
     # appears under the pages that belong to it.
     assert narrowed.count('class="card-title"') < filtered.count('class="card-title"')
@@ -102,7 +102,10 @@ def test_the_explorer_fragment_is_what_the_page_embeds(dossier: Path) -> None:
 
     assert "<html" not in fragment
     assert 'class="facets"' in fragment
-    assert "Mail du 01/08" in fragment
+    # Highlighted, the title's plain text is broken by <mark>: the URL is what
+    # says a result is there.
+    assert "/administratif/cr/mail-du-01-08/" in fragment
+    assert "<mark>Mail</mark>" in fragment
 
 
 def test_a_facet_that_cannot_divide_anything_is_not_shown(dossier: Path) -> None:

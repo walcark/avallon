@@ -362,6 +362,35 @@ on a timer so pages written on another device show up without a restart.
 
 ## Finding things again
 
+### Search
+
+A term matches **at the start of a word**, not anywhere inside one. That is the
+difference between `ALIS` finding one page and finding twenty, half of them for
+`pénalise`; and matching a prefix rather than a whole word is what lets a query
+narrow while it is being typed, and finds `batteries` from `batterie`.
+
+Results are ranked by **where the terms matched**, not by date. A term is worth
+what its strongest field is worth:
+
+| Where it matched | Weight |
+| --- | --- |
+| The title, as a whole word | highest |
+| The title, as a prefix | high |
+| A tag | high |
+| The summary | medium |
+| The body | low, with a capped bonus for repetition |
+
+A page carrying every term **in the order typed, contiguously** gets a bonus,
+double when that run is in the title. Recency only separates pages the score
+cannot. Before this, ordering was recency alone, so a page whose title *was*
+the query routinely lost to one mentioning it in passing, which is why the
+search bar went unused.
+
+Quotes still *require* a phrase, and an unclosed one searches the phrase typed
+so far, so results appear while it is being written.
+
+
+
 The home page is one **selection**, not a listing with a search box beside it.
 Facets and text narrow the same set, and the URL says what is on screen:
 
