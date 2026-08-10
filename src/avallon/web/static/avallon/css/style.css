@@ -1714,3 +1714,15 @@ a.card-project:hover { text-decoration: underline; }
     text-decoration: none;
 }
 .brand-sub:hover { color: var(--accent); }
+
+/* The way into the explorer, scoped to this dossier. Set apart from the prose
+   it follows, since it is a control and not a conclusion. */
+.dossier-explore {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin: 2rem 0 0;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+}
+.dossier-explore-count { color: var(--muted); font-size: 0.85rem; }

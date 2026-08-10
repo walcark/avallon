@@ -62,3 +62,21 @@ def test_the_panel_opens_itself_when_something_is_filtered(notes: Path) -> None:
     assert '<details class="facet-panel" id="facetPanel">' in plain
     assert 'id="facetPanel" open>' in filtered
     assert '<span class="facet-count">1</span>' in filtered
+
+
+def test_a_dossier_page_offers_its_own_explorer(notes: Path) -> None:
+    """The prose stays; what was missing was the other way in."""
+    _tree(notes)
+
+    body = Client().get("/administratif/recueil/dossier-a/").content.decode()
+
+    assert 'href="/?dossier=dossier-a"' in body
+
+
+def test_a_member_page_does_not(notes: Path) -> None:
+    """It is not the index, and its sidebar already lists the dossier."""
+    _tree(notes)
+
+    body = Client().get("/administratif/fiche/note-0/").content.decode()
+
+    assert "dossier-explore" not in body

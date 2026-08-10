@@ -198,6 +198,17 @@
             </div>
         </div>
 
+        {% if dossier and page.relpath == dossier.index.relpath %}
+        <!-- A dossier page keeps its prose: the sidebar already lists the
+             members, and what an index cannot give is where the dossier stands
+             and what to do next. What it lacked was the other way in, since a
+             dossier is only ever a part of the whole the site forms. -->
+        <p class="dossier-explore">
+            <a class="btn" href="/?dossier={{ page.slug|urlencode }}">{{ "Explore this dossier"|t }}</a>
+            <span class="dossier-explore-count">{{ dossier.members|length }} {% if dossier.members|length > 1 %}{{ "pages"|t }}{% else %}{{ "page"|t }}{% endif %}</span>
+        </p>
+        {% endif %}
+
         {% if backlinks %}
         <aside class="backlinks">
             <h2>{{ "Cited by"|t }}</h2>
