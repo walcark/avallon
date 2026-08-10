@@ -16,6 +16,7 @@ urlpatterns = [
     path("tags/", views.tags_index, name="tags"),
     path("entretien/", views.upkeep, name="upkeep"),
     path("capture/", views.capture, name="capture"),
+    path("delete/", views.delete_page, name="delete"),
     path("history/", views.page_history, name="history"),
     path("thumb/<path:relpath>/", views.thumbnail, name="thumbnail"),
     path("manifest.webmanifest", views.manifest, name="manifest"),

@@ -566,6 +566,29 @@ def safe_filename(name: str) -> str:
     return f"{stem}.{suffix}"
 
 
+def delete_page(relpath: str) -> None:
+    """Remove the page at *relpath*, and everything filed under it.
+
+    `git rm` when the notes are a repository, so the page stays in the history
+    and a deletion is undoable: that is what makes this button safe to offer at
+    all. A plain removal otherwise, which is the same outcome for a tree that
+    is not versioned.
+    """
+    target = safe_resolve(relpath)
+    if not (target / "index.md").is_file():
+        raise InvalidPage(f"Page not found: {relpath}")
+
+    removed = subprocess.run(
+        ["git", "-C", str(CONTENT_DIR), "rm", "-r", "-q", "--", str(target)],
+        capture_output=True,
+        text=True,
+    )
+    if removed.returncode != 0:
+        # Not a repository, or the page was never tracked: the file has to go
+        # either way, and the caller's commit will simply have nothing to say.
+        shutil.rmtree(target, ignore_errors=True)
+
+
 def attach_file(relpath: str, filename: str, data: bytes) -> Asset:
     """Store *data* beside the page at *relpath*, and return it as a document.
 

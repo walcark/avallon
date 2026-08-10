@@ -1802,3 +1802,12 @@ a.card-project:hover { text-decoration: underline; }
     background: var(--warn-bg);
     color: var(--warn-ink);
 }
+
+/* Set apart from the editor's other actions: it is the one that does not undo
+   itself, even if git keeps the page. */
+.btn-danger {
+    margin-left: auto;
+    border-color: var(--danger, #b3261e);
+    color: var(--danger, #b3261e);
+}
+.btn-danger:hover { background: var(--danger, #b3261e); color: #fff; }

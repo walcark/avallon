@@ -84,6 +84,20 @@ FRENCH: dict[str, str] = {
     "All tags": "Tous les tags",
     "Upkeep": "Entretien",
     "Capture": "Capture",
+    "Delete": "Supprimer",
+    "Delete this page": "Supprimer cette page",
+    "Deleting…": "Suppression…",
+    "Deleting failed (network).": "Échec de la suppression (réseau).",
+    "Delete this page and the documents filed under it?": (
+        "Supprimer cette page et les documents classés dessous ?"
+    ),
+    "pages link to it and will no longer resolve.": (
+        "pages la citent et ne résoudront plus."
+    ),
+    "pages name it as their dossier.": ("pages la désignent comme leur dossier."),
+    "It stays in the history and can be restored.": (
+        "Elle reste dans l'historique et peut être restaurée."
+    ),
     "Note": "Note",
     "Write it down now, decide where it belongs later.": (
         "Écris-le maintenant, tu décideras plus tard où ça va."

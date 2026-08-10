@@ -479,6 +479,19 @@ A tag still narrows the same selection as any facet (`/?tag=banque`), and the
 tag facet reappears on the home page as soon as one is active, so a selection
 reached from a tag link can be undone.
 
+### Deleting a page
+
+Capture makes pages cheap to create, so they have to be cheap to undo. The
+editor's **Delete** removes the page and everything filed under it, after
+saying what it strands: how many pages link to it, and how many name it as
+their dossier.
+
+It is recorded as a commit of its own, never folded into the batch that may
+have just created the page: otherwise a note captured and deleted minutes apart
+would be created and removed inside one amended commit, existing in no recorded
+state, and "it can be brought back" would be false exactly when it matters
+most. `git show HEAD~1:<path>/index.md` is how it comes back.
+
 ## Not withering
 
 Two things make a personal wiki rot: ideas that never land because writing them

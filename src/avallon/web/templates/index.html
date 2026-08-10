@@ -195,6 +195,13 @@
                     </select>
                     <button type="button" class="btn" id="moveBtn">{{ "Move"|t }}</button>
                 </div>
+                <!-- Capture makes pages cheap to create, so they have to be
+                     cheap to undo. Set apart from the rest, and it says what
+                     it breaks before breaking it. -->
+                <button type="button" class="btn btn-danger" id="deleteBtn"
+                        data-backlinks="{{ backlinks|length }}"
+                        data-members="{{ dossier.members|length|default:0 }}"
+                        title="{{ "Delete this page"|t }}">{{ "Delete"|t }}</button>
             </div>
         </div>
 
@@ -619,6 +626,33 @@
           editor.hidden ? openEditor() : closeEditor();
         });
         document.getElementById('editorSave').addEventListener('click', save);
+
+        // --- Deleting ---------------------------------------------------------
+        // Recorded as a commit, so the page stays in the history and can be
+        // brought back. What it strands is said first, because a count of
+        // pages that will lose a link is the one thing worth pausing over.
+        document.getElementById('deleteBtn').addEventListener('click', function () {
+          const el = document.getElementById('deleteBtn');
+          const cites = Number(el.dataset.backlinks || 0);
+          const members = Number(el.dataset.members || 0);
+          let warning = '{{ "Delete this page and the documents filed under it?"|t|escapejs }}';
+          if (cites) warning += '\n\n' + cites + ' {{ "pages link to it and will no longer resolve."|t|escapejs }}';
+          if (members) warning += '\n\n' + members + ' {{ "pages name it as their dossier."|t|escapejs }}';
+          warning += '\n\n{{ "It stays in the history and can be restored."|t|escapejs }}';
+          if (!confirm(warning)) return;
+          say('{{ "Deleting…"|t|escapejs }}');
+          fetch('/delete/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+            body: JSON.stringify({ path: RELPATH }),
+          })
+            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+            .then(function (res) {
+              if (!res.ok) { say(res.d.error, 'error'); return; }
+              location.href = res.d.url;
+            })
+            .catch(function () { say('{{ "Deleting failed (network)."|t|escapejs }}', 'error'); });
+        });
 
         // --- Documents -------------------------------------------------------
         // A file dropped, pasted or picked becomes a page of its own, and the

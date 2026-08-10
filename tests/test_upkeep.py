@@ -209,3 +209,58 @@ def test_a_page_its_dossier_lists_is_not_adrift(notes: Path) -> None:
     write_page(notes, "administratif/fiche/membre", title="Membre", project="dossier")
 
     assert [p.slug for p in content.orphans()] == ["dossier"]
+
+
+def test_a_page_can_be_deleted_with_everything_under_it(notes: Path) -> None:
+    """Capture makes pages cheap to create, so they have to be cheap to undo."""
+    write_page(notes, "informatique/fiche/jetable", title="Jetable")
+    (notes / "informatique/fiche/jetable/piece.pdf").write_bytes(b"%PDF")
+
+    response = Client().post(
+        "/delete/",
+        data='{"path": "informatique/fiche/jetable"}',
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert not (notes / "informatique/fiche/jetable").exists()
+
+
+def test_deleting_says_what_it_strands(notes: Path) -> None:
+    """A count of pages about to lose a link is the one thing worth a pause."""
+    write_page(notes, "informatique/fiche/cible", title="Cible")
+    write_page(notes, "informatique/fiche/citer", title="Citer", body="[[cible]]")
+    write_page(notes, "informatique/fiche/membre", title="Membre", project="cible")
+
+    payload = (
+        Client()
+        .post(
+            "/delete/",
+            data='{"path": "informatique/fiche/cible"}',
+            content_type="application/json",
+        )
+        .json()
+    )
+
+    assert payload["stranded"] == ["Citer"]
+    assert payload["members"] == ["Membre"]
+
+
+def test_deleting_a_page_that_is_not_there_is_refused(notes: Path) -> None:
+    response = Client().post(
+        "/delete/",
+        data='{"path": "informatique/fiche/fantome"}',
+        content_type="application/json",
+    )
+
+    assert response.status_code == 404
+
+
+def test_a_delete_cannot_reach_outside_the_tree(notes: Path) -> None:
+    response = Client().post(
+        "/delete/",
+        data='{"path": "../../etc"}',
+        content_type="application/json",
+    )
+
+    assert response.status_code == 404

@@ -534,7 +534,7 @@ def _editable_page(relpath: str):
     return index_md
 
 
-def _commit_page(relpath: str, action: str = "edit") -> bool:
+def _commit_page(relpath: str, action: str = "edit", *, fold: bool = True) -> bool:
     """Commit the saved page, then push in the background. Returns whether a
     commit was made.
 
@@ -547,7 +547,9 @@ def _commit_page(relpath: str, action: str = "edit") -> bool:
     if not sync.is_repo_root(content_dir):
         return False  # not its own repo (dev fallback): saving stays unversioned
     committed, _ = sync.commit_scoped(
-        content_dir, f"{action} {relpath}", window=sync.sync_window()
+        content_dir,
+        f"{action} {relpath}",
+        window=sync.sync_window() if fold else 0,
     )
     if committed:
         sync.spawn_flush(content_dir)
@@ -774,6 +776,42 @@ def upload_document(request):
             "snippet": f"![[{page.slug}]]",
         }
     )
+
+
+@require_POST
+def delete_page(request):
+    """Remove a page, its documents, and its place in the tree.
+
+    Offered because capture makes pages cheap to create, and anything cheap to
+    create has to be cheap to undo. It is recorded as a commit rather than
+    quietly unlinked, so the page is still in the history and can be brought
+    back; the browser is told what it broke on the way out.
+    """
+    if not may_edit(request):
+        raise Http404("Editing unavailable")
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Unreadable request."}, status=400)
+
+    relpath = str(payload.get("path", ""))
+    index_md = _editable_page(relpath)
+    page = content.load_page(index_md)
+    # Counted before the page goes, since afterwards there is nothing to ask.
+    stranded = [p.title for p in content.backlinks(page)]
+    members = [p.title for p in content.project_members(page)]
+
+    try:
+        content.delete_page(relpath)
+    except content.InvalidPage as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
+    # Never folded into the open batch. A page captured and deleted minutes
+    # apart would otherwise be created and removed inside one amended commit,
+    # so it would exist in no recorded state and the promise that it can be
+    # brought back would be false exactly when it matters most.
+    _commit_page(relpath, action="delete", fold=False)
+    return JsonResponse({"stranded": stranded, "members": members, "url": "/"})
 
 
 @require_POST
