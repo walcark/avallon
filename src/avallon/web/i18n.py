@@ -90,6 +90,15 @@ FRENCH: dict[str, str] = {
     "Filters": "Filtres",
     "All": "Tous",
     "Explore this dossier": "Explorer ce dossier",
+    "Existing dossiers": "Dossiers existants",
+    "Start a dossier on…": "Ouvrir un dossier sur…",
+    (
+        "A dossier is nothing but a page others point at: naming one here "
+        "is what starts it."
+    ): (
+        "Un dossier n'est qu'une page que d'autres désignent : en nommer "
+        "une ici, c'est l'ouvrir."
+    ),
     "Search a dossier…": "Chercher un dossier…",
     "Download the file": "Télécharger le fichier",
     "Download as PDF": "Télécharger en PDF",

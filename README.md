@@ -399,6 +399,14 @@ cache-first, offline and instantly, while an upgrade still shows up on the next
 load. Pages themselves are fetched network-first: a note that changed on
 another device is worse stale than slow.
 
+### Starting a dossier
+
+A dossier is not declared anywhere and has no type of its own: **a page becomes
+one the moment another page names it** in `project:`. So starting a dossier is
+picking, in the creation form's *Dossier* field, the page that will index it.
+The field offers existing dossiers first and every other page after them, which
+is what makes the first dossier possible without editing frontmatter by hand.
+
 ### Tags
 
 Tags are not on the home page: there are hundreds of them, and a facet listing

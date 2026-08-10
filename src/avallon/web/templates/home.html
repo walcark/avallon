@@ -52,9 +52,22 @@
               explorer.innerHTML = html;
               const fresh = document.getElementById('facetPanel');
               if (fresh && wasOpen !== null) fresh.open = wasOpen;
+              else foldFacets();
             })
             .catch(() => {});
         }
+
+        // Folding is a small-screen affordance and the viewport is only known
+        // here. Never folded over a filter already in force: a hidden panel
+        // must not be able to hide that something is being filtered.
+        const narrow = window.matchMedia('(max-width: 760px)');
+        function foldFacets() {
+          const panel = document.getElementById('facetPanel');
+          if (!panel) return;
+          panel.open = !narrow.matches || panel.dataset.active !== '0';
+        }
+        foldFacets();
+        narrow.addEventListener('change', foldFacets);
 
         let timer = null;
         input.addEventListener('input', function () {

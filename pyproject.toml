@@ -1,6 +1,6 @@
 [project]
 name = "avallon"
-version = "0.1.0"
+version = "0.2.0"
 description = "A personal note site backed by a git repository of Markdown"
 readme = "README.md"
 requires-python = ">= 3.11"

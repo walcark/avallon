@@ -450,8 +450,12 @@ def new_page(request):
             "error": error,
             # Existing tags, offered as clickable chips so they get reused
             "known_tags": content.all_tags(),
-            # Existing projects, so a new page can join a dossier at birth.
+            # Existing dossiers, so a new page can join one at birth, and
+            # every other page after them: a dossier is not declared anywhere,
+            # a page *becomes* one the moment another names it. Without the
+            # second group the first dossier could never be created here.
             "projects": content.all_projects(),
+            "candidates": content.dossier_candidates(),
         },
     )
 

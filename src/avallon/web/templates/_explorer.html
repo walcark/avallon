@@ -6,7 +6,8 @@
      before a single result appeared. The summary carries the count, so a
      folded panel never hides that something is being filtered. Open by default
      once anything is active, and always open on a wide screen (CSS). -->
-<details class="facet-panel" id="facetPanel"{% if active_count %} open{% endif %}>
+<details class="facet-panel" id="facetPanel" open
+         data-active="{{ active_count }}">
     <summary class="facet-summary">
         {{ "Filters"|t }}{% if active_count %} <span class="facet-count">{{ active_count }}</span>{% endif %}
     </summary>

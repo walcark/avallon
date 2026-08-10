@@ -1436,14 +1436,7 @@ html:has(.page.is-editing) { overflow: hidden; }
     text-align: center;
 }
 @media (max-width: 760px) {
-    .facet-panel > summary { display: block; }
-    /* Closed on a phone unless something is being filtered: the element is
-       rendered with `open` only when a facet is active. */
-    .facet-panel:not([open]) .facets { display: none; }
-}
-@media (min-width: 761px) {
-    /* Never foldable where there is room, whatever the attribute says. */
-    .facet-panel .facets { display: flex !important; }
+    .facet-panel > summary { display: block; margin-bottom: 0.75rem; }
 }
 .facet-label {
     font-size: 0.78rem;

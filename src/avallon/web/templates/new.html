@@ -56,7 +56,6 @@
             </p>
         </div>
 
-        {% if projects %}
         <div class="form-row">
             <label for="f-project">{{ "Dossier"|t }}</label>
             <!-- A project is an ordinary page, so joining one is naming it.
@@ -64,17 +63,28 @@
                  note it merely cites stays out and is linked with [[…]]. -->
             <select id="f-project" name="project">
                 <option value="">{{ "None"|t }}</option>
-                {% for p in projects %}
-                <option value="{{ p.slug }}" {% if form.project == p.slug %}selected{% endif %}>{{ p.title }}</option>
-                {% endfor %}
+                {% if projects %}
+                <optgroup label="{{ "Existing dossiers"|t }}">
+                    {% for p in projects %}
+                    <option value="{{ p.slug }}" {% if form.project == p.slug %}selected{% endif %}>{{ p.title }}</option>
+                    {% endfor %}
+                </optgroup>
+                {% endif %}
+                {% if candidates %}
+                <optgroup label="{{ "Start a dossier on…"|t }}">
+                    {% for p in candidates %}
+                    <option value="{{ p.slug }}" {% if form.project == p.slug %}selected{% endif %}>{{ p.title }}</option>
+                    {% endfor %}
+                </optgroup>
+                {% endif %}
             </select>
             <p class="form-hint">
                 {{ "Fill this in if the page will be"|t }}
                 <b>{{ "archived with the dossier"|t }}</b>.
                 {{ "A reusable note stays outside, merely cited."|t }}
+                {{ "A dossier is nothing but a page others point at: naming one here is what starts it."|t }}
             </p>
         </div>
-        {% endif %}
 
         <div class="form-row">
             <label for="f-tags">{{ "Tags"|t }}</label>

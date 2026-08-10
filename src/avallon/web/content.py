@@ -884,6 +884,20 @@ def tag_counts() -> list[tuple[str, int]]:
     return sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
 
 
+def dossier_candidates() -> list[Page]:
+    """Pages that are not dossiers yet but could become one, by title.
+
+    Being a dossier is not declared: a page acquires it when another page names
+    it in `project:`. So every page is a candidate, and offering them is what
+    makes a *first* dossier possible without editing frontmatter by hand.
+    """
+    already = {page.relpath for page in all_projects()}
+    return sorted(
+        (page for page in all_pages() if page.relpath not in already),
+        key=lambda p: p.title,
+    )
+
+
 def backlinks(target: Page) -> list[Page]:
     """Visible pages whose body cites *target* with a [[wikilink]].
 
