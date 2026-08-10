@@ -153,6 +153,8 @@
             </a>
             {% elif page.kind == "pdf" %}
             <embed src="{{ page.file_url }}" type="application/pdf">
+            {% elif file_text %}
+            <pre class="attachment-text">{{ file_text }}</pre>
             {% endif %}
             <p class="attachment-meta">
                 <a class="btn" href="{{ page.file_url }}" download>{{ "Download"|t }}</a>
@@ -172,6 +174,13 @@
                       aria-label="{{ "Markdown source of the page"|t }}"></textarea>
             <div class="editor-bar">
                 <button type="button" class="btn" id="editorSave">{{ "Save"|t }}</button>
+                <!-- Referencing a document is creating a page for it, so this
+                     uploads, files it, and writes the reference at the caret.
+                     Dropping a file on the text area does the same. -->
+                <button type="button" class="btn" id="docBtn"
+                        title="{{ "Drop a file here, or paste one"|t }}">{{ "Add a document"|t }}</button>
+                <input type="file" id="docInput" hidden
+                       aria-label="{{ "Add a document"|t }}">
                 <span class="editor-status" id="editorStatus" role="status"></span>
                 <!-- Re-file the page under another domain/type: the directory
                      moves on disk and the browser follows the new URL. -->
@@ -599,6 +608,73 @@
           editor.hidden ? openEditor() : closeEditor();
         });
         document.getElementById('editorSave').addEventListener('click', save);
+
+        // --- Documents -------------------------------------------------------
+        // A file dropped, pasted or picked becomes a page of its own, and the
+        // note gets a reference to it. The file therefore lives in one place
+        // however many notes show it, and it is findable on its own.
+        const docInput = document.getElementById('docInput');
+        const docBtn = document.getElementById('docBtn');
+
+        function insertAtCaret(text) {
+          const start = textarea.selectionStart;
+          const end = textarea.selectionEnd;
+          textarea.value = textarea.value.slice(0, start) + text + textarea.value.slice(end);
+          textarea.selectionStart = textarea.selectionEnd = start + text.length;
+          textarea.focus();
+        }
+
+        function upload(file) {
+          if (!file) return;
+          say('{{ "Sending…"|t|escapejs }}');
+          const body = new FormData();
+          body.append('file', file);
+          body.append('domain', '{{ page.domain|escapejs }}');
+          // Named after the file; the title is editable on the page itself.
+          fetch('/upload/', { method: 'POST', body: body, headers: { 'X-CSRFToken': csrf() } })
+            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+            .then(function (res) {
+              if (!res.ok) { say(res.d.error, 'error'); return; }
+              insertAtCaret(res.d.snippet);
+              say('{{ "Document added"|t|escapejs }}', 'ok');
+            })
+            .catch(function () { say('{{ "Sending failed (network)."|t|escapejs }}', 'error'); });
+        }
+
+        docBtn.addEventListener('click', function () { docInput.click(); });
+        docInput.addEventListener('change', function () {
+          upload(docInput.files[0]);
+          docInput.value = '';  // so picking the same file twice still fires
+        });
+
+        // Dropping needs both handlers: without preventing dragover, the
+        // browser navigates to the file instead of handing it over.
+        textarea.addEventListener('dragover', function (e) {
+          e.preventDefault();
+          textarea.classList.add('is-dropping');
+        });
+        textarea.addEventListener('dragleave', function () {
+          textarea.classList.remove('is-dropping');
+        });
+        textarea.addEventListener('drop', function (e) {
+          e.preventDefault();
+          textarea.classList.remove('is-dropping');
+          if (e.dataTransfer.files.length) upload(e.dataTransfer.files[0]);
+        });
+
+        // Pasting a screenshot: the clipboard carries it as a file with no
+        // name, so give it one rather than letting it be "image.png" forever.
+        textarea.addEventListener('paste', function (e) {
+          const item = Array.from(e.clipboardData.items).find(function (i) {
+            return i.kind === 'file';
+          });
+          if (!item) return;  // ordinary text paste, leave it alone
+          e.preventDefault();
+          const file = item.getAsFile();
+          const stamp = new Date().toISOString().slice(0, 16).replace(/[-T:]/g, '');
+          upload(new File([file], 'capture-' + stamp + '.' + (file.type.split('/')[1] || 'png'),
+                          { type: file.type }));
+        });
 
         // --- Move (change domain/type) --------------------------------------
         // Re-files the page: the directory moves on disk, so the URL changes.

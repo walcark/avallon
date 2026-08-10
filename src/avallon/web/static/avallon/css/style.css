@@ -975,7 +975,11 @@ html:has(.page.is-editing) { overflow: hidden; }
     padding-bottom: 1rem;
 }
 .page.is-editing > .prose {
-    max-width: var(--measure-wide);
+    /* No measure at all. A measure exists so prose stays readable, and this is
+       not prose: it is Markdown source, where a wrapped table or a long link
+       costs more than a wide line ever could. The reading cap used to leave
+       several hundred pixels of empty page beside the box on a desktop. */
+    max-width: none;
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -983,6 +987,17 @@ html:has(.page.is-editing) { overflow: hidden; }
        off the bottom of the screen; here it would just steal editing room. */
     padding-bottom: 0;
 }
+
+/* The header is the page's title, breadcrumbs, date and tags. While editing,
+   the title is already on screen, inside the textarea, as the `title:` line of
+   the frontmatter: showing it twice spent the top of the viewport to repeat
+   what is being typed, and could contradict it mid-edit. The topbar still says
+   which domain and type this is. */
+.page.is-editing .page-head { display: none; }
+
+/* The editor is the whole screen, so it does not need the reading page's
+   breathing room at the top. */
+.page.is-editing { padding-top: 0.75rem; }
 .page.is-editing .editor { flex: 1; min-height: 0; }
 
 .editor {
@@ -1599,3 +1614,21 @@ a.card-project:hover { text-decoration: underline; }
 
 .meta-action { color: var(--accent); text-decoration: none; }
 .meta-action:hover { text-decoration: underline; }
+
+/* A file being dragged over the source: say the drop will land, since the
+   browser gives no other sign until it is too late. */
+.editor textarea.is-dropping {
+    outline: 2px dashed var(--accent);
+    outline-offset: -4px;
+}
+
+.attachment-text {
+    max-height: 32rem;
+    overflow: auto;
+    padding: 0.9rem 1rem;
+    background: var(--code-bg);
+    border-radius: 0.5rem;
+    font-family: "Roboto Mono", monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+}

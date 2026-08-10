@@ -271,6 +271,10 @@ def serve_content(request, relpath):
                 # can never fall behind.
                 "project": content.project_of(page),
                 "dossier": content.dossier_nav(page),
+                # A text document is shown as itself rather than as a download
+                # button. Capped, because a page is not a file viewer: past a
+                # few hundred lines the browser's own is the better tool.
+                "file_text": content.attached_text(page),
                 # Destinations offered by the "move" control in the editor:
                 # exactly the declared taxonomy, like the creation form.
                 "domains": vocab["domains"],
@@ -364,22 +368,38 @@ def new_page(request):
     if request.method == "POST":
         form = {k: request.POST.get(k, "").strip() for k in form}
         tags = [t for t in re.split(r"[,\n]+", form["tags"]) if t.strip()]
+        upload = request.FILES.get("file")
         try:
-            page = content.create_page(
-                form["domain"],
-                form["type"],
-                form["title"],
-                [t.strip() for t in tags],
-                form["summary"],
-                form["project"],
-            )
-        except content.InvalidPage as exc:
+            if upload is not None:
+                # Same form, same vocabulary: attaching a file only decides
+                # what the page shows, not what kind of thing it is.
+                page = content.create_document(
+                    form["domain"],
+                    form["type"],
+                    form["title"],
+                    upload.name,
+                    upload.read(),
+                    [t.strip() for t in tags],
+                    summary=form["summary"],
+                    project=form["project"],
+                )
+            else:
+                page = content.create_page(
+                    form["domain"],
+                    form["type"],
+                    form["title"],
+                    [t.strip() for t in tags],
+                    form["summary"],
+                    form["project"],
+                )
+        except (content.InvalidPage, content.RejectedUpload) as exc:
             error = str(exc)
         else:
             _commit_page(page.relpath, action="new")
-            # Straight into the editor: a page created from the browser is
-            # empty, so the next thing wanted is always to write in it.
-            return HttpResponseRedirect(page.url + "#edit")
+            # Straight into the editor, because a page created from the browser
+            # is empty. A document is not: it already shows what was filed, so
+            # it opens on itself.
+            return HttpResponseRedirect(page.url if page.file else page.url + "#edit")
 
     return render(
         request,
@@ -468,6 +488,63 @@ def save_page(request):
 
 
 @require_POST
+def upload_document(request):
+    """Store an uploaded file as a document page, and answer with its slug.
+
+    Referencing a document is creating a page for it: the browser then inserts
+    `![[slug]]`, so the file lives in one place and every note that shows it
+    points at the same page. This is `avallon add-file` reachable from a phone,
+    which is the only way to file anything when the site runs on a server.
+    """
+    if not may_edit(request):
+        raise Http404("Editing unavailable")
+
+    upload = request.FILES.get("file")
+    if upload is None:
+        return JsonResponse({"error": "No file submitted."}, status=400)
+
+    vocab = content.vocabulary()
+    domain = request.POST.get("domain", "").strip()
+    type_ = request.POST.get("type", "").strip() or DOCUMENT_TYPE
+    if type_ not in vocab["types"]:
+        type_ = vocab["types"][0]
+    if domain not in vocab["domains"]:
+        return JsonResponse({"error": f"Undeclared domain: {domain}"}, status=400)
+
+    try:
+        page = content.create_document(
+            domain,
+            type_,
+            request.POST.get("title", "").strip(),
+            upload.name,
+            upload.read(),
+            [
+                t.strip()
+                for t in re.split(r"[,\n]+", request.POST.get("tags", ""))
+                if t.strip()
+            ],
+            summary=request.POST.get("summary", "").strip(),
+            project=request.POST.get("project", "").strip(),
+            doc_date=request.POST.get("doc_date", "").strip(),
+        )
+    except (content.RejectedUpload, content.InvalidPage) as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
+    _commit_page(page.relpath, action="add document")
+    return JsonResponse(
+        {
+            "slug": page.slug,
+            "title": page.title,
+            "url": page.url,
+            "kind": page.kind,
+            # What to write in the citing note: an embed shows the document
+            # where it is cited, which is what someone dropping a file wants.
+            "snippet": f"![[{page.slug}]]",
+        }
+    )
+
+
+@require_POST
 def move_page(request):
     """Re-file a page under another domain/type (its directory moves on disk).
 
@@ -496,6 +573,12 @@ def move_page(request):
 
     _commit_page(page.relpath, action=f"move {relpath} ->")
     return JsonResponse({"url": page.url})
+
+
+# A document page says what it is *for* through its type like any page; `doc`
+# is the one for a page whose whole purpose is to hold the file. The *kind*
+# (pdf, image, office) is derived from the extension, and is a separate axis.
+DOCUMENT_TYPE = "doc"
 
 
 _EXPORT_TYPES = {

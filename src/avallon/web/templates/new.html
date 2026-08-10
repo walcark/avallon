@@ -17,7 +17,7 @@
 
     {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
 
-    <form class="form" method="post" action="/nouvelle/">
+    <form class="form" method="post" action="/nouvelle/" enctype="multipart/form-data">
         {% csrf_token %}
 
         <div class="form-row">
@@ -98,6 +98,18 @@
             <label for="f-summary">{{ "Summary"|t }}</label>
             <input type="text" id="f-summary" name="summary" value="{{ form.summary }}"
                    autocomplete="off" placeholder="{{ "one sentence, shown on the home page"|t }}">
+        </div>
+
+        <div class="form-row">
+            <label for="f-file">{{ "Attach a document (optional)"|t }}</label>
+            <input type="file" id="f-file" name="file">
+            <!-- A document is not a different kind of page, only one whose
+                 file is what it is for. Saying so here is what stops `doc`
+                 from looking like a separate system. -->
+            <p class="form-help">
+                {{ "The page will display it, and become referenceable with"|t }}
+                <code>![[slug]]</code>.
+            </p>
         </div>
 
         <div class="form-actions">

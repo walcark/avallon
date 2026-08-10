@@ -229,6 +229,33 @@ the alias so links written before the rename still land. Should two pages ever
 claim one freed name, nothing resolves at all: a dead link is visible and
 fixable, a working link to the wrong page is neither.
 
+### Documents
+
+A document is not a different kind of thing: it is **a page whose `file:` is
+what it is for**. It has a domain, a type, tags, a date and a dossier like any
+page, and only its display differs, driven by the file's extension rather than
+by the page's type: an image and a pdf are shown as themselves, a text file is
+printed, anything needing software to open is a download button.
+
+That is what makes a scan findable on its own, filterable by kind, and part of
+a collection. Citing it is citing a page:
+
+| Written in a note | What it does |
+| --- | --- |
+| `[[carte-identite]]` | links the document's page |
+| `![[carte-identite]]` | shows the document right there, the file staying in its own page |
+
+**Filing one from the browser**, which is the only way when the site runs on a
+server: attach a file in the creation form, or, while editing a note, use *Add
+a document* (dropping a file on the source, or pasting a screenshot, does the
+same). The file becomes its own page and the reference is written at the caret.
+`avallon add-file` does the same from a terminal.
+
+Uploads are capped at 20 Mo, because git keeps every version of a binary and a
+deleted scan still weighs its size in the history forever. Only extensions the
+site knows how to classify are accepted, which is also what keeps a `.html`
+from being served as part of the site.
+
 ### The past of a page
 
 The date in a page's label is a button. It lists the **last five recorded

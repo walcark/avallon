@@ -18,7 +18,7 @@ from avallon.web import content
 
 TAXONOMY = """\
 domains = ["informatique", "administratif"]
-types = ["fiche", "cr", "recueil"]
+types = ["fiche", "cr", "doc", "recueil"]
 
 [labels]
 cr = "compte rendu"

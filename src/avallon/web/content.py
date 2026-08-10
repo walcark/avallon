@@ -426,6 +426,116 @@ class InvalidPage(ValueError):
     """The submitted creation form cannot produce a page."""
 
 
+# A file bigger than this bloats the repository forever: git keeps every
+# version of a binary, so a deleted 50 Mo scan still weighs 50 Mo in the
+# history. Same limit as `avallon add-file`, for the same reason.
+UPLOAD_LIMIT = 20 * 1024 * 1024
+
+
+class RejectedUpload(Exception):
+    """The submitted file cannot become a document."""
+
+
+def safe_filename(name: str) -> str:
+    """A filename derived from *name* that can only land where intended.
+
+    The stem goes through the same slugifier as a title, so a name carrying
+    slashes, dots or spaces comes out as one harmless segment. The extension is
+    kept only when `KIND_BY_EXTENSION` knows it, which is both what decides how
+    the document is displayed and, as it happens, the allowlist: an `.html` or
+    a `.js` is not a kind, so it never reaches a directory this site serves.
+
+    Raises
+    ------
+    RejectedUpload
+        The extension is missing or not one this site can hold.
+    """
+    from avallon.notes.scaffold import slugify
+
+    suffix = Path(name).suffix.lstrip(".").lower()
+    if suffix not in KIND_BY_EXTENSION:
+        known = ", ".join(sorted(KIND_BY_EXTENSION))
+        raise RejectedUpload(
+            f'Unsupported file type: "{Path(name).name}". Accepted: {known}.'
+        )
+    stem = slugify(Path(name).stem)
+    return f"{stem}.{suffix}"
+
+
+def create_document(
+    domain: str,
+    type_: str,
+    title: str,
+    filename: str,
+    data: bytes,
+    tags: list[str] | None = None,
+    summary: str = "",
+    project: str = "",
+    doc_date: str = "",
+) -> Page:
+    """Create a page holding *data* as its document, and return it.
+
+    A document is not a new kind of thing, it is a page with a `file:`. That is
+    what makes it findable, taggable, datable and part of a dossier like any
+    other, and what lets `![[slug]]` show it inside a note while the file stays
+    in one place.
+
+    The page is written first and removed again if the bytes cannot be stored,
+    so a failure leaves nothing behind rather than a page pointing at a file
+    that is not there.
+    """
+    if len(data) > UPLOAD_LIMIT:
+        raise RejectedUpload(
+            f"File too large: {len(data) / 1e6:.1f} Mo, limit "
+            f"{UPLOAD_LIMIT // 10**6} Mo. Git keeps every version of a binary "
+            "for good, so a big file is paid for forever."
+        )
+    if not data:
+        raise RejectedUpload("Empty file.")
+
+    name = safe_filename(filename)
+    page = create_page(
+        domain,
+        type_,
+        title or Path(filename).stem,
+        tags or [],
+        summary=summary,
+        project=project,
+        file=name,
+        doc_date=doc_date,
+    )
+    directory = CONTENT_DIR / page.relpath
+    try:
+        (directory / name).write_bytes(data)
+    except OSError:
+        shutil.rmtree(directory, ignore_errors=True)
+        raise
+    return page
+
+
+TEXT_PREVIEW_LINES = 400
+
+
+def attached_text(page: Page) -> str:
+    """The attached file's text when it is one, else an empty string.
+
+    Only for `kind == "text"`. Anything that needs software to be read (an
+    office document) is a download, and anything the browser renders natively
+    (an image, a pdf) is already shown as itself.
+    """
+    if page.kind != "text" or not page.file:
+        return ""
+    target = CONTENT_DIR / page.relpath / page.file
+    try:
+        raw = target.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+    lines = raw.splitlines()
+    if len(lines) > TEXT_PREVIEW_LINES:
+        lines = [*lines[:TEXT_PREVIEW_LINES], "…"]
+    return "\n".join(lines)
+
+
 def page_named(name: str, exclude: str = "") -> Page | None:
     """The page that bears *name* right now, ignoring *exclude*'s relpath.
 
@@ -455,6 +565,8 @@ def create_page(
     tags: list[str],
     summary: str = "",
     project: str = "",
+    file: str = "",
+    doc_date: str = "",
 ) -> Page:
     """Scaffold ``<domain>/<type>/<slug>/index.md`` and return the new Page.
 
@@ -524,6 +636,12 @@ def create_page(
         lines.append(f"summary: {scalar(summary.strip())}")
     if project.strip():
         lines.append(f"project: {scalar(project.strip())}")
+    if file.strip():
+        lines.append(f"file: {scalar(file.strip())}")
+    if doc_date.strip():
+        # The date *of the document* (issued, signed, received), which is what
+        # one looks for later; `date` stays the filing date.
+        lines.append(f"doc_date: {scalar(doc_date.strip())}")
     body = "---\n" + "\n".join(lines) + "\n---\n\n"
 
     target.mkdir(parents=True)
