@@ -134,3 +134,44 @@ def test_naming_a_page_makes_it_a_dossier(notes: Path) -> None:
     from avallon.web import content
 
     assert [p.slug for p in content.all_projects()] == ["le-litige"]
+
+
+def test_the_only_dossier_is_still_offered(notes: Path) -> None:
+    """A lone value is chrome when it changes nothing, not when it is alone.
+    Every page has a domain, so one domain divides nothing; a dossier is
+    optional, so the only one still separates its pages from the rest."""
+    _tree(notes)  # two dossiers
+    write_page(notes, "administratif/fiche/hors", title="Hors dossier")
+
+    from avallon.web import content
+
+    single = content.select(domains=["administratif"], types=["fiche"])
+    assert single.facets["project"]  # the members' dossiers, page count < total
+
+
+def test_a_value_every_page_carries_is_dropped(notes: Path) -> None:
+    """Filtering on it would change nothing, so it is chrome."""
+    from avallon.web import content
+
+    write_page(notes, "administratif/fiche/a", title="A")
+    write_page(notes, "administratif/fiche/b", title="B")
+
+    facets = content.select().facets
+
+    assert facets["domain"] == []  # every page is administratif
+    assert facets["kind"] == []  # every page is a note
+
+
+def test_an_active_value_survives_being_chrome(notes: Path) -> None:
+    """Every page here is administratif, so the value would be dropped as
+    changing nothing; being active, it stays, or picking it would remove the
+    control needed to unpick it."""
+    from avallon.web import content
+
+    write_page(notes, "administratif/fiche/a", title="A")
+    write_page(notes, "administratif/fiche/b", title="B")
+
+    assert content.select().facets["domain"] == []
+    assert content.select(domains=["administratif"]).facets["domain"] == [
+        ("administratif", 2)
+    ]

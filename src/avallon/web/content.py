@@ -1313,9 +1313,13 @@ def _facet_values(
 
     if facet == "tag":
         counts = {v: n for v, n in counts.items() if n >= TAG_FACET_MIN or v in active}
-    if len(counts) < 2:
-        # Nothing to divide. Keep the active values so they can be undone.
-        counts = {v: n for v, n in counts.items() if v in active}
+    # A value is chrome when it changes nothing, which is not the same as
+    # being alone. Every page has a domain, so a single domain divides nothing;
+    # a dossier, a status or a kind is optional, so the tree's only dossier
+    # still separates its 8 pages from the other 36. Counting distinct values
+    # rather than the pages they cover is what hid the dossier filter outright.
+    # Active values always stay, or picking one would remove the way to undo it.
+    counts = {v: n for v, n in counts.items() if n != len(pages) or v in active}
     return sorted(counts.items())
 
 

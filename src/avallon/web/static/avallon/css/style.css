@@ -76,7 +76,10 @@ body {
     border-right: 1px solid var(--border);
     transform: translateX(0);
     transition: transform 0.2s ease;
-    z-index: 30;
+    /* Above the bottom action bar (30) and its scrim: both used to sit at 30,
+       and the actions come later in the document, so the + and theme buttons
+       painted over the drawer that had just opened. */
+    z-index: 40;
 }
 .main {
     margin-left: var(--sidebar-w);
@@ -252,7 +255,10 @@ body {
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s ease;
-    z-index: 25;
+    /* Between the bottom action bar (30) and the drawer (40): an open drawer
+       is modal, so the + and theme buttons dim with the rest of the page
+       instead of floating brightly over it. */
+    z-index: 35;
 }
 @media (max-width: 800px) {
     .main { margin-left: 0; }
@@ -1383,7 +1389,13 @@ html:has(.page.is-editing) { overflow: hidden; }
     gap: 0.5rem;
     margin: 1rem 0 1.5rem;
 }
-.facet-group { display: flex; flex-wrap: nowrap; align-items: baseline; gap: 0.4rem; }
+.facet-group {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: baseline;
+    gap: 0.4rem;
+    min-width: 0;
+}
 
 /* One line per axis that scrolls sideways, instead of a block that grows
    downwards. Five axes wrapping onto three rows each is what filled a phone
@@ -1392,6 +1404,9 @@ html:has(.page.is-editing) { overflow: hidden; }
     display: flex;
     gap: 0.4rem;
     overflow-x: auto;
+    /* Without this the row is as wide as its chips, and a flex item that
+       cannot shrink makes the whole page scroll sideways instead of the row. */
+    min-width: 0;
     scrollbar-width: none;
     padding-bottom: 0.15rem;
 }
@@ -1437,6 +1452,20 @@ html:has(.page.is-editing) { overflow: hidden; }
 }
 @media (max-width: 760px) {
     .facet-panel > summary { display: block; margin-bottom: 0.75rem; }
+    /* The label moves above its row rather than beside it: a 5.5rem gutter is
+       a quarter of a phone's width, spent repeating what the values say. */
+    .facet-group {
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+    .facet-label {
+        display: block;
+        min-width: 0;
+        margin-bottom: 0.2rem;
+        font-size: 0.7rem;
+    }
+    .facet-menu { max-width: 100%; width: 100%; }
+    .facets { gap: 0.25rem; }
 }
 .facet-label {
     font-size: 0.78rem;
