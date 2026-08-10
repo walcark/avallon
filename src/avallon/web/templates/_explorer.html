@@ -60,11 +60,14 @@
 <ul class="tiles">
     {% for c in cards %}
     <li class="tile">
-        <a href="{{ c.page.url }}">
+        <a href="{{ c.page.url }}"{% if c.is_document %} target="_blank" rel="noopener"{% endif %}>
             {% if c.page.kind == "image" %}
             <img class="tile-media" src="{{ c.page.file_url }}" alt="{{ c.page.title }}" loading="lazy">
             {% else %}
-            <img class="tile-media" src="/thumb/{{ c.page.relpath }}/" alt="{{ c.page.title }}" loading="lazy">
+            <!-- A document names itself after its page: it has no relpath of
+                 its own, several sharing the one of the page they sit by. -->
+            <img class="tile-media" alt="{{ c.page.title }}" loading="lazy"
+                 src="/thumb/{{ c.page.relpath }}/{% if c.is_document %}{{ c.page.file|urlencode }}/{% endif %}">
             {% endif %}
             <span class="tile-title">{{ c.title_html|safe }}</span>
         </a>
@@ -76,9 +79,11 @@
 <ul class="cards">
     {% for c in cards %}
     <li class="card">
-        <a class="card-title" href="{{ c.page.url }}">{{ c.title_html|safe }}</a>
+        <a class="card-title{% if c.is_document %} is-document{% endif %}"
+           href="{{ c.page.url }}"{% if c.is_document %} target="_blank" rel="noopener"{% endif %}>{{ c.title_html|safe }}</a>
         {% if c.project %}<a class="card-project" href="{{ c.project.url }}">{{ c.project.title }}</a>{% endif %}
         <div class="card-meta">
+            {% if c.is_document %}<span class="card-kind">{{ c.page.kind|t }}</span>{% endif %}
             <span class="card-path">{{ c.page.domain_label }} / {{ c.page.type_label }}</span>
             {% if c.page.display_date %}<span class="card-date">{{ c.page.display_date }}</span>{% endif %}
             {% if c.page.status %}<span class="badge-status" data-status="{{ c.page.status }}">{{ c.page.status }}</span>{% endif %}

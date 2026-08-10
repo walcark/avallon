@@ -1761,3 +1761,16 @@ a.card-project:hover { text-decoration: underline; }
     outline: 2px solid var(--accent);
     outline-offset: 3px;
 }
+
+/* A document leads to the file, not to a page about it. The label says which
+   kind, so a result that opens a viewer is never a surprise. */
+.card-kind {
+    padding: 0.05rem 0.4rem;
+    border-radius: 0.3rem;
+    background: var(--code-bg);
+    color: var(--muted);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.card-title.is-document { font-family: "Roboto Mono", monospace; font-size: 0.95rem; }

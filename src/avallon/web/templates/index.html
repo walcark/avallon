@@ -640,8 +640,9 @@
           say('{{ "Sending…"|t|escapejs }}');
           const body = new FormData();
           body.append('file', file);
-          body.append('domain', '{{ page.domain|escapejs }}');
-          // Named after the file; the title is editable on the page itself.
+          // Beside this page, not as a page of its own: the file is indexed
+          // either way, and this is one click instead of three.
+          body.append('beside', '{{ relpath|escapejs }}');
           fetch('/upload/', { method: 'POST', body: body, headers: { 'X-CSRFToken': csrf() } })
             .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
             .then(function (res) {

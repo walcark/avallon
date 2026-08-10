@@ -231,8 +231,26 @@ fixable, a working link to the wrong page is neither.
 
 ### Documents
 
-A document is not a different kind of thing: it is **a page whose `file:` is
-what it is for**. It has a domain, a type, tags, a date and a dossier like any
+**A file sitting beside a page is already a document.** It is indexed as it
+is, with no page of its own and nothing to declare: it inherits that page's
+domain, type, tags, date and dossier, which is what "identify a document by the
+folder it is in" amounts to. A result leads to the file itself, not to a page
+about it.
+
+Beside, not below: a subdirectory is where a note keeps what it *uses*
+(`data/`, `__pycache__/`), while what sits next to the index is what it shows.
+Only extensions the site can classify count, so a `.pyc` is never a document.
+
+Documents stay out of the default listing, which is about pages, and come in
+the moment a **kind** is asked for: that facet counts them at all times, so
+`image` is offered on the home page even when the listing holds none. They are
+searched by **filename** and by their page's title and tags, never by its body,
+or one compte rendu would answer with all four of its figures.
+
+Promoting one to a page of its own stays possible, and is the exception: a page
+buys a title, a date of the document distinct from the filing date, tags of its
+own and an identity several notes can cite. That page is **a page whose `file:`
+is what it is for**. It has a domain, a type, tags, a date and a dossier like any
 page, and only its display differs, driven by the file's extension rather than
 by the page's type: an image and a pdf are shown as themselves, a text file is
 printed, anything needing software to open is a download button.

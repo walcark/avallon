@@ -137,7 +137,10 @@ def _explorer_context(request):
             {
                 "page": page,
                 "project": membership.get(page.relpath),
-                "snippet": selection.snippets.get(page.relpath, ""),
+                "snippet": selection.snippets.get(page.key, ""),
+                # A document leads to the file itself, so the card must not
+                # read as a page one is about to open.
+                "is_document": isinstance(page, content.Asset),
                 "title_html": content.highlight_title(page.title, query),
             }
             for page in selection.pages
@@ -193,19 +196,29 @@ _SHEET_SVG = (
 
 
 def thumbnail(request, relpath):
-    """A page's thumbnail: the first page of its PDF, cached on disk.
+    """A thumbnail: the first page of a PDF, cached on disk.
+
+    *relpath* is a page, or a page and one of the documents beside it, since a
+    document indexed on its own has no page of its own to name.
 
     Images are their own thumbnail and never reach here. Anything else, and any
     machine without poppler, gets a generic sheet: the grid must not depend on
     a binary being installed.
     """
-    index_md = content.safe_resolve(relpath) / "index.md"
-    if not index_md.is_file():
-        raise Http404("Page not found")
-    page = content.load_page(index_md)
-    source = index_md.parent / page.file if page.file else None
+    target = content.safe_resolve(relpath)
+    if target.is_file():
+        # A document beside a page: /thumb/<page>/<file>.
+        source = target
+        kind = content.kind_of_file(target.name)
+    else:
+        index_md = target / "index.md"
+        if not index_md.is_file():
+            raise Http404("Page not found")
+        page = content.load_page(index_md)
+        source = index_md.parent / page.file if page.file else None
+        kind = page.kind
 
-    if page.kind != "pdf" or source is None or not source.is_file():
+    if kind != "pdf" or source is None or not source.is_file():
         return HttpResponse(_SHEET_SVG, content_type="image/svg+xml")
 
     cached = content.thumbnail_path(source)
@@ -547,6 +560,25 @@ def upload_document(request):
     upload = request.FILES.get("file")
     if upload is None:
         return JsonResponse({"error": "No file submitted."}, status=400)
+
+    # Beside the page by default. A file there is already a document: indexed,
+    # filterable by kind, part of that page's dossier. Wrapping it in a page of
+    # its own is the exception, for what deserves a title and a date of its own.
+    page_path = request.POST.get("beside", "").strip()
+    if page_path:
+        try:
+            asset = content.attach_file(page_path, upload.name, upload.read())
+        except content.RejectedUpload as exc:
+            return JsonResponse({"error": str(exc)}, status=400)
+        _commit_page(page_path, action="attach")
+        return JsonResponse(
+            {
+                "url": asset.url,
+                "kind": asset.kind,
+                "file": asset.file,
+                "snippet": content.markdown_for(asset),
+            }
+        )
 
     vocab = content.vocabulary()
     domain = request.POST.get("domain", "").strip()

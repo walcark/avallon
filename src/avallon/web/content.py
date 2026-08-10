@@ -23,7 +23,7 @@ import tempfile
 import tomllib
 import unicodedata
 from collections.abc import Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, fields, replace
 from pathlib import Path
 from typing import Any
 
@@ -62,6 +62,13 @@ KIND_BY_EXTENSION = {
     **dict.fromkeys(("docx", "xlsx", "pptx", "odt", "ods", "odp"), "office"),
     **dict.fromkeys(("zip", "tar", "gz", "xz", "7z", "rar", "epub"), "archive"),
 }
+
+
+def kind_of_file(name: str) -> str:
+    """The kind of a file, by its extension: image, pdf, text, office…"""
+    suffix = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+    return KIND_BY_EXTENSION.get(suffix, KIND_OTHER)
+
 
 # A page with no file is a note: the kind stays a complete partition, so it can
 # be a facet without a hole in it.
@@ -118,6 +125,12 @@ class Page:
         return f"/{self.relpath}/"
 
     @property
+    def key(self) -> str:
+        """Identity within a selection. A document overrides it, several of
+        them sharing the relpath of the page they sit beside."""
+        return self.relpath
+
+    @property
     def is_private(self) -> bool:
         return self.visibility == "private"
 
@@ -151,6 +164,71 @@ class Page:
     @property
     def type_label(self) -> str:
         return label_for(self.type)
+
+
+@dataclass(frozen=True)
+class Asset(Page):
+    """A file sitting beside a page, indexed without a page of its own.
+
+    Everything but the file is inherited from the page it sits beside: domain,
+    type, tags, date, dossier. That is what "identify a document by the folder
+    it is in" means, and it is why nothing has to be declared for a scan
+    dropped next to a note to become findable.
+
+    It is a `Page` because a document *is* one in every respect the explorer
+    cares about, and because that makes `kind`, `is_visual`, `display_date` and
+    the whole facet machinery work on it unchanged. Only the URL differs: a
+    document leads to itself, not to a wrapper page, which is the click this
+    removes.
+    """
+
+    @property
+    def url(self) -> str:
+        # Built from the relpath, not from `file_url`: that one is defined as
+        # `url + file`, so delegating to it here recurses forever.
+        return f"/{self.relpath}/{self.file}"
+
+    @property
+    def file_url(self) -> str:
+        """The same thing: a document leads to itself. Inheriting `url + file`
+        would name the file twice."""
+        return self.url
+
+    @property
+    def key(self) -> str:
+        """Identity within a selection: the page's relpath plus the filename,
+        since several documents share the relpath of the page they sit by."""
+        return f"{self.relpath}/{self.file}"
+
+
+def assets_of(page: Page) -> list[Asset]:
+    """The documents sitting beside *page*.
+
+    Beside, not below: a subdirectory is where a note keeps what it *uses*
+    (`data/`, `__pycache__/`), while what sits next to the index is what it
+    shows. That one rule sorted 19 documents from 28 working files here,
+    without a denylist of extensions or folder names to maintain.
+
+    A page's own `file:` is left out: it is already the page.
+    """
+    directory = CONTENT_DIR / page.relpath
+    found = []
+    for entry in sorted(directory.iterdir()):
+        if not entry.is_file() or entry.name in ("index.md", page.file):
+            continue
+        suffix = entry.suffix.lstrip(".").lower()
+        if suffix not in KIND_BY_EXTENSION:
+            continue  # not a document: a .pyc, a .nc, whatever a note works with
+        found.append(replace(page, title=entry.name, file=entry.name, summary=""))
+    return [Asset(**{f.name: getattr(a, f.name) for f in fields(Page)}) for a in found]
+
+
+def all_assets() -> list[Asset]:
+    """Every document in the tree, most recently modified first."""
+    found = [a for page in all_pages() for a in assets_of(page)]
+    found.sort(key=lambda a: a.title)
+    found.sort(key=_recency_key, reverse=True)
+    return found
 
 
 def _recency_key(page: Page) -> str:
@@ -457,6 +535,59 @@ def safe_filename(name: str) -> str:
         )
     stem = slugify(Path(name).stem)
     return f"{stem}.{suffix}"
+
+
+def attach_file(relpath: str, filename: str, data: bytes) -> Asset:
+    """Store *data* beside the page at *relpath*, and return it as a document.
+
+    No page is created. A file beside a page is already indexed, findable by
+    kind and part of that page's dossier, so wrapping it in a page of its own
+    bought metadata nobody wanted for a screenshot and cost two clicks to
+    reach. `create_document` remains for the documents that do deserve a title,
+    a date of their own and an identity several notes can cite.
+    """
+    if len(data) > UPLOAD_LIMIT:
+        raise RejectedUpload(
+            f"File too large: {len(data) / 1e6:.1f} Mo, limit "
+            f"{UPLOAD_LIMIT // 10**6} Mo. Git keeps every version of a binary "
+            "for good, so a big file is paid for forever."
+        )
+    if not data:
+        raise RejectedUpload("Empty file.")
+
+    page = load_page(safe_resolve(relpath) / "index.md")
+    name = safe_filename(filename)
+    target = CONTENT_DIR / page.relpath / name
+    # Never overwrite: two screenshots pasted a minute apart would otherwise
+    # replace one another, and the first note would silently show the second.
+    stem, _, suffix = name.rpartition(".")
+    n = 2
+    while target.exists():
+        target = CONTENT_DIR / page.relpath / f"{stem}-{n}.{suffix}"
+        n += 1
+    target.write_bytes(data)
+    return Asset(
+        **{
+            f.name: getattr(page, f.name)
+            for f in fields(Page)
+            if f.name not in ("title", "file", "summary")
+        },
+        title=target.name,
+        file=target.name,
+        summary="",
+    )
+
+
+def markdown_for(asset: Asset) -> str:
+    """How to write *asset* into the note it was dropped into.
+
+    An image is shown, anything else is linked: a pdf rendered inline in the
+    middle of a note would take the page over, and a link is what one wants of
+    a piece of evidence anyway.
+    """
+    if asset.kind == "image":
+        return f"![]({asset.file})"
+    return f"[[{asset.file}]]"
 
 
 def create_document(
@@ -1358,10 +1489,19 @@ def select(
     if query.strip():
         hits = search(query)
         pages = [hit.page for hit in hits]
-        snippets = {hit.page.relpath: hit.snippet for hit in hits}
+        snippets = {hit.page.key: hit.snippet for hit in hits}
     else:
         pages = all_pages()
         snippets = {}
+
+    # Documents join the set only when a kind other than "note" is asked for.
+    # Mixing them into the default listing would drown 44 pages under every
+    # figure they contain; asking for a kind is exactly the moment one wants
+    # the files rather than the notes.
+    if any(k != KIND_NOTE for k in kinds):
+        assets = search_assets(query) if query.strip() else all_assets()
+        snippets.update({a.key: "" for a in assets})
+        pages = [*pages, *assets]
 
     wanted_tags = [_normalize_tag(t) for t in tags if t.strip()]
 
@@ -1404,6 +1544,23 @@ def select(
                 if other != facet
             )
         ]
+        if facet == "kind":
+            # Counted over documents too, always. The facet is what lets one
+            # ask for them, so deriving it from a selection that excludes them
+            # would offer only "note" and hide the door behind itself.
+            pool = search_assets(query) if query.strip() else all_assets()
+            others = [
+                *others,
+                *(
+                    a
+                    for a in pool
+                    if all(
+                        _matches(a, other, values, membership_map)
+                        for other, values in chosen.items()
+                        if other != "kind"
+                    )
+                ),
+            ]
         facets[facet] = _facet_values(others, facet, active, membership_map)
 
     total = len(kept)
@@ -1734,6 +1891,25 @@ def highlight_title(title: str, query: str) -> str:
     # "… ntretien avec le banquier", which reads as a bug rather than as a
     # match. An excerpt is for a body, where there is more text than room.
     return _highlight(title, terms, whole=True)
+
+
+def search_assets(query: str) -> list[Asset]:
+    """Documents matching *query*, by their own name and their page's label.
+
+    Never on the host page's body. A compte rendu carrying four figures would
+    otherwise return all four for any word it contains, and the results would
+    be four copies of one page. The filename is what identifies a document, and
+    the page's title and tags are the context it inherits.
+    """
+    terms = parse_query(query)
+    if not terms:
+        return []
+    found = []
+    for asset in all_assets():
+        label = _fold_text(f"{asset.file} {asset.relpath} {' '.join(asset.tags)}")
+        if all(_term_matches(label, _fold_text(term)) for term in terms):
+            found.append(asset)
+    return found
 
 
 def _run_of(query: str) -> str:
