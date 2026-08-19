@@ -198,7 +198,7 @@ Standard Markdown, plus:
 | ` ```python ` | syntax-highlighted code (Pygments) |
 | `!!! note` / `!!! warning` | admonition cards |
 | `$…$`, `$$…$$` | LaTeX math (MathJax) |
-| `{rouge}(texte)` | inline coloured span |
+| `{rouge}(texte)` | inline coloured span; parentheses inside it nest |
 | ` ```gallery `, ` ```plot `, ` ```csv `, ` ```query ` | content blocks |
 | `- [ ]` | task lists |
 
