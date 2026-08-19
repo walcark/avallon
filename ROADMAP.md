@@ -22,6 +22,13 @@ filter showed nothing while a dossier's sixteen exhibits were on disk.
       markup rendered under a sandbox rather than handed over as a download.
 - [x] Four mobile faults, one of which hid the dossier filter outright.
 
+## v0.5.1, a colour that ends where it was closed
+
+- [x] **`{rouge}(un texte (avec incise) et la suite)`** keeps its colour to the
+      end. The closing parenthesis is found by counting depth rather than
+      matched by a pattern that stopped at the first one, so prose can have
+      parentheses in it without the writer having to remember that it cannot.
+
 ## v0.5.0, the reader's own language
 
 - [x] **A language switch in the top bar.** The language was a property of the
